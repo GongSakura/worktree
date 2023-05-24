@@ -4,6 +4,6 @@ export interface Processor {
   (context: any, next: CallableFunction): void;
 }
 
-export interface CodeWorkSpaceFile {
+export interface CodeWorkSpaceJSON {
   folders: { path: string; name: string }[];
 }

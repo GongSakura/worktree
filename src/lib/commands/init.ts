@@ -36,15 +36,18 @@ export default new Command()
         directory: path.resolve(this.processedArgs[0]),
       },
     };
-    
+
     global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
     const processes = [
       GitProcessor.initRepository,
       FileProcessor.initDirectory,
       FileProcessor.createWorkSpace,
-      GitProcessor.repairWorktree
+      GitProcessor.repairWorktree,
+      GitProcessor.markDirectory
     ];
     const executer = new Executer(processes);
-    executer.run(context);
+    executer.run(context, () => {
+      console.log("DONE");
+    });
   });

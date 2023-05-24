@@ -15,15 +15,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import * as path from "node:path";
-import type { CodeWorkSpaceFile } from "../types";
+import type { CodeWorkSpaceJSON } from "../types";
 
-const IGNORE_FILES = new Set([".git",".code-workpace"]);
+const IGNORE_FILES = new Set([".git", ".code-workpace"]);
 /**
  * Move all files into a new directory named after the branch name
  */
 function initDirectory(context: any, next: CallableFunction) {
-  console.info(`context:`, context);
-
   const oldParentPath = context.commandArgumetns.directory;
 
   // check if ".git" is outside the mainWorktreePath,
@@ -118,11 +116,13 @@ function initDirectory(context: any, next: CallableFunction) {
 
 function createWorkSpace(context: any, next: CallableFunction) {
   const cwd = context.commandArgumetns.directory;
-  const workSpacePath = path.resolve(
-    cwd,
-    cwd.split("/").pop() + ".code-workspace"
-  );
-  const workSpaceFile = {} as CodeWorkSpaceFile;
+  // const workSpacePath = path.resolve(
+  //   cwd,
+  //   cwd.split("/").pop() + ".code-workspace"
+  // );
+
+  const workSpacePath = path.resolve(cwd, "_.code-workspace");
+  const workSpaceFile = {} as CodeWorkSpaceJSON;
 
   workSpaceFile.folders = context.workTrees.map((e) => {
     return {
