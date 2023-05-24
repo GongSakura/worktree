@@ -31,28 +31,49 @@ function initRepository(context: any, next: CallableFunction) {
 
   try {
     execSync(command, { stdio: "ignore" });
-    const worktrees = getWorktree(repoPath);
-    context.workTrees = worktrees.reverse();
+    enableWorkTreeConfig(repoPath);
+    context.workTrees = getWorktree(repoPath).reverse();
     context.gitDir = getGitDir(path.resolve(repoPath, "./.git"));
 
     next();
   } catch (error) {}
 }
+
 function repairWorktree(context: any, next: CallableFunction) {
-  const workTrees = context.workTrees;
-  const mainWorkTreePath = workTrees.pop()[0]
-  const linkedWorktreePaths = workTrees.reduce((prev,cur)=>{
-    return `${prev} ${cur[0]}`
-  },'') 
-  try{
-    execSync('git worktree repair '+linkedWorktreePaths,{
-      cwd:mainWorkTreePath
-    })
-  }catch(error){
-    console.info(`RepairWorktree error:`,error)
+  const workTrees = [...context.workTrees];
+  const mainWorkTreePath = workTrees.pop()[0];
+  const linkedWorktreePaths = workTrees.reduce((prev, cur) => {
+    return `${prev} ${cur[0]}`;
+  }, "");
+  try {
+    execSync("git worktree repair " + linkedWorktreePaths, {
+      cwd: mainWorkTreePath,
+      stdio: "ignore",
+    });
+    next();
+  } catch (error) {
+    console.info(`RepairWorktree error:`, error);
   }
 }
+function configWorktree(context: any, next: CallableFunction) {
+  const workTrees = context.workTrees;
+  const configPath = context.configPath;
+  const mainWorkTreePath = context.workTrees[context.workTrees.length - 1][0];
 
+  workTrees.forEach((workTree) => {
+    try {
+      execSync("git config --worktree wt.config " + configPath, {
+        cwd: workTree[0],
+      });
+      execSync("git config --worktree wt.key " + mainWorkTreePath, {
+        cwd: workTree[0],
+      });
+    } catch (error) {
+      console.info(`configWorktree error:`, error);
+    }
+  });
+  next();
+}
 export function getWorktree(cwdPath: string): [string, string, string][] {
   try {
     const stdout = execSync("git worktree list", {
@@ -93,6 +114,15 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
     return false;
   }
 }
+export function enableWorkTreeConfig(cwdPath: string): boolean {
+  try {
+    execSync("git config extensions.worktreeConfig true", {
+      cwd: cwdPath,
+    });
+  } catch (error) {
+    return false;
+  }
+}
 
 export function getGitDir(repoPath: string): string {
   try {
@@ -126,4 +156,5 @@ export function checkIsGitDir(cwdPath: string): boolean {
 export default {
   initRepository,
   repairWorktree,
+  configWorktree,
 };

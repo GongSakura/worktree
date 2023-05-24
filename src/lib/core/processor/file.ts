@@ -107,6 +107,7 @@ function initDirectory(context: any, next: CallableFunction) {
         newWorkTrees.push([newPath, commitHash, branch]);
       } catch (error) {
         console.info(`readdirSync error:`, error);
+        return;
       }
     }
   }
@@ -114,7 +115,7 @@ function initDirectory(context: any, next: CallableFunction) {
   next();
 }
 
-function createWorkSpace(context: any, next: CallableFunction) {
+function createCodeWorkSpace(context: any, next: CallableFunction) {
   const cwd = context.commandArgumetns.directory;
   // const workSpacePath = path.resolve(
   //   cwd,
@@ -137,9 +138,36 @@ function createWorkSpace(context: any, next: CallableFunction) {
       flag: "w",
     });
   } catch (error) {}
+  context.workSpacePath = workSpacePath;
+  next();
+}
+function createConfiguration(context: any, next: CallableFunction) {
+  const cwd = context.commandArgumetns.directory;
+  const configPath = path.resolve(cwd, "wt.config.json");
+  const v = context.workTrees.reduce((prev, cur) => {
+    prev.push(cur[0]);
+    return prev;
+  }, []);
+
+  const config = {
+    [v.pop()]: v,
+  };
+
+  try {
+    writeFileSync(configPath, JSON.stringify(config), {
+      mode: 0o777,
+      encoding: "utf-8",
+      flag: "w",
+    });
+  } catch (error) {
+    console.info(`createConfiguration error:`, error);
+  }
+  context.configPath = configPath;
+
+  next();
 }
 
-function checkIsDirectChildPath(
+export function checkIsDirectChildPath(
   parentPath: string,
   childPath: string
 ): boolean {
@@ -176,5 +204,6 @@ export function checkIsPathCaseSensitive() {
 }
 export default {
   initDirectory,
-  createWorkSpace,
+  createCodeWorkSpace,
+  createConfiguration,
 };

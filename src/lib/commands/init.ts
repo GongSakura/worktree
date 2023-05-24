@@ -42,9 +42,10 @@ export default new Command()
     const processes = [
       GitProcessor.initRepository,
       FileProcessor.initDirectory,
-      FileProcessor.createWorkSpace,
       GitProcessor.repairWorktree,
-      GitProcessor.markDirectory
+      FileProcessor.createConfiguration,
+      FileProcessor.createCodeWorkSpace,
+      GitProcessor.configWorktree,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
