@@ -4,10 +4,11 @@
 
 import { execSync } from "node:child_process";
 import * as path from "node:path";
+import { WorktreeConfig } from "../types";
+import { cwd } from "node:process";
 
 function initRepository(context: any, next: CallableFunction) {
-  const repoPath = context.commandArgumetns.directory;
-
+  const repoPath = context.cwd;
   if (getGitDir(repoPath)) {
     console.log("cannot initialize in a git directory");
     return;
@@ -21,33 +22,31 @@ function initRepository(context: any, next: CallableFunction) {
 
   const command =
     "git init " +
-    (context?.commendOptions?.separateGitDir
-      ? `--separate-git-dir ${context.commendOptions.separateGitDir} `
-      : " ") +
     (context?.commendOptions?.branch
       ? `-b ${context.commendOptions.branch} `
       : " ") +
     repoPath;
 
   try {
-    execSync(command, { stdio: "ignore" });
-    enableWorkTreeConfig(repoPath);
-    context.workTrees = getWorktree(repoPath).reverse();
+    execSync(command, { stdio: "pipe" });
+    enableWorktreeConfig(repoPath);
+    context.worktrees = getWorktrees(repoPath).reverse();
     context.gitDir = getGitDir(path.resolve(repoPath, "./.git"));
-
     next();
-  } catch (error) {}
+  } catch (error) {
+    console.info(`initRepository error:`, error);
+  }
 }
 
 function repairWorktree(context: any, next: CallableFunction) {
-  const workTrees = [...context.workTrees];
-  const mainWorkTreePath = workTrees.pop()[0];
-  const linkedWorktreePaths = workTrees.reduce((prev, cur) => {
+  const worktrees = [...context.worktrees];
+  const mainWorktreePath = worktrees.pop()[0];
+  const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
     return `${prev} ${cur[0]}`;
   }, "");
   try {
     execSync("git worktree repair " + linkedWorktreePaths, {
-      cwd: mainWorkTreePath,
+      cwd: mainWorktreePath,
       stdio: "ignore",
     });
     next();
@@ -56,17 +55,19 @@ function repairWorktree(context: any, next: CallableFunction) {
   }
 }
 function configWorktree(context: any, next: CallableFunction) {
-  const workTrees = context.workTrees;
-  const configPath = context.configPath;
-  const mainWorkTreePath = context.workTrees[context.workTrees.length - 1][0];
+  const worktrees = context.worktrees;
+  const configPath = context.config.path;
+  const mainWorktreePath = context.worktrees[context.worktrees.length - 1][0];
 
-  workTrees.forEach((workTree) => {
+  worktrees.forEach((worktree) => {
     try {
-      execSync("git config --worktree wt.config " + configPath, {
-        cwd: workTree[0],
+      execSync("git config --worktree wt.config.path " + configPath, {
+        cwd: worktree[0],
+        stdio: "pipe",
       });
-      execSync("git config --worktree wt.key " + mainWorkTreePath, {
-        cwd: workTree[0],
+      execSync("git config --worktree wt.config.key " + mainWorktreePath, {
+        stdio: "pipe",
+        cwd: worktree[0],
       });
     } catch (error) {
       console.info(`configWorktree error:`, error);
@@ -74,11 +75,43 @@ function configWorktree(context: any, next: CallableFunction) {
   });
   next();
 }
-export function getWorktree(cwdPath: string): [string, string, string][] {
+function addWorktree(context: any, next: CallableFunction) {
+  const config = getWorktreeConfiguration(context.cwd);
+  context.config = config;
+  if (!config.path || !config.key) {
+    throw new Error("Current working directory has not been initialized");
+  }
+
+  try {
+    const branchName = context.command.arguments.branchName;
+    const commitHash = context.command.options?.base || "";
+    const newWorktreePath = path.resolve(path.dirname(config.path), branchName);
+    const gitBranches = new Set(getBranches(context.cwd));
+
+    const command =
+      "git worktree add " +
+      (gitBranches.has(branchName)
+        ? commitHash
+          ? `${newWorktreePath} ${commitHash}`
+          : `${newWorktreePath} ${branchName}`
+        : `-b ${branchName} ${newWorktreePath} ${commitHash}`);
+
+    execSync(command, {
+      stdio: "pipe",
+    });
+    context.worktrees = getWorktrees(context.cwd);
+    console.info(`context.worktrees:`,context.worktrees)
+    next();
+  } catch (error) {
+    console.info(`addWorktree error:`, error?.stderr?.toString());
+  }
+}
+
+export function getWorktrees(cwdPath: string): [string, string, string][] {
   try {
     const stdout = execSync("git worktree list", {
       cwd: cwdPath,
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: "pipe",
     }).toString();
 
     const worktrees = stdout.trim().split("\n");
@@ -114,14 +147,37 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
     return false;
   }
 }
-export function enableWorkTreeConfig(cwdPath: string): boolean {
+export function enableWorktreeConfig(cwdPath: string): boolean {
   try {
     execSync("git config extensions.worktreeConfig true", {
+      stdio: "pipe",
       cwd: cwdPath,
     });
+    return true;
   } catch (error) {
     return false;
   }
+}
+export function getWorktreeConfiguration(cwdPath: string): WorktreeConfig {
+  const config: WorktreeConfig = {};
+  try {
+    const stdout = execSync("git config --worktree --list", {
+      cwd: cwdPath,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    stdout
+      .toString()
+      .trim()
+      .split("\n")
+      .forEach((e) => {
+        const [k, v] = e.split("=");
+        config[k.split(".").pop()] = v;
+      });
+  } catch (error) {
+    console.log("getWorktreeConfiguration", error.stderr.toString());
+  }
+  return config;
 }
 
 export function getGitDir(repoPath: string): string {
@@ -138,6 +194,7 @@ export function setGitDir(cwdPath: string, gitDirPath: string) {
   try {
     execSync("git init --separate-git-dir=" + gitDirPath, {
       cwd: cwdPath,
+      stdio: "pipe",
     });
   } catch {}
 }
@@ -153,8 +210,23 @@ export function checkIsGitDir(cwdPath: string): boolean {
   }
 }
 
+export function getBranches(cwdPath: string): string[] {
+  try {
+    const stdout = execSync("git branch -a", {
+      cwd: cwdPath,
+      stdio: "pipe",
+    })
+      .toString()
+      .trim();
+    return stdout.split("\n");
+  } catch (error) {
+    console.info(`getBranches error:`, error);
+    return [];
+  }
+}
 export default {
   initRepository,
   repairWorktree,
   configWorktree,
+  addWorktree,
 };

@@ -10,6 +10,7 @@ import {
   GitProcessor,
   FileProcessor,
   checkIsPathCaseSensitive,
+
 } from "../core";
 
 export default new Command()
@@ -18,7 +19,6 @@ export default new Command()
   .description(
     `Initialize a multiple worktrees repository that leverages the workspace from VScode.\n\nThe options will be used in "git init".`
   )
-  .option("--separate-git-dir [git-dir]")
   .option(
     "--branch [branch-name]",
     ":: The specified name for the initial branch in the newly created repository.\n\n"
@@ -30,23 +30,22 @@ export default new Command()
     process.cwd()
   )
   .action(function () {
+    global.isPathCaseSensitive = checkIsPathCaseSensitive();
+
     const context = {
       commandOptions: this.opts(),
-      commandArgumetns: {
-        directory: path.resolve(this.processedArgs[0]),
-      },
+      cwd: path.resolve(this.processedArgs[0]),
     };
-
-    global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
     const processes = [
       GitProcessor.initRepository,
       FileProcessor.initDirectory,
       GitProcessor.repairWorktree,
       FileProcessor.createConfiguration,
-      FileProcessor.createCodeWorkSpace,
+      FileProcessor.createCodeWorkspace,
       GitProcessor.configWorktree,
     ];
+
     const executer = new Executer(processes);
     executer.run(context, () => {
       console.log("DONE");

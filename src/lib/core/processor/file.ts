@@ -22,25 +22,34 @@ const IGNORE_FILES = new Set([".git", ".code-workpace"]);
  * Move all files into a new directory named after the branch name
  */
 function initDirectory(context: any, next: CallableFunction) {
-  const oldParentPath = context.commandArgumetns.directory;
+  const gitDirPath = normalizePath(context.gitDir);
+  const gitDirDirname = normalizePath(path.dirname(context.gitDir));
 
-  // check if ".git" is outside the mainWorktreePath,
+  const oldParentPath = normalizePath(context.cwd);
+  console.info(`oldParentPath:`, oldParentPath);
+  // check if dirname of "git dir" is the mainWorktreePath,
   // if so to get the real main worktree path
+  // Noted: operation must be in the main worktree
   const parentPath = checkIsDirectChildPath(
-    context.gitDir.replace(/\/.git$/, ""),
+    gitDirPath.replace(/\/.git$/, ""),
     oldParentPath
   )
-    ? context.gitDir.replace(/\/.git$/, "")
+    ? gitDirDirname
     : oldParentPath;
 
-  const oldWorkTrees = context.workTrees;
-  const excludedPaths = new Set(oldWorkTrees.map((e) => e[0]));
-  const newWorkTrees = [];
+  const oldWorktrees = context.worktrees;
+  const excludedPaths = new Set(oldWorktrees.map((e) => normalizePath(e[0])));
+  excludedPaths.add(gitDirPath);
 
-  const n = oldWorkTrees.length;
+  const newWorktrees = [];
+
+  const n = oldWorktrees.length;
+
   for (let i = 0; i < n; i++) {
-    const [oldPath, commitHash, branch] = oldWorkTrees[i];
-    const newPath = path.resolve(parentPath, `_${branch}_`);
+    const [oldPath, commitHash, branch] = oldWorktrees[i];
+    const newPath = normalizePath(path.resolve(parentPath, branch));
+    excludedPaths.add(newPath);
+    newWorktrees.push([newPath, commitHash, branch]);
 
     // if new path is existed, then skip
     let newPathStat: Stats = null;
@@ -52,7 +61,7 @@ function initDirectory(context: any, next: CallableFunction) {
       console.log("path exited, cannot move to ...");
       continue;
     }
-    excludedPaths.add(newPath);
+
     // hoist linked worktrees
     if (i < n - 1) {
       try {
@@ -65,8 +74,6 @@ function initDirectory(context: any, next: CallableFunction) {
         console.log("renameSync", error);
         break;
       }
-
-      newWorkTrees.push([newPath, commitHash, branch]);
     } else {
       // deal with the main worktree
       // If the git dir is the sibling directory of the main worktree, then just rename,
@@ -76,21 +83,26 @@ function initDirectory(context: any, next: CallableFunction) {
       //       sibling git dir path: "path/to/.git"
       //         main worktree path: "path/to/<main-worktree-branch>/*"
       // renamed main worktree path: "path/to/_<<main-worktree-branch>_/*")
-
+      //
+      console.info(`excludedPaths:`, excludedPaths);
       const isGitDirSibling = !checkArePathsIdentical(
         oldParentPath,
         parentPath
       );
+
+      const isGitDirOutside =
+        parentPath !== gitDirDirname && parentPath.startsWith(gitDirDirname);
+
       try {
         if (isGitDirSibling) {
-          console.log("rename it");
           renameSync(oldParentPath, newPath);
         } else {
           mkdirSync(newPath);
         }
 
         readdirSync(parentPath).forEach((file) => {
-          const filePath = path.resolve(parentPath, file);
+          const filePath = normalizePath(path.resolve(parentPath, file));
+          console.info(`file:`, filePath);
           if (!IGNORE_FILES.has(file) && !excludedPaths.has(filePath)) {
             renameSync(
               path.resolve(parentPath, file),
@@ -98,34 +110,37 @@ function initDirectory(context: any, next: CallableFunction) {
             );
           }
         });
+        console.info(`oldParentPath:`, oldParentPath);
+        console.info(`parentPath/cwd:`, parentPath);
+        console.info(`gitDirDirname:`, gitDirDirname);
 
-        renameSync(context.gitDir, newPath + "/.git");
-        if (isGitDirSibling) {
+        console.info(`gitDirPath:`, gitDirPath);
+        console.info(`newPath:`, newPath);
+        console.info(`isGitDirOutside:`, isGitDirOutside);
+        renameSync(gitDirPath, newPath + "/.git");
+
+        if (isGitDirSibling || isGitDirOutside) {
           rmSync(parentPath + "/.git");
         }
 
-        newWorkTrees.push([newPath, commitHash, branch]);
+  
       } catch (error) {
         console.info(`readdirSync error:`, error);
         return;
       }
     }
   }
-  context.workTrees = newWorkTrees;
+
+  context.worktrees = newWorktrees;
   next();
 }
 
-function createCodeWorkSpace(context: any, next: CallableFunction) {
-  const cwd = context.commandArgumetns.directory;
-  // const workSpacePath = path.resolve(
-  //   cwd,
-  //   cwd.split("/").pop() + ".code-workspace"
-  // );
-
-  const workSpacePath = path.resolve(cwd, "_.code-workspace");
+function createCodeWorkspace(context: any, next: CallableFunction) {
+  const cwd = context.cwd;
+  const workSpacePath = path.resolve(cwd, "wt.code-workspace");
   const workSpaceFile = {} as CodeWorkSpaceJSON;
 
-  workSpaceFile.folders = context.workTrees.map((e) => {
+  workSpaceFile.folders = context.worktrees.map((e) => {
     return {
       name: e[2],
       path: e[0],
@@ -138,13 +153,45 @@ function createCodeWorkSpace(context: any, next: CallableFunction) {
       flag: "w",
     });
   } catch (error) {}
-  context.workSpacePath = workSpacePath;
+
+  context.codeWorkspace = {
+    path: workSpacePath,
+  };
   next();
 }
+
+function updateCodeWorkspace(context: any, next: CallableFunction) {
+  const workspacePath = path.resolve(
+    path.dirname(context.config.path),
+    "wt.code-workspace"
+  );
+  const workspaceFile = {} as CodeWorkSpaceJSON;
+
+  workspaceFile.folders = context.worktrees.map((e) => {
+    return {
+      name: e[2],
+      path: e[0],
+    };
+  });
+  try {
+    writeFileSync(workspacePath, JSON.stringify(workspaceFile), {
+      mode: 0o777,
+      encoding: "utf-8",
+      flag: "w",
+    });
+  } catch (error) {}
+
+  context.codeWorkspace = {
+    path: workspacePath,
+  };
+  next();
+}
+
 function createConfiguration(context: any, next: CallableFunction) {
-  const cwd = context.commandArgumetns.directory;
+  const cwd = context.cwd;
   const configPath = path.resolve(cwd, "wt.config.json");
-  const v = context.workTrees.reduce((prev, cur) => {
+
+  const v = context.worktrees.reduce((prev, cur) => {
     prev.push(cur[0]);
     return prev;
   }, []);
@@ -162,8 +209,33 @@ function createConfiguration(context: any, next: CallableFunction) {
   } catch (error) {
     console.info(`createConfiguration error:`, error);
   }
-  context.configPath = configPath;
 
+  context.config = {
+    path: configPath,
+  };
+  next();
+}
+
+// FIXME: overwrite the configuration each time
+function updateConfiguration(context: any, next: CallableFunction) {
+  const configPath = context.config.path;
+  const v = context.worktrees.reduce((prev, cur) => {
+    prev.push(cur[0]);
+    return prev;
+  }, []);
+
+  const config = {
+    [v.pop()]: v,
+  };
+  try {
+    writeFileSync(configPath, JSON.stringify(config), {
+      mode: 0o777,
+      encoding: "utf-8",
+      flag: "w",
+    });
+  } catch (error) {
+    console.info(`createConfiguration error:`, error);
+  }
   next();
 }
 
@@ -172,7 +244,7 @@ export function checkIsDirectChildPath(
   childPath: string
 ): boolean {
   const parentDir = path.dirname(childPath);
-  return checkArePathsIdentical(parentDir, parentPath);
+  return checkArePathsIdentical(parentPath, parentDir);
 }
 export function checkArePathsIdentical(...paths: string[]): boolean {
   let flag;
@@ -195,15 +267,26 @@ export function checkIsPathCaseSensitive() {
   const path = mkdtempSync("_");
   try {
     const stat = statSync(path.toUpperCase());
-    return stat.isDirectory();
+    return !stat.isDirectory();
   } catch (error) {
+    console.info(`error:`, error);
     return true;
   } finally {
     rmdirSync(path);
   }
 }
+export function normalizePath(path: string) {
+  if (global.isPathCaseSensitive) {
+    return path;
+  }
+  return path.toLowerCase();
+}
 export default {
   initDirectory,
-  createCodeWorkSpace,
+
+  createCodeWorkspace,
+  updateCodeWorkspace,
+
   createConfiguration,
+  updateConfiguration,
 };

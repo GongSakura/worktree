@@ -7,3 +7,8 @@ export interface Processor {
 export interface CodeWorkSpaceJSON {
   folders: { path: string; name: string }[];
 }
+
+export interface WorktreeConfig {
+  path?: string;
+  key?: string;
+}
