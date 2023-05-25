@@ -4,26 +4,21 @@
 
 /**
  * =============================================
- *   wt add --base <commit-hash> <branch-name>
+ *   wt remove -f <branch-name>
  * =============================================
  */
 import { Command } from "commander";
-import {
-  Executer,
-  GitProcessor,
-  FileProcessor,
-  checkIsPathCaseSensitive,
-} from "../core";
+import { Executer, GitProcessor, FileProcessor, ErrorProcessor, CheckProcessor } from "../core";
+import { checkIsPathCaseSensitive } from "../utils/file";
 
 export default new Command()
   .command("remove")
-  .summary("remove a new linked worktree.\n")
-  .description(
-    `Create a linked worktree and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`
-  )
+  .aliases(["delete", "rm", "del"])
+  .summary("remove a linked worktree.\n")
+  .description(`Remove a linked worktree`)
   .option(
     "-f, --force",
-    ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
+    `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`
   )
   .helpOption("-h, --help", "Display help for command")
   .argument(
@@ -41,12 +36,13 @@ export default new Command()
       cwd: process.cwd(),
     };
     global.isPathCaseSensitive = checkIsPathCaseSensitive();
-
+    
     const processes = [
-      GitProcessor.addWorktree,
-      GitProcessor.configWorktree,
-      FileProcessor.updateCodeWorkspace,
-      FileProcessor.updateConfiguration,
+      ErrorProcessor.captureError,
+      CheckProcessor.checkAddPrerequisite,
+      GitProcessor.removeWorktree,
+      FileProcessor.updateProjectCodeWorkspace,
+      FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context);

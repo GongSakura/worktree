@@ -22,5 +22,8 @@
   "dependencies": {
     "chalk": "^5.2.0",
     "commander": "^10.0.1"
+  },
+  "imports":{
+    "#utils":"/src/lib/utils"
   }
 }

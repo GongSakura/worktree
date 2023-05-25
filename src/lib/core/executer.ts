@@ -1,4 +1,4 @@
-import type { Processor } from "./types";
+import type { Processor } from "../utils/types";
 
 
 /**

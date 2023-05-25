@@ -8,8 +8,10 @@ import {
   Executer,
   GitProcessor,
   FileProcessor,
-  checkIsPathCaseSensitive,
+  ErrorProcessor,
+  CheckProcessor,
 } from "../core";
+import { checkIsPathCaseSensitive } from "../utils/file";
 
 export default new Command()
   .command("add")
@@ -39,11 +41,15 @@ export default new Command()
     global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
     const processes = [
+      ErrorProcessor.captureError,
+      CheckProcessor.checkAddPrerequisite,
       GitProcessor.addWorktree,
       GitProcessor.configWorktree,
-      FileProcessor.updateCodeWorkspace,
-      FileProcessor.updateConfiguration,
+      FileProcessor.updateProjectCodeWorkspace,
+      FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context);
+    executer.run(context, () => {
+      console.log("done");
+    });
   });

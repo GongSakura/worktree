@@ -9,12 +9,16 @@ import {
   Executer,
   GitProcessor,
   FileProcessor,
-  checkIsPathCaseSensitive,
+  CheckProcessor,
+  ErrorProcessor
+
 
 } from "../core";
+import { checkIsPathCaseSensitive } from "../utils/file";
 
 export default new Command()
   .command("init")
+  .aliases(["i"])
   .summary("Initialize a multiple worktrees repository.\n\n")
   .description(
     `Initialize a multiple worktrees repository that leverages the workspace from VScode.\n\nThe options will be used in "git init".`
@@ -38,11 +42,13 @@ export default new Command()
     };
 
     const processes = [
+      ErrorProcessor.captureError,
+      CheckProcessor.checkInitPrerequisite,
       GitProcessor.initRepository,
       FileProcessor.initDirectory,
       GitProcessor.repairWorktree,
-      FileProcessor.createConfiguration,
-      FileProcessor.createCodeWorkspace,
+      FileProcessor.createProjectConfiguration,
+      FileProcessor.createProjectCodeWorkspace,
       GitProcessor.configWorktree,
     ];
 
