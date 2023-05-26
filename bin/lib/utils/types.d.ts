@@ -19,3 +19,6 @@ export declare enum PROJECT_FILES {
     CODE_WORKSPACE = "wt.code-workspace",
     CONFIGURATION = "wt.config.json"
 }
+export interface MultiRepoWorktreePaths {
+    [key: string]: string[];
+}

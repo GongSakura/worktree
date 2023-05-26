@@ -2,31 +2,26 @@ import { execSync } from "node:child_process";
 import { WorktreeConfig } from "./types";
 
 export function getWorktrees(cwdPath: string): [string, string, string][] {
-  try {
-    const worktrees: [string, string, string][] = [];
-    execSync("git worktree list", {
-      cwd: cwdPath,
-      stdio: "pipe",
-    })
-      .toString()
-      .trim()
-      .split("\n")
-      .forEach((e) => {
-        const match = e.trim().match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/);
-        if (match) {
-          const [, worktreePath, commitHash, branch] = match;
-          worktrees.push([
-            worktreePath,
-            commitHash,
-            branch.replace(/\[(.*?)\]/g, "$1"),
-          ]);
-        }
-      });
-    return worktrees;
-  } catch (error) {
-    console.info(`123123:`, 123123);
-    throw error;
-  }
+  const worktrees: [string, string, string][] = [];
+  execSync("git worktree list", {
+    cwd: cwdPath,
+    stdio: "pipe",
+  })
+    .toString()
+    .trim()
+    .split("\n")
+    .forEach((e) => {
+      const match = e.trim().match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/);
+      if (match) {
+        const [, worktreePath, commitHash, branch] = match;
+        worktrees.push([
+          worktreePath,
+          commitHash,
+          branch.replace(/\[(.*?)\]/g, "$1"),
+        ]);
+      }
+    });
+  return worktrees;
 }
 export function checkIsWorktree(cwdPath: string): boolean {
   try {
@@ -41,32 +36,30 @@ export function checkIsWorktree(cwdPath: string): boolean {
 }
 export function checkIsMainWorktree(cwdPath: string): boolean {
   try {
-    const stdout = execSync("git rev-parse --absolute-git-dir", {
+    return !execSync("git rev-parse --absolute-git-dir", {
       cwd: cwdPath,
       stdio: ["ignore", "pipe", "ignore"],
-    });
-    return !stdout.includes(".git/worktree");
+    })
+      .toString()
+      .trim()
+      .includes(".git/worktree/");
   } catch (error: unknown) {
     return false;
   }
 }
-export function enableWorktreeConfig(cwdPath: string): boolean {
-  try {
-    execSync("git config extensions.worktreeConfig true", {
-      stdio: "pipe",
-      cwd: cwdPath,
-    });
-    return true;
-  } catch (error) {
-    return false;
-  }
+export function enableWorktreeConfig(cwdPath: string) {
+  execSync("git config extensions.worktreeConfig true", {
+    stdio: "pipe",
+    cwd: cwdPath,
+  });
 }
+
 export function getWorktreeConfiguration(cwdPath: string): WorktreeConfig {
   const config: WorktreeConfig = {};
   try {
     const stdout = execSync("git config --worktree --list", {
       cwd: cwdPath,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: "pipe",
     });
 
     stdout
@@ -88,7 +81,8 @@ export function getWorktreeConfiguration(cwdPath: string): WorktreeConfig {
 
 export function getGitDir(repoPath: string): string {
   try {
-    const output = execSync("git rev-parse --resolve-git-dir " + repoPath, {
+    const output = execSync("git rev-parse --absolute-git-dir ", {
+      cwd: repoPath,
       stdio: ["ignore", "pipe", "ignore"],
     });
     return output.toString().trim();
@@ -108,28 +102,25 @@ export function checkIsGitDir(cwdPath: string): boolean {
   try {
     const output = execSync("git rev-parse --is-inside-git-dir ", {
       cwd: cwdPath,
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    return output.toString() ? true : false;
+      stdio: "pipe",
+    }).toString();
+
+    return output === "true";
   } catch (error) {
     return false;
   }
 }
 
 export function initBranch(repoPath: string) {
-  try {
-    execSync("echo > README.md", {
-      cwd: repoPath,
-    });
-    execSync("git add README.md", {
-      cwd: repoPath,
-    });
-    execSync('git commit -m"Initial commit"', {
-      cwd: repoPath,
-    });
-  } catch (error) {
-    throw error;
-  }
+  execSync("echo > README.md", {
+    cwd: repoPath,
+  });
+  execSync("git add README.md", {
+    cwd: repoPath,
+  });
+  execSync('git commit -m"Initial commit"', {
+    cwd: repoPath,
+  });
 }
 export function getBranches(cwdPath: string): string[] {
   try {

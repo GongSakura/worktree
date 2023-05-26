@@ -43,7 +43,7 @@ export default new Command()
 
     const processes = [
       ErrorProcessor.captureError,
-      CheckProcessor.checkAddPrerequisite,
+      CheckProcessor.checkRemovePrerequisite,
       GitProcessor.removeWorktree,
       FileProcessor.updateProjectCodeWorkspace,
       FileProcessor.updateProjectConfiguration,

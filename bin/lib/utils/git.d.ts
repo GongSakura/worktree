@@ -2,7 +2,7 @@ import { WorktreeConfig } from "./types";
 export declare function getWorktrees(cwdPath: string): [string, string, string][];
 export declare function checkIsWorktree(cwdPath: string): boolean;
 export declare function checkIsMainWorktree(cwdPath: string): boolean;
-export declare function enableWorktreeConfig(cwdPath: string): boolean;
+export declare function enableWorktreeConfig(cwdPath: string): void;
 export declare function getWorktreeConfiguration(cwdPath: string): WorktreeConfig;
 export declare function getGitDir(repoPath: string): string;
 export declare function setGitDir(cwdPath: string, gitDirPath: string): void;

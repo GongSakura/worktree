@@ -1,21 +1,18 @@
 import * as path from "node:path";
 import {
+  checkIsGitDir,
   checkIsMainWorktree,
   checkIsWorktree,
   getGitDir,
-  getWorktreeConfiguration,
   getWorktrees,
 } from "../../utils/git";
-import { getProjectFile } from "../../utils/file";
-import {
-  PROJECT_FILES,
-  ProjectConfig,
-  WorktreeConfig,
-} from "../../utils/types";
+import { getConfigs, getProjectFile } from "../../utils/file";
+import { MultiRepoWorktreePaths, PROJECT_FILES } from "../../utils/types";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 
 function checkInitPrerequisite(context: any, next: CallableFunction) {
   const repoPath = context.cwd;
-  if (getGitDir(repoPath)) {
+  if (checkIsGitDir(repoPath)) {
     throw new Error("cannot initialize in a git directory");
   }
 
@@ -27,8 +24,12 @@ function checkInitPrerequisite(context: any, next: CallableFunction) {
   }
   next();
 }
+function checkClonePrerequisite(context: any, next: CallableFunction) {
+  checkInitPrerequisite(context, next);
+}
+
 function checkAddPrerequisite(context: any, next: CallableFunction) {
-  const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+  const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
   context.config = {
     ...projectConfig,
     projectConfigPath: worktreeConfig?.path
@@ -52,8 +53,9 @@ function checkAddPrerequisite(context: any, next: CallableFunction) {
 function checkRemovePrerequisite(context: any, next: CallableFunction) {
   checkAddPrerequisite(context, next);
 }
+
 function checkUpdatePrerequisite(context: any, next: CallableFunction) {
-  const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+  const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
   context.config = {
     ...projectConfig,
     projectConfigPath: worktreeConfig?.path
@@ -66,26 +68,50 @@ function checkUpdatePrerequisite(context: any, next: CallableFunction) {
       ? context.cwd
       : projectConfig.mainWorktreePath,
   };
-  console.info(`context.worktrees:`,context)
-  context.worktrees = getWorktrees(context.config.worktreePath).reverse();
- 
+  next();
 }
 
-function checkClonePrerequisite(context: any, next: CallableFunction) {}
+function inspectPotentialWorktrees(context: any, next: CallableFunction) {
+  const files = readdirSync(context.config.projectPath);
 
-export function getConfig(cwdPath: string): [ProjectConfig, WorktreeConfig] {
-  const projectConfig: ProjectConfig = getProjectFile(
-    cwdPath,
-    PROJECT_FILES.CONFIGURATION
-  );
-  let worktreeConfig: WorktreeConfig = {};
-  if (!projectConfig.mainWorktreePath) {
-    worktreeConfig = getWorktreeConfiguration(cwdPath);
-    if (!worktreeConfig.path) {
-      throw new Error("Current working directory has not been initialized");
+  // TODO: feature suppport multi-repo
+  const multiRepoWorktrees: MultiRepoWorktreePaths = {};
+
+  files.forEach((file) => {
+    const _path = path.resolve(context.config.projectPath, file);
+
+    if (checkIsWorktree(_path)) {
+      try {
+        const gitDirPath = getGitDir(_path);
+
+        const idx = gitDirPath.lastIndexOf("/.git/worktrees");
+        if (idx !== -1) {
+          const key = gitDirPath.substring(0, idx);
+
+          if (Object.hasOwn(multiRepoWorktrees, key)) {
+            multiRepoWorktrees[key].push(_path);
+          } else {
+            multiRepoWorktrees[key] = [_path];
+          }
+        } else if (
+          !Object.hasOwn(multiRepoWorktrees, gitDirPath.replace(/\/.git/, ""))
+        ) {
+          // main worktree path as the key
+          multiRepoWorktrees[gitDirPath] = [];
+        }
+      } catch (error) {
+        console.info(`error:`, error);
+      }
     }
+  });
+  // console.info(`multiRepoWorktrees:`, multiRepoWorktrees);
+  let worktrees:string[][] = []
+  for(const [key,value] of Object.entries(multiRepoWorktrees)){
+    value.push(key)
+    worktrees=value.map(e=>[e])
   }
-  return [projectConfig, worktreeConfig];
+  context.worktrees = worktrees
+  next()
 }
 
 export default {
@@ -93,4 +119,5 @@ export default {
   checkAddPrerequisite,
   checkRemovePrerequisite,
   checkUpdatePrerequisite,
+  inspectPotentialWorktrees,
 };

@@ -3390,32 +3390,26 @@ class Executer {
 }
 
 function getWorktrees(cwdPath) {
-    try {
-        const worktrees = [];
-        node_child_process.execSync("git worktree list", {
-            cwd: cwdPath,
-            stdio: "pipe",
-        })
-            .toString()
-            .trim()
-            .split("\n")
-            .forEach((e) => {
-            const match = e.trim().match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/);
-            if (match) {
-                const [, worktreePath, commitHash, branch] = match;
-                worktrees.push([
-                    worktreePath,
-                    commitHash,
-                    branch.replace(/\[(.*?)\]/g, "$1"),
-                ]);
-            }
-        });
-        return worktrees;
-    }
-    catch (error) {
-        console.info(`123123:`, 123123);
-        throw error;
-    }
+    const worktrees = [];
+    node_child_process.execSync("git worktree list", {
+        cwd: cwdPath,
+        stdio: "pipe",
+    })
+        .toString()
+        .trim()
+        .split("\n")
+        .forEach((e) => {
+        const match = e.trim().match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/);
+        if (match) {
+            const [, worktreePath, commitHash, branch] = match;
+            worktrees.push([
+                worktreePath,
+                commitHash,
+                branch.replace(/\[(.*?)\]/g, "$1"),
+            ]);
+        }
+    });
+    return worktrees;
 }
 function checkIsWorktree(cwdPath) {
     try {
@@ -3431,27 +3425,23 @@ function checkIsWorktree(cwdPath) {
 }
 function checkIsMainWorktree(cwdPath) {
     try {
-        const stdout = node_child_process.execSync("git rev-parse --absolute-git-dir", {
+        return !node_child_process.execSync("git rev-parse --absolute-git-dir", {
             cwd: cwdPath,
             stdio: ["ignore", "pipe", "ignore"],
-        });
-        return !stdout.includes(".git/worktree");
+        })
+            .toString()
+            .trim()
+            .includes(".git/worktree/");
     }
     catch (error) {
         return false;
     }
 }
 function enableWorktreeConfig(cwdPath) {
-    try {
-        node_child_process.execSync("git config extensions.worktreeConfig true", {
-            stdio: "pipe",
-            cwd: cwdPath,
-        });
-        return true;
-    }
-    catch (error) {
-        return false;
-    }
+    node_child_process.execSync("git config extensions.worktreeConfig true", {
+        stdio: "pipe",
+        cwd: cwdPath,
+    });
 }
 function getWorktreeConfiguration(cwdPath) {
     var _a;
@@ -3459,7 +3449,7 @@ function getWorktreeConfiguration(cwdPath) {
     try {
         const stdout = node_child_process.execSync("git config --worktree --list", {
             cwd: cwdPath,
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: "pipe",
         });
         stdout
             .toString()
@@ -3480,7 +3470,8 @@ function getWorktreeConfiguration(cwdPath) {
 }
 function getGitDir(repoPath) {
     try {
-        const output = node_child_process.execSync("git rev-parse --resolve-git-dir " + repoPath, {
+        const output = node_child_process.execSync("git rev-parse --absolute-git-dir ", {
+            cwd: repoPath,
             stdio: ["ignore", "pipe", "ignore"],
         });
         return output.toString().trim();
@@ -3489,21 +3480,28 @@ function getGitDir(repoPath) {
         return "";
     }
 }
-function initBranch(repoPath) {
+function checkIsGitDir(cwdPath) {
     try {
-        node_child_process.execSync("echo > README.md", {
-            cwd: repoPath,
-        });
-        node_child_process.execSync("git add README.md", {
-            cwd: repoPath,
-        });
-        node_child_process.execSync('git commit -m"Initial commit"', {
-            cwd: repoPath,
-        });
+        const output = node_child_process.execSync("git rev-parse --is-inside-git-dir ", {
+            cwd: cwdPath,
+            stdio: "pipe",
+        }).toString();
+        return output === "true";
     }
     catch (error) {
-        throw error;
+        return false;
     }
+}
+function initBranch(repoPath) {
+    node_child_process.execSync("echo > README.md", {
+        cwd: repoPath,
+    });
+    node_child_process.execSync("git add README.md", {
+        cwd: repoPath,
+    });
+    node_child_process.execSync('git commit -m"Initial commit"', {
+        cwd: repoPath,
+    });
 }
 function getBranches(cwdPath) {
     try {
@@ -3550,24 +3548,7 @@ function initRepository(context, next) {
         }
         context.branches = branches;
         context.worktrees = worktrees.reverse();
-        context.gitDir = getGitDir(path__namespace.resolve(repoPath, "./.git"));
-        next();
-    }
-    catch (error) {
-        throw error;
-    }
-}
-function repairWorktree(context, next) {
-    const worktrees = [...context.worktrees];
-    const mainWorktreePath = worktrees.pop()[0];
-    const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
-        return `${prev} ${cur[0]}`;
-    }, "");
-    try {
-        node_child_process.execSync("git worktree repair " + linkedWorktreePaths, {
-            cwd: mainWorktreePath,
-            stdio: "ignore",
-        });
+        context.gitDir = getGitDir(repoPath);
         next();
     }
     catch (error) {
@@ -3628,6 +3609,24 @@ function removeWorktree(context, next) {
     context.worktrees = getWorktrees(context.config.worktreePath).reverse();
     next();
 }
+function repairWorktree(context, next) {
+    const worktrees = [...context.worktrees];
+    const mainWorktreePath = worktrees.pop()[0];
+    const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
+        return `${prev} ${cur[0]}`;
+    }, "");
+    try {
+        node_child_process.execSync("git worktree repair " + linkedWorktreePaths, {
+            cwd: mainWorktreePath,
+            stdio: "pipe",
+        });
+        context.worktrees = getWorktrees(mainWorktreePath).reverse();
+        next();
+    }
+    catch (error) {
+        throw error;
+    }
+}
 var GitProcessor = {
     initRepository,
     repairWorktree,
@@ -3649,6 +3648,17 @@ function getProjectFile(cwdPath, name) {
     catch (error) {
         return {};
     }
+}
+function getConfigs(cwdPath) {
+    const projectConfig = getProjectFile(cwdPath, PROJECT_FILES.CONFIGURATION);
+    let worktreeConfig = {};
+    if (!projectConfig.mainWorktreePath) {
+        worktreeConfig = getWorktreeConfiguration(cwdPath);
+        if (!worktreeConfig.path) {
+            throw new Error("Current working directory has not been initialized");
+        }
+    }
+    return [projectConfig, worktreeConfig];
 }
 function checkIsDirectChildPath(parentPath, childPath) {
     const parentDir = path__namespace.dirname(childPath);
@@ -3872,6 +3882,7 @@ function captureError(context, next) {
     catch (error) {
         //TODO: To come up with a natty solution to show the error message
         console.info(`error capture:\n`, (_a = error === null || error === void 0 ? void 0 : error.stderr) === null || _a === void 0 ? void 0 : _a.toString());
+        console.info(`error:`, error);
     }
 }
 var ErrorProcessor = {
@@ -3880,7 +3891,7 @@ var ErrorProcessor = {
 
 function checkInitPrerequisite(context, next) {
     const repoPath = context.cwd;
-    if (getGitDir(repoPath)) {
+    if (checkIsGitDir(repoPath)) {
         throw new Error("cannot initialize in a git directory");
     }
     // FIXME: deal with donot know if can initial inside a linked worktree
@@ -3893,7 +3904,7 @@ function checkInitPrerequisite(context, next) {
     next();
 }
 function checkAddPrerequisite(context, next) {
-    const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+    const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
     context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? worktreeConfig.path
             : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
@@ -3908,7 +3919,7 @@ function checkRemovePrerequisite(context, next) {
     checkAddPrerequisite(context, next);
 }
 function checkUpdatePrerequisite(context, next) {
-    const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+    const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
     context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? worktreeConfig.path
             : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
@@ -3916,25 +3927,52 @@ function checkUpdatePrerequisite(context, next) {
             : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? context.cwd
             : projectConfig.mainWorktreePath });
-    console.info(`context.worktrees:`, context);
-    context.worktrees = getWorktrees(context.config.worktreePath).reverse();
+    next();
 }
-function getConfig(cwdPath) {
-    const projectConfig = getProjectFile(cwdPath, PROJECT_FILES.CONFIGURATION);
-    let worktreeConfig = {};
-    if (!projectConfig.mainWorktreePath) {
-        worktreeConfig = getWorktreeConfiguration(cwdPath);
-        if (!worktreeConfig.path) {
-            throw new Error("Current working directory has not been initialized");
+function inspectPotentialWorktrees(context, next) {
+    const files = node_fs.readdirSync(context.config.projectPath);
+    // TODO: feature suppport multi-repo
+    const multiRepoWorktrees = {};
+    files.forEach((file) => {
+        const _path = path__namespace.resolve(context.config.projectPath, file);
+        if (checkIsWorktree(_path)) {
+            try {
+                const gitDirPath = getGitDir(_path);
+                const idx = gitDirPath.lastIndexOf("/.git/worktrees");
+                if (idx !== -1) {
+                    const key = gitDirPath.substring(0, idx);
+                    if (Object.hasOwn(multiRepoWorktrees, key)) {
+                        multiRepoWorktrees[key].push(_path);
+                    }
+                    else {
+                        multiRepoWorktrees[key] = [_path];
+                    }
+                }
+                else if (!Object.hasOwn(multiRepoWorktrees, gitDirPath.replace(/\/.git/, ""))) {
+                    // main worktree path as the key
+                    multiRepoWorktrees[gitDirPath] = [];
+                }
+            }
+            catch (error) {
+                console.info(`error:`, error);
+            }
         }
+    });
+    // console.info(`multiRepoWorktrees:`, multiRepoWorktrees);
+    let worktrees = [];
+    for (const [key, value] of Object.entries(multiRepoWorktrees)) {
+        value.push(key);
+        worktrees = value.map(e => [e]);
     }
-    return [projectConfig, worktreeConfig];
+    context.worktrees = worktrees;
+    next();
 }
 var CheckProcessor = {
     checkInitPrerequisite,
     checkAddPrerequisite,
     checkRemovePrerequisite,
     checkUpdatePrerequisite,
+    inspectPotentialWorktrees,
 };
 
 /**
@@ -4035,7 +4073,7 @@ var removeCommand = new Command()
     };
     const processes = [
         ErrorProcessor.captureError,
-        CheckProcessor.checkAddPrerequisite,
+        CheckProcessor.checkRemovePrerequisite,
         GitProcessor.removeWorktree,
         FileProcessor.updateProjectCodeWorkspace,
         FileProcessor.updateProjectConfiguration,
@@ -4061,22 +4099,18 @@ var updateCommand = new Command()
     .helpOption("-h, --help", "Display help for command")
     .action(function () {
     const context = {
-        command: {
-            options: this.opts(),
-            arguments: {
-                branchName: this.processedArgs[0],
-            },
-        },
         cwd: process.cwd(),
     };
     const processes = [
         ErrorProcessor.captureError,
         CheckProcessor.checkUpdatePrerequisite,
+        CheckProcessor.inspectPotentialWorktrees,
+        GitProcessor.repairWorktree,
         FileProcessor.updateProjectCodeWorkspace,
         FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context);
+    executer.run(context, () => console.log('done update'));
 });
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();

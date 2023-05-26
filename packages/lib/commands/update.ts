@@ -13,6 +13,7 @@ import {
   FileProcessor,
   ErrorProcessor,
   CheckProcessor,
+  GitProcessor,
 } from "../core";
 
 export default new Command()
@@ -22,21 +23,17 @@ export default new Command()
   .helpOption("-h, --help", "Display help for command")
   .action(function () {
     const context = {
-      command: {
-        options: this.opts(),
-        arguments: {
-          branchName: this.processedArgs[0],
-        },
-      },
       cwd: process.cwd(),
     };
 
     const processes = [
       ErrorProcessor.captureError,
       CheckProcessor.checkUpdatePrerequisite,
+      CheckProcessor.inspectPotentialWorktrees,
+      GitProcessor.repairWorktree,
       FileProcessor.updateProjectCodeWorkspace,
       FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context);
+    executer.run(context,()=>console.log('done update'));
   });

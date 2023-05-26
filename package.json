@@ -2,7 +2,12 @@
   "name": "@kanamara/worktree",
   "version": "0.0.2",
   "main": "./bin/index.js",
-  "keywords":["git","worktree","workspace"],
+  "keywords": [
+    "git",
+    "worktree",
+    "workspace"
+  ],
+  "homepage": "https://github.com/GongSakura/worktree",
   "scripts": {
     "test": "jest",
     "build": "rollup -c",

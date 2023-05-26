@@ -30,28 +30,13 @@ function initRepository(context: any, next: CallableFunction) {
     }
     context.branches = branches;
     context.worktrees = worktrees.reverse();
-    context.gitDir = getGitDir(path.resolve(repoPath, "./.git"));
+    context.gitDir = getGitDir(repoPath);
     next();
   } catch (error) {
     throw error;
   }
 }
-function repairWorktree(context: any, next: CallableFunction) {
-  const worktrees = [...context.worktrees];
-  const mainWorktreePath = worktrees.pop()[0];
-  const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
-    return `${prev} ${cur[0]}`;
-  }, "");
-  try {
-    execSync("git worktree repair " + linkedWorktreePaths, {
-      cwd: mainWorktreePath,
-      stdio: "ignore",
-    });
-    next();
-  } catch (error) {
-    throw error;
-  }
-}
+
 function configWorktree(context: any, next: CallableFunction) {
   const configPath = context.config.projectConfigPath;
 
@@ -113,6 +98,23 @@ function removeWorktree(context: any, next: CallableFunction) {
 
   context.worktrees = getWorktrees(context.config.worktreePath).reverse();
   next();
+}
+function repairWorktree(context: any, next: CallableFunction) {
+  const worktrees = [...context.worktrees];
+  const mainWorktreePath = worktrees.pop()[0];
+  const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
+    return `${prev} ${cur[0]}`;
+  }, "");
+  try {
+    execSync("git worktree repair " + linkedWorktreePaths, {
+      cwd: mainWorktreePath,
+      stdio: "pipe",
+    });
+    context.worktrees = getWorktrees(mainWorktreePath).reverse();
+    next();
+  } catch (error) {
+    throw error;
+  }
 }
 
 export default {
