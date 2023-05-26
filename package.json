@@ -1,6 +1,7 @@
 {
   "name": "worktree",
   "version": "0.0.1",
+  "main": "./bin/index.js",
   "scripts": {
     "test": "jest",
     "build": "rollup -c",
@@ -22,8 +23,7 @@
     "chalk": "^5.2.0",
     "commander": "^10.0.1"
   },
-  "bin":{
-    "wt":"./bin/index.js"
+  "bin": {
+    "wt": "./bin/index.js"
   }
-
 }
