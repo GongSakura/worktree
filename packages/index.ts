@@ -4,6 +4,7 @@ import {
   addCommand,
   removeCommand,
   updateCommand,
+  cloneCommand,
 } from "./lib/commands";
 import { checkIsPathCaseSensitive } from "./lib/utils/file";
 
@@ -20,5 +21,6 @@ main
   .addCommand(initCommand)
   .addCommand(addCommand)
   .addCommand(removeCommand)
-  .addCommand(updateCommand);
+  .addCommand(updateCommand)
+  .addCommand(cloneCommand);
 main.parse(process.argv);

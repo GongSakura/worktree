@@ -9,32 +9,45 @@ import {
 } from "../../utils/git";
 import { Workspace } from "../../utils/types";
 
+function cloneRepository(context: any, next: CallableFunction) {
+  try {
+    const repoURL = context.command.arguments.repoURL;
+    const repoPath = context.command.arguments.directory;
+    const command = `git clone ${repoURL} ${repoPath}`;
+    execSync(command, {
+      stdio: "inherit",
+    });
+    enableWorktreeConfig(repoPath);
+    context.worktrees = getWorktrees(repoPath).reverse();
+    context.gitDir = getGitDir(repoPath);
+    next();
+  } catch (error) {
+    
+  }
+}
+
 function initRepository(context: any, next: CallableFunction) {
   const repoPath = context.cwd;
   const command =
     "git init " +
-    (context?.commendOptions?.branch
-      ? `-b ${context.commendOptions.branch} `
+    (context.command?.options?.branch
+      ? `-b ${context.command?.options?.branch} `
       : " ") +
     repoPath;
 
-  try {
-    execSync(command, { stdio: "pipe" });
-    enableWorktreeConfig(repoPath);
+  execSync(command, { stdio: "pipe" });
+  enableWorktreeConfig(repoPath);
 
-    const worktrees = getWorktrees(repoPath);
-    const branches = getBranches(worktrees[0][0]);
-    if (!branches.length) {
-      initBranch(worktrees[0][0]);
-      branches.push(worktrees[0][2]);
-    }
-    context.branches = branches;
-    context.worktrees = worktrees.reverse();
-    context.gitDir = getGitDir(repoPath);
-    next();
-  } catch (error) {
-    throw error;
+  const worktrees = getWorktrees(repoPath);
+  const branches = getBranches(worktrees[0][0]);
+  if (!branches.length) {
+    initBranch(worktrees[0][0]);
+    branches.push(worktrees[0][2]);
   }
+  context.branches = branches;
+  context.worktrees = worktrees.reverse();
+  context.gitDir = getGitDir(repoPath);
+  next();
 }
 
 function configWorktree(context: any, next: CallableFunction) {
@@ -118,6 +131,7 @@ function repairWorktree(context: any, next: CallableFunction) {
 }
 
 export default {
+  cloneRepository,
   initRepository,
   repairWorktree,
   configWorktree,

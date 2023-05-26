@@ -3529,31 +3529,42 @@ function getBranches(cwdPath) {
     }
 }
 
-function initRepository(context, next) {
-    var _a;
-    const repoPath = context.cwd;
-    const command = "git init " +
-        (((_a = context === null || context === void 0 ? void 0 : context.commendOptions) === null || _a === void 0 ? void 0 : _a.branch)
-            ? `-b ${context.commendOptions.branch} `
-            : " ") +
-        repoPath;
+function cloneRepository(context, next) {
     try {
-        node_child_process.execSync(command, { stdio: "pipe" });
+        const repoURL = context.command.arguments.repoURL;
+        const repoPath = context.command.arguments.directory;
+        const command = `git clone ${repoURL} ${repoPath}`;
+        node_child_process.execSync(command, {
+            stdio: "inherit",
+        });
         enableWorktreeConfig(repoPath);
-        const worktrees = getWorktrees(repoPath);
-        const branches = getBranches(worktrees[0][0]);
-        if (!branches.length) {
-            initBranch(worktrees[0][0]);
-            branches.push(worktrees[0][2]);
-        }
-        context.branches = branches;
-        context.worktrees = worktrees.reverse();
+        context.worktrees = getWorktrees(repoPath).reverse();
         context.gitDir = getGitDir(repoPath);
         next();
     }
     catch (error) {
-        throw error;
     }
+}
+function initRepository(context, next) {
+    var _a, _b, _c, _d;
+    const repoPath = context.cwd;
+    const command = "git init " +
+        (((_b = (_a = context.command) === null || _a === void 0 ? void 0 : _a.options) === null || _b === void 0 ? void 0 : _b.branch)
+            ? `-b ${(_d = (_c = context.command) === null || _c === void 0 ? void 0 : _c.options) === null || _d === void 0 ? void 0 : _d.branch} `
+            : " ") +
+        repoPath;
+    node_child_process.execSync(command, { stdio: "pipe" });
+    enableWorktreeConfig(repoPath);
+    const worktrees = getWorktrees(repoPath);
+    const branches = getBranches(worktrees[0][0]);
+    if (!branches.length) {
+        initBranch(worktrees[0][0]);
+        branches.push(worktrees[0][2]);
+    }
+    context.branches = branches;
+    context.worktrees = worktrees.reverse();
+    context.gitDir = getGitDir(repoPath);
+    next();
 }
 function configWorktree(context, next) {
     const configPath = context.config.projectConfigPath;
@@ -3628,6 +3639,7 @@ function repairWorktree(context, next) {
     }
 }
 var GitProcessor = {
+    cloneRepository,
     initRepository,
     repairWorktree,
     configWorktree,
@@ -3990,7 +4002,12 @@ var initCommand = new Command()
     .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
     .action(function () {
     const context = {
-        commandOptions: this.opts(),
+        command: {
+            options: this.opts(),
+            arugments: {
+                directory: path__namespace.resolve(this.processedArgs[0]),
+            },
+        },
         cwd: path__namespace.resolve(this.processedArgs[0]),
     };
     const processes = [
@@ -4113,6 +4130,45 @@ var updateCommand = new Command()
     executer.run(context, () => console.log('done update'));
 });
 
+/**
+ * TODO: handle "git clone"
+ */
+/**
+ * =============================
+ *   wt clone <repo> <directory>
+ * =============================
+ */
+var cloneCommand = new Command()
+    .command("clone")
+    .summary("Clone and initialize\n\n")
+    .description(`Clone the git repository, and initialize a multiple worktrees project.\n\n`)
+    .argument("<repo>", "The url of a git repository.")
+    .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
+    .action(function () {
+    const context = {
+        command: {
+            arguments: {
+                repoURL: this.processedArgs[0],
+                directory: path__namespace.resolve(this.processedArgs[1]),
+            },
+        },
+        cwd: path__namespace.resolve(this.processedArgs[1]),
+    };
+    const processes = [
+        ErrorProcessor.captureError,
+        CheckProcessor.checkInitPrerequisite,
+        GitProcessor.cloneRepository,
+        FileProcessor.initDirectory,
+        FileProcessor.createProjectConfiguration,
+        FileProcessor.createProjectCodeWorkspace,
+        GitProcessor.configWorktree,
+    ];
+    const executer = new Executer(processes);
+    executer.run(context, () => {
+        console.log("DONE");
+    });
+});
+
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 const main = new Command();
 main
@@ -4122,5 +4178,6 @@ main
     .addCommand(initCommand)
     .addCommand(addCommand)
     .addCommand(removeCommand)
-    .addCommand(updateCommand);
+    .addCommand(updateCommand)
+    .addCommand(cloneCommand);
 main.parse(process.argv);

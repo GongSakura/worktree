@@ -32,7 +32,12 @@ export default new Command()
   )
   .action(function () {
     const context = {
-      commandOptions: this.opts(),
+      command: {
+        options: this.opts(),
+        arugments: {
+          directory: path.resolve(this.processedArgs[0]),
+        },
+      },
       cwd: path.resolve(this.processedArgs[0]),
     };
 

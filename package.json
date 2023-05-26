@@ -1,6 +1,6 @@
 {
   "name": "@kanamara/worktree",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "main": "./bin/index.js",
   "keywords": [
     "git",
@@ -8,10 +8,16 @@
     "workspace"
   ],
   "homepage": "https://github.com/GongSakura/worktree",
+  "license": {
+    "type": "MIT",
+    "url": "https://www.opensource.org/licenses/mit-license.php"
+  },
   "scripts": {
     "test": "jest",
     "build": "rollup -c",
-    "dev": "rollup -c --watch"
+    "dev": "rollup -c --watch",
+    "prepare":"npx husky install",
+    "husky-commit-msg":""
   },
   "devDependencies": {
     "@babel/preset-env": "^7.21.5",

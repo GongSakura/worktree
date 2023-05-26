@@ -1,3 +1,4 @@
 node_modules/
-
+.husky/
+pnpm-lock.yaml/
 .DS_Store
