@@ -3,6 +3,7 @@
  *   wt add --base <commit-hash> <branch-name>
  * =============================================
  */
+
 import { Command } from "commander";
 import {
   Executer,
@@ -11,7 +12,6 @@ import {
   ErrorProcessor,
   CheckProcessor,
 } from "../core";
-import { checkIsPathCaseSensitive } from "../utils/file";
 
 export default new Command()
   .command("add")
@@ -38,7 +38,6 @@ export default new Command()
       },
       cwd: process.cwd(),
     };
-    global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
     const processes = [
       ErrorProcessor.captureError,

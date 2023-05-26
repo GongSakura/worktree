@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import * as path from "node:path";
-import { CodeWorkSpace, PROJECT_FILES } from "../../utils/types";
+import { CodeWorkSpaceConfig, PROJECT_FILES } from "../../utils/types";
 import {
   checkArePathsIdentical,
   checkIsDirectChildPath,
@@ -40,10 +40,12 @@ function initDirectory(context: any, next: CallableFunction) {
     : oldParentPath;
 
   const oldWorktrees = context.worktrees;
-  const excludedPaths = new Set(oldWorktrees.map((e) => normalizePath(e[0])));
+  const excludedPaths = new Set(
+    oldWorktrees.map((e: string[]) => normalizePath(e[0]))
+  );
   excludedPaths.add(gitDirPath);
 
-  const newWorktrees = [];
+  const newWorktrees: string[][] = [];
 
   const n = oldWorktrees.length;
 
@@ -54,7 +56,7 @@ function initDirectory(context: any, next: CallableFunction) {
     newWorktrees.push([newPath, commitHash, branch]);
 
     // if new path is existed, then skip
-    let newPathStat: Stats = null;
+    let newPathStat: Stats | undefined;
     try {
       newPathStat = statSync(newPath);
     } catch (error) {}
@@ -126,8 +128,8 @@ function initDirectory(context: any, next: CallableFunction) {
 function createProjectCodeWorkspace(context: any, next: CallableFunction) {
   const cwd = context.cwd;
   const codeWorkSpacePath = path.resolve(cwd, PROJECT_FILES.CODE_WORKSPACE);
-  const codeWorkSpace = {} as CodeWorkSpace;
-  codeWorkSpace.folders = context.worktrees.map((e) => {
+  const codeWorkSpace = {} as CodeWorkSpaceConfig;
+  codeWorkSpace.folders = context.worktrees.map((e: string[]) => {
     return {
       name: e[2],
       path: e[0],
@@ -147,9 +149,9 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
     path.dirname(context.config.projectConfigPath),
     PROJECT_FILES.CODE_WORKSPACE
   );
-  const workspaceFile = {} as CodeWorkSpace;
+  const workspaceFile = {} as CodeWorkSpaceConfig;
 
-  workspaceFile.folders = context.worktrees.map((e) => {
+  workspaceFile.folders = context.worktrees.map((e: string[]) => {
     return {
       name: e[2],
       path: e[0],
@@ -172,7 +174,7 @@ function createProjectConfiguration(context: any, next: CallableFunction) {
   const cwd = context.cwd;
   const projectConfigPath = path.resolve(cwd, "wt.config.json");
 
-  const v = context.worktrees.reduce((prev, cur) => {
+  const v = context.worktrees.reduce((prev: string[], cur: string[]) => {
     prev.push(cur[0]);
     return prev;
   }, []);
@@ -200,7 +202,7 @@ function createProjectConfiguration(context: any, next: CallableFunction) {
 
 // FIXME: overwrite the configuration each time
 function updateProjectConfiguration(context: any, next: CallableFunction) {
-  const v = context.worktrees.reduce((prev, cur) => {
+  const v = context.worktrees.reduce((prev: string[], cur: string[]) => {
     prev.push(cur[0]);
     return prev;
   }, []);
@@ -221,10 +223,8 @@ function updateProjectConfiguration(context: any, next: CallableFunction) {
 
 export default {
   initDirectory,
-
   createProjectCodeWorkspace,
   updateProjectCodeWorkspace,
-
   createProjectConfiguration,
   updateProjectConfiguration,
 };

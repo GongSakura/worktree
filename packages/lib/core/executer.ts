@@ -15,7 +15,7 @@ export default class Executer {
   run(context: any = {}, done?: CallableFunction) {
     const next = () => {
       if (this.inputs.length) {
-        const fn = this.inputs.pop();
+        const fn = this.inputs.pop() as Processor;
         fn(context, next);
       } else if (!this.isDone && done) {
         done();

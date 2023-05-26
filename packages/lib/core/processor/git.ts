@@ -10,6 +10,7 @@ import {
   getGitDir,
   getWorktrees,
 } from "../../utils/git";
+import { Workspace } from "../../utils/types";
 
 function initRepository(context: any, next: CallableFunction) {
   const repoPath = context.cwd;
@@ -51,7 +52,7 @@ function repairWorktree(context: any, next: CallableFunction) {
 function configWorktree(context: any, next: CallableFunction) {
   const configPath = context.config.projectConfigPath;
 
-  context.worktrees.forEach((worktree) => {
+  context.worktrees.forEach((worktree: string[]) => {
     try {
       execSync("git config --worktree wt.config.path " + configPath, {
         cwd: worktree[0],
@@ -68,7 +69,7 @@ function addWorktree(context: any, next: CallableFunction) {
   const commitHash = context.command.options?.base || "";
   const newWorktreePath = path.resolve(context.config.projectPath, branchName);
   const allBranches = new Set(getBranches(context.config.mainWorktreePath));
-  
+
   const command =
     "git worktree add " +
     (allBranches.has(branchName)
@@ -89,7 +90,7 @@ function removeWorktree(context: any, next: CallableFunction) {
   const branchName = context.command.arguments.branchName;
 
   const deleteWorktree = context.codeWorkspace.folders.find(
-    (e) => e?.name == branchName
+    (e: Workspace) => e?.name == branchName
   );
 
   if (deleteWorktree?.path) {

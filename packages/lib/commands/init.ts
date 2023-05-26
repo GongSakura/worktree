@@ -14,7 +14,7 @@ import {
 
 
 } from "../core";
-import { checkIsPathCaseSensitive } from "../utils/file";
+
 
 export default new Command()
   .command("init")
@@ -34,7 +34,7 @@ export default new Command()
     process.cwd()
   )
   .action(function () {
-    global.isPathCaseSensitive = checkIsPathCaseSensitive();
+    
 
     const context = {
       commandOptions: this.opts(),

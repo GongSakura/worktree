@@ -9,7 +9,7 @@
  */
 import { Command } from "commander";
 import { Executer, GitProcessor, FileProcessor, ErrorProcessor, CheckProcessor } from "../core";
-import { checkIsPathCaseSensitive } from "../utils/file";
+
 
 export default new Command()
   .command("remove")
@@ -35,7 +35,7 @@ export default new Command()
       },
       cwd: process.cwd(),
     };
-    global.isPathCaseSensitive = checkIsPathCaseSensitive();
+    
     
     const processes = [
       ErrorProcessor.captureError,
