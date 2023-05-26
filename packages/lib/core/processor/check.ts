@@ -4,9 +4,14 @@ import {
   checkIsWorktree,
   getGitDir,
   getWorktreeConfiguration,
+  getWorktrees,
 } from "../../utils/git";
 import { getProjectFile } from "../../utils/file";
-import { PROJECT_FILES, WorktreeConfig } from "../../utils/types";
+import {
+  PROJECT_FILES,
+  ProjectConfig,
+  WorktreeConfig,
+} from "../../utils/types";
 
 function checkInitPrerequisite(context: any, next: CallableFunction) {
   const repoPath = context.cwd;
@@ -23,25 +28,20 @@ function checkInitPrerequisite(context: any, next: CallableFunction) {
   next();
 }
 function checkAddPrerequisite(context: any, next: CallableFunction) {
-  const projectConfig = getProjectFile(
-    context.cwd,
-    PROJECT_FILES.CONFIGURATION
-  );
-  let config: WorktreeConfig = {};
-  if (!projectConfig.mainWorktreePath) {
-    config = getWorktreeConfiguration(context.cwd);
-    if (!config.path) {
-      throw new Error("Current working directory has not been initialized");
-    }
-  }
+  const [projectConfig, worktreeConfig] = getConfig(context.cwd);
   context.config = {
     ...projectConfig,
-    projectConfigPath: config?.path
-      ? config.path
+    projectConfigPath: worktreeConfig?.path
+      ? worktreeConfig.path
       : path.resolve(context.cwd, "wt.config.json"),
-    projectPath: config?.path ? path.dirname(config.path) : context.cwd,
+    projectPath: worktreeConfig?.path
+      ? path.dirname(worktreeConfig.path)
+      : context.cwd,
+    worktreePath: worktreeConfig?.path
+      ? context.cwd
+      : projectConfig.mainWorktreePath,
   };
-  
+
   context.codeWorkspace = getProjectFile(
     context.config.projectPath,
     PROJECT_FILES.CODE_WORKSPACE
@@ -52,9 +52,45 @@ function checkAddPrerequisite(context: any, next: CallableFunction) {
 function checkRemovePrerequisite(context: any, next: CallableFunction) {
   checkAddPrerequisite(context, next);
 }
+function checkUpdatePrerequisite(context: any, next: CallableFunction) {
+  const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+  context.config = {
+    ...projectConfig,
+    projectConfigPath: worktreeConfig?.path
+      ? worktreeConfig.path
+      : path.resolve(context.cwd, "wt.config.json"),
+    projectPath: worktreeConfig?.path
+      ? path.dirname(worktreeConfig.path)
+      : context.cwd,
+    worktreePath: worktreeConfig?.path
+      ? context.cwd
+      : projectConfig.mainWorktreePath,
+  };
+  console.info(`context.worktrees:`,context)
+  context.worktrees = getWorktrees(context.config.worktreePath).reverse();
+ 
+}
+
 function checkClonePrerequisite(context: any, next: CallableFunction) {}
+
+export function getConfig(cwdPath: string): [ProjectConfig, WorktreeConfig] {
+  const projectConfig: ProjectConfig = getProjectFile(
+    cwdPath,
+    PROJECT_FILES.CONFIGURATION
+  );
+  let worktreeConfig: WorktreeConfig = {};
+  if (!projectConfig.mainWorktreePath) {
+    worktreeConfig = getWorktreeConfiguration(cwdPath);
+    if (!worktreeConfig.path) {
+      throw new Error("Current working directory has not been initialized");
+    }
+  }
+  return [projectConfig, worktreeConfig];
+}
+
 export default {
   checkInitPrerequisite,
   checkAddPrerequisite,
   checkRemovePrerequisite,
+  checkUpdatePrerequisite,
 };

@@ -1,5 +1,5 @@
 /**
- * TODO: handle "git worktree remove"
+ * Handle "git worktree remove"
  */
 
 /**
@@ -8,12 +8,17 @@
  * =============================================
  */
 import { Command } from "commander";
-import { Executer, GitProcessor, FileProcessor, ErrorProcessor, CheckProcessor } from "../core";
-
+import {
+  Executer,
+  GitProcessor,
+  FileProcessor,
+  ErrorProcessor,
+  CheckProcessor,
+} from "../core";
 
 export default new Command()
-  .command("remove")
-  .aliases(["delete", "rm", "del"])
+  .command("rm")
+  .aliases(["remove", "delete",])
   .summary("remove a linked worktree.\n")
   .description(`Remove a linked worktree`)
   .option(
@@ -35,8 +40,7 @@ export default new Command()
       },
       cwd: process.cwd(),
     };
-    
-    
+
     const processes = [
       ErrorProcessor.captureError,
       CheckProcessor.checkAddPrerequisite,
@@ -45,5 +49,7 @@ export default new Command()
       FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context);
+    executer.run(context,()=>{
+      console.info(`done remove`)
+    });
   });

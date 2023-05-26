@@ -1,7 +1,8 @@
 {
-  "name": "worktree",
-  "version": "0.0.1",
+  "name": "@kanamara/worktree",
+  "version": "0.0.2",
   "main": "./bin/index.js",
+  "keywords":["git","worktree","workspace"],
   "scripts": {
     "test": "jest",
     "build": "rollup -c",

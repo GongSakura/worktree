@@ -3,18 +3,28 @@ import { WorktreeConfig } from "./types";
 
 export function getWorktrees(cwdPath: string): [string, string, string][] {
   try {
-    const stdout = execSync("git worktree list", {
+    const worktrees: [string, string, string][] = [];
+    execSync("git worktree list", {
       cwd: cwdPath,
       stdio: "pipe",
-    }).toString();
-
-    const worktrees = stdout.trim().split("\n");
-    return worktrees.map((e) => {
-      const [, worktreePath, commitHash, branch] =
-        e.match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/) ?? [];
-      return [worktreePath, commitHash, branch.replace(/\[(.*?)\]/g, "$1")];
-    });
+    })
+      .toString()
+      .trim()
+      .split("\n")
+      .forEach((e) => {
+        const match = e.trim().match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/);
+        if (match) {
+          const [, worktreePath, commitHash, branch] = match;
+          worktrees.push([
+            worktreePath,
+            commitHash,
+            branch.replace(/\[(.*?)\]/g, "$1"),
+          ]);
+        }
+      });
+    return worktrees;
   } catch (error) {
+    console.info(`123123:`, 123123);
     throw error;
   }
 }
@@ -106,15 +116,40 @@ export function checkIsGitDir(cwdPath: string): boolean {
   }
 }
 
+export function initBranch(repoPath: string) {
+  try {
+    execSync("echo > README.md", {
+      cwd: repoPath,
+    });
+    execSync("git add README.md", {
+      cwd: repoPath,
+    });
+    execSync('git commit -m"Initial commit"', {
+      cwd: repoPath,
+    });
+  } catch (error) {
+    throw error;
+  }
+}
 export function getBranches(cwdPath: string): string[] {
   try {
-    const stdout: string = execSync("git branch -a", {
+    const branches: string[] = [];
+    execSync("git branch -a", {
       cwd: cwdPath,
       stdio: "pipe",
     })
       .toString()
-      .trim();
-    return stdout.split("\n").map((e) => e.split(" ").pop() || "");
+      .trim()
+      .split("\n")
+      .forEach((e) => {
+        if (e) {
+          const v = e.split(" ").pop();
+          if (v) {
+            branches.push(v);
+          }
+        }
+      });
+    return branches;
   } catch (error) {
     console.info(`getBranches error:`, error);
     return [];

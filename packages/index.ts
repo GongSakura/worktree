@@ -1,5 +1,10 @@
 import { Command } from "commander";
-import { initCommand, addCommand, removeCommand } from "./lib/commands";
+import {
+  initCommand,
+  addCommand,
+  removeCommand,
+  updateCommand,
+} from "./lib/commands";
 import { checkIsPathCaseSensitive } from "./lib/utils/file";
 
 declare global {
@@ -14,5 +19,6 @@ main
   .addHelpCommand("help [command]", "Show command details")
   .addCommand(initCommand)
   .addCommand(addCommand)
-  .addCommand(removeCommand);
+  .addCommand(removeCommand)
+  .addCommand(updateCommand);
 main.parse(process.argv);

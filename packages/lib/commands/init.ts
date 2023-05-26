@@ -10,11 +10,8 @@ import {
   GitProcessor,
   FileProcessor,
   CheckProcessor,
-  ErrorProcessor
-
-
+  ErrorProcessor,
 } from "../core";
-
 
 export default new Command()
   .command("init")
@@ -34,8 +31,6 @@ export default new Command()
     process.cwd()
   )
   .action(function () {
-    
-
     const context = {
       commandOptions: this.opts(),
       cwd: path.resolve(this.processedArgs[0]),

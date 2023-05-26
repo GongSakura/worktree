@@ -1,6 +1,3 @@
-/**
- * Handle all git commands
- */
 declare function initRepository(context: any, next: CallableFunction): void;
 declare function repairWorktree(context: any, next: CallableFunction): void;
 declare function configWorktree(context: any, next: CallableFunction): void;

@@ -49,6 +49,6 @@ export default new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-      console.log("done");
+      console.log("done add");
     });
   });

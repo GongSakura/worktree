@@ -1,7 +1,3 @@
-/**
- * Handle all git commands
- */
-
 import { execSync } from "node:child_process";
 import * as path from "node:path";
 import {
@@ -9,6 +5,7 @@ import {
   getBranches,
   getGitDir,
   getWorktrees,
+  initBranch,
 } from "../../utils/git";
 import { Workspace } from "../../utils/types";
 
@@ -24,15 +21,21 @@ function initRepository(context: any, next: CallableFunction) {
   try {
     execSync(command, { stdio: "pipe" });
     enableWorktreeConfig(repoPath);
-    context.worktrees = getWorktrees(repoPath).reverse();
+
+    const worktrees = getWorktrees(repoPath);
+    const branches = getBranches(worktrees[0][0]);
+    if (!branches.length) {
+      initBranch(worktrees[0][0]);
+      branches.push(worktrees[0][2]);
+    }
+    context.branches = branches;
+    context.worktrees = worktrees.reverse();
     context.gitDir = getGitDir(path.resolve(repoPath, "./.git"));
     next();
   } catch (error) {
-    console.info(`initRepository error:`, error);
     throw error;
   }
 }
-
 function repairWorktree(context: any, next: CallableFunction) {
   const worktrees = [...context.worktrees];
   const mainWorktreePath = worktrees.pop()[0];
@@ -82,7 +85,7 @@ function addWorktree(context: any, next: CallableFunction) {
     cwd: context.config.mainWorktreePath,
     stdio: "pipe",
   });
-  context.worktrees = getWorktrees(context.config.mainWorktreePath);
+  context.worktrees = getWorktrees(context.config.worktreePath).reverse();
 
   next();
 }
@@ -108,7 +111,7 @@ function removeWorktree(context: any, next: CallableFunction) {
     });
   }
 
-  context.worktrees = getWorktrees(context.config.mainWorktreePath);
+  context.worktrees = getWorktrees(context.config.worktreePath).reverse();
   next();
 }
 

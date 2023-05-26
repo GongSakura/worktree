@@ -3391,18 +3391,29 @@ class Executer {
 
 function getWorktrees(cwdPath) {
     try {
-        const stdout = node_child_process.execSync("git worktree list", {
+        const worktrees = [];
+        node_child_process.execSync("git worktree list", {
             cwd: cwdPath,
             stdio: "pipe",
-        }).toString();
-        const worktrees = stdout.trim().split("\n");
-        return worktrees.map((e) => {
-            var _a;
-            const [, worktreePath, commitHash, branch] = (_a = e.match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/)) !== null && _a !== void 0 ? _a : [];
-            return [worktreePath, commitHash, branch.replace(/\[(.*?)\]/g, "$1")];
+        })
+            .toString()
+            .trim()
+            .split("\n")
+            .forEach((e) => {
+            const match = e.trim().match(/^(\S+)\s+(\w+)\s+(\[[^\]]+\])$/);
+            if (match) {
+                const [, worktreePath, commitHash, branch] = match;
+                worktrees.push([
+                    worktreePath,
+                    commitHash,
+                    branch.replace(/\[(.*?)\]/g, "$1"),
+                ]);
+            }
         });
+        return worktrees;
     }
     catch (error) {
+        console.info(`123123:`, 123123);
         throw error;
     }
 }
@@ -3478,15 +3489,41 @@ function getGitDir(repoPath) {
         return "";
     }
 }
+function initBranch(repoPath) {
+    try {
+        node_child_process.execSync("echo > README.md", {
+            cwd: repoPath,
+        });
+        node_child_process.execSync("git add README.md", {
+            cwd: repoPath,
+        });
+        node_child_process.execSync('git commit -m"Initial commit"', {
+            cwd: repoPath,
+        });
+    }
+    catch (error) {
+        throw error;
+    }
+}
 function getBranches(cwdPath) {
     try {
-        const stdout = node_child_process.execSync("git branch -a", {
+        const branches = [];
+        node_child_process.execSync("git branch -a", {
             cwd: cwdPath,
             stdio: "pipe",
         })
             .toString()
-            .trim();
-        return stdout.split("\n").map((e) => e.split(" ").pop() || "");
+            .trim()
+            .split("\n")
+            .forEach((e) => {
+            if (e) {
+                const v = e.split(" ").pop();
+                if (v) {
+                    branches.push(v);
+                }
+            }
+        });
+        return branches;
     }
     catch (error) {
         console.info(`getBranches error:`, error);
@@ -3494,9 +3531,6 @@ function getBranches(cwdPath) {
     }
 }
 
-/**
- * Handle all git commands
- */
 function initRepository(context, next) {
     var _a;
     const repoPath = context.cwd;
@@ -3508,12 +3542,18 @@ function initRepository(context, next) {
     try {
         node_child_process.execSync(command, { stdio: "pipe" });
         enableWorktreeConfig(repoPath);
-        context.worktrees = getWorktrees(repoPath).reverse();
+        const worktrees = getWorktrees(repoPath);
+        const branches = getBranches(worktrees[0][0]);
+        if (!branches.length) {
+            initBranch(worktrees[0][0]);
+            branches.push(worktrees[0][2]);
+        }
+        context.branches = branches;
+        context.worktrees = worktrees.reverse();
         context.gitDir = getGitDir(path__namespace.resolve(repoPath, "./.git"));
         next();
     }
     catch (error) {
-        console.info(`initRepository error:`, error);
         throw error;
     }
 }
@@ -3565,7 +3605,7 @@ function addWorktree(context, next) {
         cwd: context.config.mainWorktreePath,
         stdio: "pipe",
     });
-    context.worktrees = getWorktrees(context.config.mainWorktreePath);
+    context.worktrees = getWorktrees(context.config.worktreePath).reverse();
     next();
 }
 function removeWorktree(context, next) {
@@ -3585,7 +3625,7 @@ function removeWorktree(context, next) {
             stdio: "pipe",
         });
     }
-    context.worktrees = getWorktrees(context.config.mainWorktreePath);
+    context.worktrees = getWorktrees(context.config.worktreePath).reverse();
     next();
 }
 var GitProcessor = {
@@ -3853,27 +3893,48 @@ function checkInitPrerequisite(context, next) {
     next();
 }
 function checkAddPrerequisite(context, next) {
-    const projectConfig = getProjectFile(context.cwd, PROJECT_FILES.CONFIGURATION);
-    let config = {};
-    if (!projectConfig.mainWorktreePath) {
-        config = getWorktreeConfiguration(context.cwd);
-        if (!config.path) {
-            throw new Error("Current working directory has not been initialized");
-        }
-    }
-    context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (config === null || config === void 0 ? void 0 : config.path)
-            ? config.path
-            : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (config === null || config === void 0 ? void 0 : config.path) ? path__namespace.dirname(config.path) : context.cwd });
+    const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+    context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            ? worktreeConfig.path
+            : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            ? path__namespace.dirname(worktreeConfig.path)
+            : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            ? context.cwd
+            : projectConfig.mainWorktreePath });
     context.codeWorkspace = getProjectFile(context.config.projectPath, PROJECT_FILES.CODE_WORKSPACE);
     next();
 }
 function checkRemovePrerequisite(context, next) {
     checkAddPrerequisite(context, next);
 }
+function checkUpdatePrerequisite(context, next) {
+    const [projectConfig, worktreeConfig] = getConfig(context.cwd);
+    context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            ? worktreeConfig.path
+            : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            ? path__namespace.dirname(worktreeConfig.path)
+            : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            ? context.cwd
+            : projectConfig.mainWorktreePath });
+    console.info(`context.worktrees:`, context);
+    context.worktrees = getWorktrees(context.config.worktreePath).reverse();
+}
+function getConfig(cwdPath) {
+    const projectConfig = getProjectFile(cwdPath, PROJECT_FILES.CONFIGURATION);
+    let worktreeConfig = {};
+    if (!projectConfig.mainWorktreePath) {
+        worktreeConfig = getWorktreeConfiguration(cwdPath);
+        if (!worktreeConfig.path) {
+            throw new Error("Current working directory has not been initialized");
+        }
+    }
+    return [projectConfig, worktreeConfig];
+}
 var CheckProcessor = {
     checkInitPrerequisite,
     checkAddPrerequisite,
     checkRemovePrerequisite,
+    checkUpdatePrerequisite,
 };
 
 /**
@@ -3942,12 +4003,12 @@ var addCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log("done");
+        console.log("done add");
     });
 });
 
 /**
- * TODO: handle "git worktree remove"
+ * Handle "git worktree remove"
  */
 /**
  * =============================================
@@ -3955,8 +4016,8 @@ var addCommand = new Command()
  * =============================================
  */
 var removeCommand = new Command()
-    .command("remove")
-    .aliases(["delete", "rm", "del"])
+    .command("rm")
+    .aliases(["remove", "delete",])
     .summary("remove a linked worktree.\n")
     .description(`Remove a linked worktree`)
     .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
@@ -3980,6 +4041,41 @@ var removeCommand = new Command()
         FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
+    executer.run(context, () => {
+        console.info(`done remove`);
+    });
+});
+
+/**
+ * Handle "git worktree remove"
+ */
+/**
+ * =============================================
+ *   wt update
+ * =============================================
+ */
+var updateCommand = new Command()
+    .command("update")
+    .summary("Update the project configuration.\n")
+    .description(`Update the project configuration`)
+    .helpOption("-h, --help", "Display help for command")
+    .action(function () {
+    const context = {
+        command: {
+            options: this.opts(),
+            arguments: {
+                branchName: this.processedArgs[0],
+            },
+        },
+        cwd: process.cwd(),
+    };
+    const processes = [
+        ErrorProcessor.captureError,
+        CheckProcessor.checkUpdatePrerequisite,
+        FileProcessor.updateProjectCodeWorkspace,
+        FileProcessor.updateProjectConfiguration,
+    ];
+    const executer = new Executer(processes);
     executer.run(context);
 });
 
@@ -3991,5 +4087,6 @@ main
     .addHelpCommand("help [command]", "Show command details")
     .addCommand(initCommand)
     .addCommand(addCommand)
-    .addCommand(removeCommand);
+    .addCommand(removeCommand)
+    .addCommand(updateCommand);
 main.parse(process.argv);
