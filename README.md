@@ -1,8 +1,18 @@
+A fast and natty tool automatically manages git worktrees. 🚀 whooooosh~
+
+<br/>
+
+## Motto
+One window, all projects!
+
+<br/>
+
+
 ## Background
 
-- 😘 Do you prefer to use **VS Code** to start your coding?
+- 😘 Do you prefer to use **VS Code** to start your coding? If not, you still can be benefited from it.
 - 😡 Are you annoyed with the frequent **"git checkout/stash/pop"** during coding?
-- 😭 Do you often **jump around** different projects(VS Code windows)?
+- 😭 Do you often **jump around** different projects(code editor windows)?
 - 🤪 Would you like a **natty gadget** to help you handle these messes? **Let's try it out!**
 
 <br/>
@@ -59,4 +69,10 @@ To add a worktree based on \<branch-name\>.
 <br/>
 
 ## Future support
- - TODO: Multiple git repositories
+ - TODO: Multiple git repos
+ - TODO: Elegant error handle
+
+<br/>
+
+## Behind The Scene
+It leverages the git worktree features and the
