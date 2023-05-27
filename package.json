@@ -15,9 +15,8 @@
   "scripts": {
     "test": "jest",
     "build": "rollup -c",
-    "dev": "rollup -c --watch",
-    "prepare":"npx husky install",
-    "husky-commit-msg":""
+    "prepare":"node scripts/prepare.js",
+    "dev": "rollup -c --watch"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.21.5",
