@@ -4794,4 +4794,3 @@ main
     .addCommand(removeCommand)
     .addCommand(updateCommand);
 main.parse(process.argv);
-//# sourceMappingURL=index.js.map

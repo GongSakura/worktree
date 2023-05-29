@@ -1,6 +1,10 @@
 node_modules/
 .vscode/
+packages/
+scripts/
 
 
+tsconfig.json
+rollup.config.js
 pnpm-lock.yaml
 .DS_Store

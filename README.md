@@ -34,7 +34,7 @@ npm i -g @kanamara/worktree
 
 ### 1. "wt init \<directory\>"
 
-- To initialize a worktree project that manages all git worktrees. If the directory is not a git repository, it will create a new one via "git init \<directory\>"
+- To initialize a worktree project that manages all git worktrees. If the directory is not a git repository, it will create a new one via **"git init \<directory\>"**
 
 <br/>
 
@@ -57,8 +57,7 @@ To add a worktree based on \<branch-name\>.
 ### 4. "wt rm \<branch-name\>"
 
 - To remove a worktree based on the \<branch-name\>.
-
-- If you want to remove the branch at the same time, use **"wt rm -f \<branch-name\>"**
+- If you want to remove the branch at the same time, use **"wt rm -f \<branch-name\>"**.
 
 <br/>
 

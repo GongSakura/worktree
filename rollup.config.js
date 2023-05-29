@@ -8,7 +8,7 @@ module.exports = {
   output: {
     dir: "bin",
     format: "cjs",
-    sourcemap:true,
+    // sourcemap:true,
   },
   plugins: [
     commonjs(
@@ -16,12 +16,7 @@ module.exports = {
     nodeResolve({
       exportConditions:['node']
     }),
-    typescript({
-      compilerOptions: {
-        declaration: true,
-        declarationDir: "bin",
-      },
-    }),
+    typescript(),
     {
       name: "shebang",
       generateBundle(_, bundle) {
