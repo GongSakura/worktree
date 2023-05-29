@@ -71,6 +71,8 @@ export function getWorktreeConfiguration(cwdPath: string): IWorktreeConfig {
         const [k, v] = e.split("=");
         if (k === "wt.config.path") {
           config.path = v;
+        } else if (k === "wt.config.reponame") {
+          config.repoName = v;
         }
       });
   } finally {
@@ -146,25 +148,7 @@ export function getBranches(cwdPath: string): string[] {
       });
     return branches;
   } catch (error) {
-    console.info(`getBranches error:`, error);
     return [];
   }
 }
 
-export function getGitRepoName(cwdPath: string) {
-  try {
-    return path
-      .normalize(
-        execSync("git remote show origin", {
-          cwd: cwdPath,
-          stdio: "pipe",
-        })
-          .toString()
-          .trim()
-      )
-      .split("/")
-      .pop();
-  } catch {
-    return cwdPath.trim().split("/").pop();
-  }
-}

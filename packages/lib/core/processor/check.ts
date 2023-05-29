@@ -1,11 +1,5 @@
 import * as path from "path";
-import {
-  checkIsGitDir,
-  checkIsMainWorktree,
-  checkIsWorktree,
-  getGitDir,
-  getWorktrees,
-} from "../../utils/git";
+import { checkIsGitDir, checkIsWorktree, getGitDir } from "../../utils/git";
 import { getConfigs, getProjectFile } from "../../utils/file";
 import { IMultiRepoWorktreePaths, PROJECT_FILES } from "../../utils/types";
 import { readdirSync } from "fs";
@@ -23,7 +17,7 @@ function checkClonePrerequisite(context: any, next: CallableFunction) {
 }
 function checkAddPrerequisite(context: any, next: CallableFunction) {
   const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
-  const repoInfo = Object.entries(projectConfig)[0][1];
+  const repoInfo = Object.entries(projectConfig)[0];
   context.config = {
     projectConfigPath: worktreeConfig?.path
       ? worktreeConfig.path
@@ -51,15 +45,12 @@ function checkUpdatePrerequisite(context: any, next: CallableFunction) {
   const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
   const repoInfo = Object.entries(projectConfig)[0][1];
   context.config = {
-    ...projectConfig,
     projectConfigPath: worktreeConfig?.path
       ? worktreeConfig.path
-      : path.resolve(context.cwd, "wt.config.json"),
+      : path.resolve(context.cwd, PROJECT_FILES.CONFIGURATION),
     projectPath: worktreeConfig?.path
       ? path.dirname(worktreeConfig.path)
       : context.cwd,
-    worktreePath: worktreeConfig?.path ? context.cwd : repoInfo[1],
-    repoName: repoInfo[0],
   };
   next();
 }
@@ -92,13 +83,16 @@ function inspectPotentialWorktrees(context: any, next: CallableFunction) {
       }
     }
   });
-  // console.info(`multiRepoWorktrees:`, multiRepoWorktrees);
+
   let worktrees: string[][] = [];
   for (const [key, value] of Object.entries(multiRepoWorktrees)) {
     value.push(key);
     worktrees = value.map((e) => [e]);
+    // FIXME: use the first worktree for single repo project
+    break;
   }
   context.worktrees = worktrees;
+
   next();
 }
 

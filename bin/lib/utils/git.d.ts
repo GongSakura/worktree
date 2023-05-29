@@ -8,4 +8,3 @@ export declare function setGitDir(cwdPath: string, gitDirPath: string): void;
 export declare function checkIsGitDir(cwdPath: string): boolean;
 export declare function initBranch(repoPath: string): void;
 export declare function getBranches(cwdPath: string): string[];
-export declare function getGitRepoName(cwdPath: string): string | undefined;

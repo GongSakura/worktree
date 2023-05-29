@@ -22,7 +22,7 @@ export function getConfigs(cwdPath: string): [IProjectConfig, IWorktreeConfig] {
     PROJECT_FILES.CONFIGURATION
   );
   let worktreeConfig: IWorktreeConfig = {};
-  const entries = Object.entries(projectConfig)
+  const entries = Object.entries(projectConfig);
   if (!entries.length) {
     worktreeConfig = getWorktreeConfiguration(cwdPath);
     if (!worktreeConfig.path) {
@@ -62,7 +62,6 @@ export function checkIsPathCaseSensitive() {
     const stat = statSync(path.toUpperCase());
     return !stat.isDirectory();
   } catch (error) {
-    console.info(`error:`, error);
     return true;
   } finally {
     rmdirSync(path);

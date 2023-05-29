@@ -13,6 +13,7 @@ export interface ICodeWorkSpaceConfig {
 
 export interface IWorktreeConfig {
   path?: string;
+  repoName?:string;
 }
 
 export interface IProjectConfig {

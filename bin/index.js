@@ -3444,6 +3444,9 @@ function getWorktreeConfiguration(cwdPath) {
             if (k === "wt.config.path") {
                 config.path = v;
             }
+            else if (k === "wt.config.reponame") {
+                config.repoName = v;
+            }
         });
     }
     finally {
@@ -3511,7 +3514,6 @@ function getBranches(cwdPath) {
         return branches;
     }
     catch (error) {
-        console.info(`getBranches error:`, error);
         return [];
     }
 }
@@ -3519,12 +3521,17 @@ function getBranches(cwdPath) {
 function cloneRepository(context, next) {
     const repoURL = context.command.arguments.repoURL;
     const repoPath = context.command.arguments.directory;
+    const repoName = repoURL
+        .split("/")
+        .pop()
+        .replace(/\.git$/, "");
     const command = `git clone ${repoURL} ${repoPath}`;
     require$$1.execSync(command, {
         stdio: "inherit",
     });
     context.worktrees = getWorktrees(repoPath).reverse();
     context.gitDir = getGitDir(repoPath);
+    context.repoName = repoName;
     next();
 }
 function initRepository(context, next) {
@@ -3553,17 +3560,19 @@ function configWorktree(context, next) {
     if (context.worktrees.length) {
         const configPath = context.config.projectConfigPath;
         const mainWorktree = context.worktrees.slice(-1)[0];
-        try {
-            require$$1.execSync("git config --local wt.config.path " + configPath, {
-                cwd: mainWorktree[0],
-                stdio: "pipe",
-            });
-        }
-        catch (error) {
-            throw error;
-        }
+        require$$1.execSync("git config --local wt.config.path " + configPath, {
+            cwd: mainWorktree[0],
+            stdio: "pipe",
+        });
+        require$$1.execSync("git config --local wt.config.repoName " + context.repoName, {
+            cwd: mainWorktree[0],
+            stdio: "pipe",
+        });
+        next();
     }
-    next();
+    else {
+        throw new Error("Empty worktree list");
+    }
 }
 function addWorktree(context, next) {
     var _a;
@@ -3686,7 +3695,6 @@ function checkIsPathCaseSensitive() {
         return !stat.isDirectory();
     }
     catch (error) {
-        console.info(`error:`, error);
         return true;
     }
     finally {
@@ -3746,7 +3754,6 @@ function initDirectory(context, next) {
                     : require$$3.linkSync(oldPath, newPath);
             }
             catch (error) {
-                console.log("renameSync", error);
                 break;
             }
         }
@@ -3846,8 +3853,10 @@ function createProjectConfiguration(context, next) {
 function updateProjectConfiguration(context, next) {
     var _a;
     if ((_a = context === null || context === void 0 ? void 0 : context.worktrees) === null || _a === void 0 ? void 0 : _a.length) {
+        const repoPath = context.worktrees.slice(-1)[0][0];
+        const worktreeConfig = getWorktreeConfiguration(repoPath);
         const config = {
-            [context.repoName]: context.worktrees.slice(-1)[0][0],
+            [worktreeConfig.repoName || ""]: context.worktrees.slice(-1)[0][0],
         };
         require$$3.writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
             mode: 0o777,
@@ -4496,7 +4505,7 @@ function captureError(context, next) {
     catch (error) {
         //TODO: To come up with a natty solution to show the error message
         console.log(`
-  ${chalk.redBright("✗ ERROR INFO:")}
+  ${chalk.redBright.bold("✘ ERROR INFO:")}
 
     ${chalk.bold("::")} ${error.message}
     `);
@@ -4518,7 +4527,7 @@ function checkClonePrerequisite(context, next) {
 }
 function checkAddPrerequisite(context, next) {
     const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
-    const repoInfo = Object.entries(projectConfig)[0][1];
+    const repoInfo = Object.entries(projectConfig)[0];
     context.config = {
         projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? worktreeConfig.path
@@ -4537,12 +4546,15 @@ function checkRemovePrerequisite(context, next) {
 }
 function checkUpdatePrerequisite(context, next) {
     const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
-    const repoInfo = Object.entries(projectConfig)[0][1];
-    context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+    Object.entries(projectConfig)[0][1];
+    context.config = {
+        projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? worktreeConfig.path
-            : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            : path__namespace.resolve(context.cwd, PROJECT_FILES.CONFIGURATION),
+        projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? path__namespace.dirname(worktreeConfig.path)
-            : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path) ? context.cwd : repoInfo[1], repoName: repoInfo[0] });
+            : context.cwd,
+    };
     next();
 }
 function inspectPotentialWorktrees(context, next) {
@@ -4569,11 +4581,12 @@ function inspectPotentialWorktrees(context, next) {
             }
         }
     });
-    // console.info(`multiRepoWorktrees:`, multiRepoWorktrees);
     let worktrees = [];
     for (const [key, value] of Object.entries(multiRepoWorktrees)) {
         value.push(key);
         worktrees = value.map((e) => [e]);
+        // FIXME: use the first worktree for single repo project
+        break;
     }
     context.worktrees = worktrees;
     next();
@@ -4622,11 +4635,7 @@ var initCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log(`
-${chalk.cyanBright.bold(`✔ DONE:`)}
-
-  ${chalk.bold("::")} ${`wt init ${context.command.arguments.directory}`}
-      `);
+        process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
 });
 
@@ -4662,10 +4671,7 @@ var addCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log(`
-${chalk.cyanBright.bold(`✔ DONE:`)}
-  ${chalk.bold("::")} ${`wt add ${context.command.arguments.branchName}`}
-      `);
+        process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
 });
 
@@ -4703,11 +4709,7 @@ var removeCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log(`
-${chalk.cyanBright.bold(`✔ DONE:`)}
-
-  ${chalk.bold("::")} ${`wt remove ${context.command.arguments.branchName}`}
-      `);
+        process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
 });
 
@@ -4738,11 +4740,7 @@ var updateCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log(`
-${chalk.cyanBright.bold(`✔ DONE:`)}
-
-  ${chalk.bold("::")} ${`wt update`}
-      `);
+        process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
 });
 
@@ -4781,11 +4779,7 @@ var cloneCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log(`
-${chalk.cyanBright.bold(`✔ DONE:`)}
-
-  ${chalk.bold("::")} ${`wt clone ${context.command.arguments.repoURL}`}
-      `);
+        process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
 });
 

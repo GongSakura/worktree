@@ -6,7 +6,7 @@ function captureError(context: any, next: CallableFunction) {
   } catch (error: any) {
     //TODO: To come up with a natty solution to show the error message
     console.log(`
-  ${chalk.redBright("✗ ERROR INFO:")}
+  ${chalk.redBright.bold("✘ ERROR INFO:")}
 
     ${chalk.bold("::")} ${error.message}
     `);

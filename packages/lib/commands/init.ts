@@ -54,11 +54,7 @@ export default new Command()
     ];
 
     const executer = new Executer(processes);
-    executer.run(context, () => {
-      console.log(`
-${chalk.cyanBright.bold(`✔ DONE:`)}
-
-  ${chalk.bold("::")} ${`wt init ${context.command.arguments.directory}`}
-      `);
+    executer.run(context,() => {
+      process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
   });

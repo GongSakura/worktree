@@ -11,12 +11,17 @@ import { IWorkspace } from "../../utils/types";
 function cloneRepository(context: any, next: CallableFunction) {
   const repoURL = context.command.arguments.repoURL;
   const repoPath = context.command.arguments.directory;
+  const repoName = repoURL
+    .split("/")
+    .pop()
+    .replace(/\.git$/, "");
   const command = `git clone ${repoURL} ${repoPath}`;
   execSync(command, {
     stdio: "inherit",
   });
   context.worktrees = getWorktrees(repoPath).reverse();
   context.gitDir = getGitDir(repoPath);
+  context.repoName = repoName;
   next();
 }
 
@@ -49,17 +54,21 @@ function configWorktree(context: any, next: CallableFunction) {
   if (context.worktrees.length) {
     const configPath = context.config.projectConfigPath;
     const mainWorktree = context.worktrees.slice(-1)[0];
-    try {
-      execSync("git config --local wt.config.path " + configPath, {
-        cwd: mainWorktree[0],
-        stdio: "pipe",
-      });
-    } catch (error) {
-      throw error;
-    }
-  }
 
-  next();
+    execSync("git config --local wt.config.path " + configPath, {
+      cwd: mainWorktree[0],
+      stdio: "pipe",
+    });
+
+    execSync("git config --local wt.config.repoName " + context.repoName, {
+      cwd: mainWorktree[0],
+      stdio: "pipe",
+    });
+
+    next();
+  } else {
+    throw new Error("Empty worktree list");
+  }
 }
 function addWorktree(context: any, next: CallableFunction) {
   const branchName = context.command.arguments.branchName;
@@ -115,6 +124,7 @@ function repairWorktree(context: any, next: CallableFunction) {
   const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
     return `${prev} ${cur[0]}`;
   }, "");
+  
   try {
     execSync("git worktree repair " + linkedWorktreePaths, {
       cwd: mainWorktreePath,

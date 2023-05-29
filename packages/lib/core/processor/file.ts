@@ -19,6 +19,7 @@ import {
   checkIsDirectChildPath,
   normalizePath,
 } from "../../utils/file";
+import { getWorktreeConfiguration } from "../../utils/git";
 
 const IGNORE_FILES = new Set([".git", ".code-workpace"]);
 /**
@@ -73,7 +74,6 @@ function initDirectory(context: any, next: CallableFunction) {
           ? renameSync(oldPath, newPath)
           : linkSync(oldPath, newPath);
       } catch (error) {
-        console.log("renameSync", error);
         break;
       }
     } else {
@@ -151,7 +151,6 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
     PROJECT_FILES.CODE_WORKSPACE
   );
   const workspaceFile = {} as ICodeWorkSpaceConfig;
-
   workspaceFile.folders = context.worktrees.map((e: string[]) => {
     return {
       name: e[2],
@@ -197,8 +196,11 @@ function createProjectConfiguration(context: any, next: CallableFunction) {
 // FIXME: overwrite the configuration each time
 function updateProjectConfiguration(context: any, next: CallableFunction) {
   if (context?.worktrees?.length) {
+    const repoPath = context.worktrees.slice(-1)[0][0];
+    const worktreeConfig = getWorktreeConfiguration(repoPath);
+
     const config = {
-      [context.repoName]: context.worktrees.slice(-1)[0][0],
+      [worktreeConfig.repoName || ""]: context.worktrees.slice(-1)[0][0],
     };
 
     writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
