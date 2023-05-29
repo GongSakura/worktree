@@ -20,7 +20,7 @@ import chalk from "chalk";
 export default new Command()
   .command("rm")
   .aliases(["remove", "delete"])
-  .summary("Remove a linked worktree.\n")
+  .summary("Remove a linked worktree.\n\n")
   .description(`To remove a linked worktree from the worktree project`)
   .option(
     "-f, --force",

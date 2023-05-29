@@ -18,7 +18,7 @@ One window, all projects!
 <br/>
 
 ## Requirement
-- node version >=14.18.0
+- node version >=14.18.0 (Due to the prefix "node:" in internal modules)
 
 <br/>
 
@@ -77,7 +77,9 @@ To add a worktree based on \<branch-name\>.
 ## Future support
 
 - TODO: Multiple git repos
+- TODO: Inquirer prompts for add/remove worktree
 - TODO: Elegant error handle
+
 
 <br/>
 

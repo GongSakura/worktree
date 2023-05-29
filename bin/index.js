@@ -3818,7 +3818,7 @@ function updateProjectCodeWorkspace(context, next) {
             path: e[0],
         };
     });
-    require$$3.writeFileSync(workspacePath, JSON.stringify(workspaceFile), {
+    require$$3.writeFileSync(workspacePath, JSON.stringify(workspaceFile, null, 2), {
         mode: 0o777,
         encoding: "utf-8",
         flag: "w",
@@ -3858,7 +3858,7 @@ function updateProjectConfiguration(context, next) {
         const config = {
             [worktreeConfig.repoName || ""]: context.worktrees.slice(-1)[0][0],
         };
-        require$$3.writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
+        require$$3.writeFileSync(context.config.projectConfigPath, JSON.stringify(config, null, 2), {
             mode: 0o777,
             encoding: "utf-8",
             flag: "w",
@@ -4568,14 +4568,14 @@ function inspectPotentialWorktrees(context, next) {
             const idx = gitDirPath.lastIndexOf("/.git/worktrees");
             if (idx !== -1) {
                 const key = gitDirPath.substring(0, idx);
-                if (Object.hasOwn(multiRepoWorktrees, key)) {
+                if (multiRepoWorktrees.hasOwnProperty(key)) {
                     multiRepoWorktrees[key].push(_path);
                 }
                 else {
                     multiRepoWorktrees[key] = [_path];
                 }
             }
-            else if (!Object.hasOwn(multiRepoWorktrees, gitDirPath.replace(/\/.git/, ""))) {
+            else if (!multiRepoWorktrees.hasOwnProperty(gitDirPath.replace(/\/.git/, ""))) {
                 // main worktree path as the key
                 multiRepoWorktrees[gitDirPath] = [];
             }
@@ -4601,13 +4601,12 @@ var CheckProcessor = {
 };
 
 /**
- * ===================
- *   wt init <path>
- * ===================
+ * =======================
+ *   wt init <directory>
+ * =======================
  */
 var initCommand = new Command()
     .command("init")
-    .aliases(["i"])
     .summary("Create a worktree project and init a Git repository.\n\n")
     .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init\n\n".`)
     .option("--branch [branch-name]", ":: The specified name for the initial branch in the newly created git repository.\n\n")
@@ -4646,7 +4645,7 @@ var initCommand = new Command()
  */
 var addCommand = new Command()
     .command("add")
-    .summary("Add a new linked worktree.\n")
+    .summary("Create a linked worktree.\n\n")
     .description(`Create a linked worktree and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
     .option("--base <commit-hash>", "If you want to log messages in two columns in the console, you can achieve this by formatting your log messages using tabs or fixed-width spacing. Here's an example of how you can achieve it"
 // ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
@@ -4686,7 +4685,7 @@ var addCommand = new Command()
 var removeCommand = new Command()
     .command("rm")
     .aliases(["remove", "delete"])
-    .summary("Remove a linked worktree.\n")
+    .summary("Remove a linked worktree.\n\n")
     .description(`To remove a linked worktree from the worktree project`)
     .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
     .helpOption("-h, --help", "Display help for command")
@@ -4723,7 +4722,7 @@ var removeCommand = new Command()
  */
 var updateCommand = new Command()
     .command("update")
-    .summary("Update the project configuration.\n")
+    .summary("Update the project configuration.\n\n")
     .description(`Update the project configuration`)
     .helpOption("-h, --help", "Display help for command")
     .action(function () {
@@ -4754,8 +4753,8 @@ var updateCommand = new Command()
  */
 var cloneCommand = new Command()
     .command("clone")
-    .summary("Clone and initialize\n\n")
-    .description(`Clone a git repository, and initialize it as a multiple worktrees project.\n\n`)
+    .summary("Clone \n\n")
+    .description(`Clone a git repository, and initialize it as a worktree project.\n\n`)
     .argument("<repo>", "The url of a git repository.")
     .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
     .action(function () {
@@ -4788,7 +4787,7 @@ const main = new Command();
 main
     .name("wt")
     .version("1.0.0")
-    .addHelpCommand("help [command]", "Show command details")
+    .addHelpCommand("help [command]", "Show command details.\n\n")
     .addCommand(initCommand)
     .addCommand(cloneCommand)
     .addCommand(addCommand)

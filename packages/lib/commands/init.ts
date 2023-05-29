@@ -1,7 +1,7 @@
 /**
- * ===================
- *   wt init <path>
- * ===================
+ * =======================
+ *   wt init <directory>
+ * =======================
  */
 import * as path from "path";
 import { Command } from "commander";
@@ -16,7 +16,6 @@ import chalk from "chalk";
 
 export default new Command()
   .command("init")
-  .aliases(["i"])
   .summary("Create a worktree project and init a Git repository.\n\n")
   .description(
     `To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init\n\n".`

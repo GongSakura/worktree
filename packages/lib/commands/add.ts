@@ -16,7 +16,7 @@ import chalk from "chalk";
 
 export default new Command()
   .command("add")
-  .summary("Add a new linked worktree.\n")
+  .summary("Create a linked worktree.\n\n")
   .description(
     `Create a linked worktree and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`
   )

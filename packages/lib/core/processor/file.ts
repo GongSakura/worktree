@@ -158,7 +158,7 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
     };
   });
 
-  writeFileSync(workspacePath, JSON.stringify(workspaceFile), {
+  writeFileSync(workspacePath, JSON.stringify(workspaceFile,null,2), {
     mode: 0o777,
     encoding: "utf-8",
     flag: "w",
@@ -203,7 +203,7 @@ function updateProjectConfiguration(context: any, next: CallableFunction) {
       [worktreeConfig.repoName || ""]: context.worktrees.slice(-1)[0][0],
     };
 
-    writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
+    writeFileSync(context.config.projectConfigPath, JSON.stringify(config,null,2), {
       mode: 0o777,
       encoding: "utf-8",
       flag: "w",

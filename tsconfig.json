@@ -4,7 +4,7 @@
     ],
     "compilerOptions": {
         "lib": [
-            "ESNext"
+            "ESNext","ES2017"
         ],
         "module": "ESNext",
         "target": "ES6",

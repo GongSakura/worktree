@@ -20,9 +20,9 @@ import chalk from "chalk";
 
 export default new Command()
   .command("clone")
-  .summary("Clone and initialize\n\n")
+  .summary("Clone \n\n")
   .description(
-    `Clone a git repository, and initialize it as a multiple worktrees project.\n\n`
+    `Clone a git repository, and initialize it as a worktree project.\n\n`
   )
   .argument("<repo>", "The url of a git repository.")
   .argument(

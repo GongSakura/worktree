@@ -70,13 +70,13 @@ function inspectPotentialWorktrees(context: any, next: CallableFunction) {
       const idx = gitDirPath.lastIndexOf("/.git/worktrees");
       if (idx !== -1) {
         const key = gitDirPath.substring(0, idx);
-        if (Object.hasOwn(multiRepoWorktrees, key)) {
+        if (multiRepoWorktrees.hasOwnProperty(key)) {
           multiRepoWorktrees[key].push(_path);
         } else {
           multiRepoWorktrees[key] = [_path];
         }
       } else if (
-        !Object.hasOwn(multiRepoWorktrees, gitDirPath.replace(/\/.git/, ""))
+        !multiRepoWorktrees.hasOwnProperty(gitDirPath.replace(/\/.git/, ""))
       ) {
         // main worktree path as the key
         multiRepoWorktrees[gitDirPath] = [];
