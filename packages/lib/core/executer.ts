@@ -1,13 +1,13 @@
-import type { Processor } from "../utils/types";
+import type { IProcessor } from "../utils/types";
 
 
 /**
  * middleware executor
  */
 export default class Executer {
-  private inputs: Processor[];
+  private inputs: IProcessor[];
   private isDone: boolean;
-  constructor(inputs: Processor[]) {
+  constructor(inputs: IProcessor[]) {
     this.inputs = inputs.reverse();
     this.isDone = false;
   }
@@ -15,7 +15,7 @@ export default class Executer {
   run(context: any = {}, done?: CallableFunction) {
     const next = () => {
       if (this.inputs.length) {
-        const fn = this.inputs.pop() as Processor;
+        const fn = this.inputs.pop() as IProcessor;
         fn(context, next);
       } else if (!this.isDone && done) {
         done();

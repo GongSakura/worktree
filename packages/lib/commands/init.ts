@@ -3,7 +3,7 @@
  *   wt init <path>
  * ===================
  */
-import * as path from "node:path";
+import * as path from "path";
 import { Command } from "commander";
 import {
   Executer,
@@ -12,17 +12,18 @@ import {
   CheckProcessor,
   ErrorProcessor,
 } from "../core";
+import chalk from "chalk";
 
 export default new Command()
   .command("init")
   .aliases(["i"])
-  .summary("Initialize a multiple worktrees repository.\n\n")
+  .summary("Create a worktree project and init a Git repository.\n\n")
   .description(
-    `Initialize a multiple worktrees repository that leverages the workspace from VScode.\n\nThe options will be used in "git init".`
+    `To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init\n\n".`
   )
   .option(
     "--branch [branch-name]",
-    ":: The specified name for the initial branch in the newly created repository.\n\n"
+    ":: The specified name for the initial branch in the newly created git repository.\n\n"
   )
   .helpOption("-h, --help", "Display help for command")
   .argument(
@@ -34,7 +35,7 @@ export default new Command()
     const context = {
       command: {
         options: this.opts(),
-        arugments: {
+        arguments: {
           directory: path.resolve(this.processedArgs[0]),
         },
       },
@@ -54,6 +55,10 @@ export default new Command()
 
     const executer = new Executer(processes);
     executer.run(context, () => {
-      console.log("DONE");
+      console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt init ${context.command.arguments.directory}`}
+      `);
     });
   });

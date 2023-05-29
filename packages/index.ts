@@ -19,8 +19,8 @@ main
   .version("1.0.0")
   .addHelpCommand("help [command]", "Show command details")
   .addCommand(initCommand)
+  .addCommand(cloneCommand)
   .addCommand(addCommand)
   .addCommand(removeCommand)
   .addCommand(updateCommand)
-  .addCommand(cloneCommand);
 main.parse(process.argv);

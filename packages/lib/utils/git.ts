@@ -1,5 +1,6 @@
-import { execSync } from "node:child_process";
-import { WorktreeConfig } from "./types";
+import { execSync } from "child_process";
+import * as path from "path";
+import { IWorktreeConfig } from "./types";
 
 export function getWorktrees(cwdPath: string): [string, string, string][] {
   const worktrees: [string, string, string][] = [];
@@ -27,7 +28,7 @@ export function checkIsWorktree(cwdPath: string): boolean {
   try {
     const output = execSync("git rev-parse --is-inside-work-tree ", {
       cwd: cwdPath,
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: "pipe",
     });
     return output.toString() ? true : false;
   } catch (error) {
@@ -38,7 +39,7 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
   try {
     return !execSync("git rev-parse --absolute-git-dir", {
       cwd: cwdPath,
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: "pipe",
     })
       .toString()
       .trim()
@@ -47,17 +48,17 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
     return false;
   }
 }
-export function enableWorktreeConfig(cwdPath: string) {
-  execSync("git config extensions.worktreeConfig true", {
-    stdio: "pipe",
-    cwd: cwdPath,
-  });
-}
+// export function enableWorktreeConfig(cwdPath: string) {
+//   execSync("git config extensions.worktreeConfig true", {
+//     stdio: "pipe",
+//     cwd: cwdPath,
+//   });
+// }
 
-export function getWorktreeConfiguration(cwdPath: string): WorktreeConfig {
-  const config: WorktreeConfig = {};
+export function getWorktreeConfiguration(cwdPath: string): IWorktreeConfig {
+  const config: IWorktreeConfig = {};
   try {
-    const stdout = execSync("git config --worktree --list", {
+    const stdout = execSync("git config --list", {
       cwd: cwdPath,
       stdio: "pipe",
     });
@@ -68,22 +69,20 @@ export function getWorktreeConfiguration(cwdPath: string): WorktreeConfig {
       .split("\n")
       .forEach((e) => {
         const [k, v] = e.split("=");
-        const idx = k.split(".").pop();
-        if (idx === "path") {
-          config[idx] = v;
+        if (k === "wt.config.path") {
+          config.path = v;
         }
       });
-  } catch (error: any) {
-    console.log("getWorktreeConfiguration", error?.stderr?.toString());
+  } finally {
+    return config;
   }
-  return config;
 }
 
 export function getGitDir(repoPath: string): string {
   try {
     const output = execSync("git rev-parse --absolute-git-dir ", {
       cwd: repoPath,
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: "pipe",
     });
     return output.toString().trim();
   } catch (error) {
@@ -103,7 +102,9 @@ export function checkIsGitDir(cwdPath: string): boolean {
     const output = execSync("git rev-parse --is-inside-git-dir ", {
       cwd: cwdPath,
       stdio: "pipe",
-    }).toString();
+    })
+      .toString()
+      .trim();
 
     return output === "true";
   } catch (error) {
@@ -114,12 +115,15 @@ export function checkIsGitDir(cwdPath: string): boolean {
 export function initBranch(repoPath: string) {
   execSync("echo > README.md", {
     cwd: repoPath,
+    stdio: "pipe",
   });
   execSync("git add README.md", {
     cwd: repoPath,
+    stdio: "pipe",
   });
   execSync('git commit -m"Initial commit"', {
     cwd: repoPath,
+    stdio: "pipe",
   });
 }
 export function getBranches(cwdPath: string): string[] {
@@ -144,5 +148,23 @@ export function getBranches(cwdPath: string): string[] {
   } catch (error) {
     console.info(`getBranches error:`, error);
     return [];
+  }
+}
+
+export function getGitRepoName(cwdPath: string) {
+  try {
+    return path
+      .normalize(
+        execSync("git remote show origin", {
+          cwd: cwdPath,
+          stdio: "pipe",
+        })
+          .toString()
+          .trim()
+      )
+      .split("/")
+      .pop();
+  } catch {
+    return cwdPath.trim().split("/").pop();
   }
 }

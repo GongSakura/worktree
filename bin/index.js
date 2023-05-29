@@ -3,12 +3,12 @@
 
 var require$$0 = require('events');
 var require$$1 = require('child_process');
-var require$$2 = require('path');
+var path$1 = require('path');
 var require$$3 = require('fs');
 var require$$4 = require('process');
-var path$1 = require('node:path');
-var node_child_process = require('node:child_process');
-var node_fs = require('node:fs');
+var process$2 = require('node:process');
+var os = require('node:os');
+var tty = require('node:tty');
 
 function _interopNamespaceDefault(e) {
 	var n = Object.create(null);
@@ -1141,7 +1141,7 @@ suggestSimilar$2.suggestSimilar = suggestSimilar$1;
 
 const EventEmitter = require$$0.EventEmitter;
 const childProcess = require$$1;
-const path = require$$2;
+const path = path$1;
 const fs = require$$3;
 const process$1 = require$$4;
 
@@ -3331,7 +3331,6 @@ command.Command = Command$1;
 	 */
 
 	exports = module.exports = new Command();
-	exports.default = Command;
 	exports.program = exports; // More explicit access to global command.
 	// Implicit export of createArgument, createCommand, and createOption.
 
@@ -3391,7 +3390,7 @@ class Executer {
 
 function getWorktrees(cwdPath) {
     const worktrees = [];
-    node_child_process.execSync("git worktree list", {
+    require$$1.execSync("git worktree list", {
         cwd: cwdPath,
         stdio: "pipe",
     })
@@ -3413,9 +3412,9 @@ function getWorktrees(cwdPath) {
 }
 function checkIsWorktree(cwdPath) {
     try {
-        const output = node_child_process.execSync("git rev-parse --is-inside-work-tree ", {
+        const output = require$$1.execSync("git rev-parse --is-inside-work-tree ", {
             cwd: cwdPath,
-            stdio: ["ignore", "pipe", "ignore"],
+            stdio: "pipe",
         });
         return output.toString() ? true : false;
     }
@@ -3423,31 +3422,16 @@ function checkIsWorktree(cwdPath) {
         return false;
     }
 }
-function checkIsMainWorktree(cwdPath) {
-    try {
-        return !node_child_process.execSync("git rev-parse --absolute-git-dir", {
-            cwd: cwdPath,
-            stdio: ["ignore", "pipe", "ignore"],
-        })
-            .toString()
-            .trim()
-            .includes(".git/worktree/");
-    }
-    catch (error) {
-        return false;
-    }
-}
-function enableWorktreeConfig(cwdPath) {
-    node_child_process.execSync("git config extensions.worktreeConfig true", {
-        stdio: "pipe",
-        cwd: cwdPath,
-    });
-}
+// export function enableWorktreeConfig(cwdPath: string) {
+//   execSync("git config extensions.worktreeConfig true", {
+//     stdio: "pipe",
+//     cwd: cwdPath,
+//   });
+// }
 function getWorktreeConfiguration(cwdPath) {
-    var _a;
     const config = {};
     try {
-        const stdout = node_child_process.execSync("git config --worktree --list", {
+        const stdout = require$$1.execSync("git config --list", {
             cwd: cwdPath,
             stdio: "pipe",
         });
@@ -3457,22 +3441,20 @@ function getWorktreeConfiguration(cwdPath) {
             .split("\n")
             .forEach((e) => {
             const [k, v] = e.split("=");
-            const idx = k.split(".").pop();
-            if (idx === "path") {
-                config[idx] = v;
+            if (k === "wt.config.path") {
+                config.path = v;
             }
         });
     }
-    catch (error) {
-        console.log("getWorktreeConfiguration", (_a = error === null || error === void 0 ? void 0 : error.stderr) === null || _a === void 0 ? void 0 : _a.toString());
+    finally {
+        return config;
     }
-    return config;
 }
 function getGitDir(repoPath) {
     try {
-        const output = node_child_process.execSync("git rev-parse --absolute-git-dir ", {
+        const output = require$$1.execSync("git rev-parse --absolute-git-dir ", {
             cwd: repoPath,
-            stdio: ["ignore", "pipe", "ignore"],
+            stdio: "pipe",
         });
         return output.toString().trim();
     }
@@ -3482,10 +3464,12 @@ function getGitDir(repoPath) {
 }
 function checkIsGitDir(cwdPath) {
     try {
-        const output = node_child_process.execSync("git rev-parse --is-inside-git-dir ", {
+        const output = require$$1.execSync("git rev-parse --is-inside-git-dir ", {
             cwd: cwdPath,
             stdio: "pipe",
-        }).toString();
+        })
+            .toString()
+            .trim();
         return output === "true";
     }
     catch (error) {
@@ -3493,20 +3477,23 @@ function checkIsGitDir(cwdPath) {
     }
 }
 function initBranch(repoPath) {
-    node_child_process.execSync("echo > README.md", {
+    require$$1.execSync("echo > README.md", {
         cwd: repoPath,
+        stdio: "pipe",
     });
-    node_child_process.execSync("git add README.md", {
+    require$$1.execSync("git add README.md", {
         cwd: repoPath,
+        stdio: "pipe",
     });
-    node_child_process.execSync('git commit -m"Initial commit"', {
+    require$$1.execSync('git commit -m"Initial commit"', {
         cwd: repoPath,
+        stdio: "pipe",
     });
 }
 function getBranches(cwdPath) {
     try {
         const branches = [];
-        node_child_process.execSync("git branch -a", {
+        require$$1.execSync("git branch -a", {
             cwd: cwdPath,
             stdio: "pipe",
         })
@@ -3530,31 +3517,26 @@ function getBranches(cwdPath) {
 }
 
 function cloneRepository(context, next) {
-    try {
-        const repoURL = context.command.arguments.repoURL;
-        const repoPath = context.command.arguments.directory;
-        const command = `git clone ${repoURL} ${repoPath}`;
-        node_child_process.execSync(command, {
-            stdio: "inherit",
-        });
-        enableWorktreeConfig(repoPath);
-        context.worktrees = getWorktrees(repoPath).reverse();
-        context.gitDir = getGitDir(repoPath);
-        next();
-    }
-    catch (error) {
-    }
+    const repoURL = context.command.arguments.repoURL;
+    const repoPath = context.command.arguments.directory;
+    const command = `git clone ${repoURL} ${repoPath}`;
+    require$$1.execSync(command, {
+        stdio: "inherit",
+    });
+    context.worktrees = getWorktrees(repoPath).reverse();
+    context.gitDir = getGitDir(repoPath);
+    next();
 }
 function initRepository(context, next) {
     var _a, _b, _c, _d;
     const repoPath = context.cwd;
+    const repoName = context.cwd.split("/").pop();
     const command = "git init " +
         (((_b = (_a = context.command) === null || _a === void 0 ? void 0 : _a.options) === null || _b === void 0 ? void 0 : _b.branch)
             ? `-b ${(_d = (_c = context.command) === null || _c === void 0 ? void 0 : _c.options) === null || _d === void 0 ? void 0 : _d.branch} `
             : " ") +
         repoPath;
-    node_child_process.execSync(command, { stdio: "pipe" });
-    enableWorktreeConfig(repoPath);
+    require$$1.execSync(command, { stdio: "pipe" });
     const worktrees = getWorktrees(repoPath);
     const branches = getBranches(worktrees[0][0]);
     if (!branches.length) {
@@ -3562,23 +3544,25 @@ function initRepository(context, next) {
         branches.push(worktrees[0][2]);
     }
     context.branches = branches;
+    context.repoName = repoName;
     context.worktrees = worktrees.reverse();
     context.gitDir = getGitDir(repoPath);
     next();
 }
 function configWorktree(context, next) {
-    const configPath = context.config.projectConfigPath;
-    context.worktrees.forEach((worktree) => {
+    if (context.worktrees.length) {
+        const configPath = context.config.projectConfigPath;
+        const mainWorktree = context.worktrees.slice(-1)[0];
         try {
-            node_child_process.execSync("git config --worktree wt.config.path " + configPath, {
-                cwd: worktree[0],
+            require$$1.execSync("git config --local wt.config.path " + configPath, {
+                cwd: mainWorktree[0],
                 stdio: "pipe",
             });
         }
         catch (error) {
             throw error;
         }
-    });
+    }
     next();
 }
 function addWorktree(context, next) {
@@ -3586,15 +3570,15 @@ function addWorktree(context, next) {
     const branchName = context.command.arguments.branchName;
     const commitHash = ((_a = context.command.options) === null || _a === void 0 ? void 0 : _a.base) || "";
     const newWorktreePath = path__namespace.resolve(context.config.projectPath, branchName);
-    const allBranches = new Set(getBranches(context.config.mainWorktreePath));
+    const allBranches = new Set(getBranches(context.config.worktreePath));
     const command = "git worktree add " +
         (allBranches.has(branchName)
             ? commitHash
                 ? `${newWorktreePath} ${commitHash}`
                 : `${newWorktreePath} ${branchName}`
             : `-b ${branchName} ${newWorktreePath} ${commitHash}`);
-    node_child_process.execSync(command, {
-        cwd: context.config.mainWorktreePath,
+    require$$1.execSync(command, {
+        cwd: context.config.worktreePath,
         stdio: "pipe",
     });
     context.worktrees = getWorktrees(context.config.worktreePath).reverse();
@@ -3605,17 +3589,17 @@ function removeWorktree(context, next) {
     const branchName = context.command.arguments.branchName;
     const deleteWorktree = context.codeWorkspace.folders.find((e) => (e === null || e === void 0 ? void 0 : e.name) == branchName);
     if (deleteWorktree === null || deleteWorktree === void 0 ? void 0 : deleteWorktree.path) {
-        node_child_process.execSync("git worktree remove -f " + deleteWorktree.path, {
-            cwd: context.config.mainWorktreePath,
+        require$$1.execSync("git worktree remove -f " + deleteWorktree.path, {
+            cwd: context.config.worktreePath,
             stdio: "pipe",
         });
-    }
-    const isDeleteBranch = (_a = context.command.options) === null || _a === void 0 ? void 0 : _a.force;
-    if (isDeleteBranch) {
-        node_child_process.execSync("git branch -D " + branchName, {
-            cwd: context.config.mainWorktreePath,
-            stdio: "pipe",
-        });
+        const isDeleteBranch = (_a = context.command.options) === null || _a === void 0 ? void 0 : _a.force;
+        if (isDeleteBranch) {
+            require$$1.execSync("git branch -D " + branchName, {
+                cwd: context.config.worktreePath,
+                stdio: "pipe",
+            });
+        }
     }
     context.worktrees = getWorktrees(context.config.worktreePath).reverse();
     next();
@@ -3627,7 +3611,7 @@ function repairWorktree(context, next) {
         return `${prev} ${cur[0]}`;
     }, "");
     try {
-        node_child_process.execSync("git worktree repair " + linkedWorktreePaths, {
+        require$$1.execSync("git worktree repair " + linkedWorktreePaths, {
             cwd: mainWorktreePath,
             stdio: "pipe",
         });
@@ -3655,7 +3639,7 @@ var PROJECT_FILES;
 
 function getProjectFile(cwdPath, name) {
     try {
-        return JSON.parse(node_fs.readFileSync(path__namespace.resolve(cwdPath, name)).toString());
+        return JSON.parse(require$$3.readFileSync(path__namespace.resolve(cwdPath, name)).toString());
     }
     catch (error) {
         return {};
@@ -3664,7 +3648,8 @@ function getProjectFile(cwdPath, name) {
 function getConfigs(cwdPath) {
     const projectConfig = getProjectFile(cwdPath, PROJECT_FILES.CONFIGURATION);
     let worktreeConfig = {};
-    if (!projectConfig.mainWorktreePath) {
+    const entries = Object.entries(projectConfig);
+    if (!entries.length) {
         worktreeConfig = getWorktreeConfiguration(cwdPath);
         if (!worktreeConfig.path) {
             throw new Error("Current working directory has not been initialized");
@@ -3680,7 +3665,7 @@ function checkArePathsIdentical(...paths) {
     let flag;
     for (const p of paths) {
         try {
-            const stat = node_fs.statSync(p);
+            const stat = require$$3.statSync(p);
             if (!flag) {
                 flag = stat.ino;
             }
@@ -3695,9 +3680,9 @@ function checkArePathsIdentical(...paths) {
     return true;
 }
 function checkIsPathCaseSensitive() {
-    const path = node_fs.mkdtempSync("_");
+    const path = require$$3.mkdtempSync("_");
     try {
-        const stat = node_fs.statSync(path.toUpperCase());
+        const stat = require$$3.statSync(path.toUpperCase());
         return !stat.isDirectory();
     }
     catch (error) {
@@ -3705,7 +3690,7 @@ function checkIsPathCaseSensitive() {
         return true;
     }
     finally {
-        node_fs.rmdirSync(path);
+        require$$3.rmdirSync(path);
     }
 }
 function normalizePath(path) {
@@ -3745,11 +3730,10 @@ function initDirectory(context, next) {
         // if new path is existed, then skip
         let newPathStat;
         try {
-            newPathStat = node_fs.statSync(newPath);
+            newPathStat = require$$3.statSync(newPath);
         }
         catch (error) { }
         if (newPathStat) {
-            console.log("path exited, cannot move to ...");
             continue;
         }
         // hoist linked worktrees
@@ -3758,8 +3742,8 @@ function initDirectory(context, next) {
                 // FIXME: have not decided to use hardlink or directly move the linked worktrees
                 // outside the current work directory
                 newPath.startsWith(parentPath)
-                    ? node_fs.renameSync(oldPath, newPath)
-                    : node_fs.linkSync(oldPath, newPath);
+                    ? require$$3.renameSync(oldPath, newPath)
+                    : require$$3.linkSync(oldPath, newPath);
             }
             catch (error) {
                 console.log("renameSync", error);
@@ -3778,20 +3762,20 @@ function initDirectory(context, next) {
             const isGitDirSibling = !checkArePathsIdentical(oldParentPath, parentPath);
             const isGitDirOutside = parentPath !== gitDirDirname && parentPath.startsWith(gitDirDirname);
             if (isGitDirSibling) {
-                node_fs.renameSync(oldParentPath, newPath);
+                require$$3.renameSync(oldParentPath, newPath);
             }
             else {
-                node_fs.mkdirSync(newPath);
+                require$$3.mkdirSync(newPath);
             }
-            node_fs.readdirSync(parentPath).forEach((file) => {
+            require$$3.readdirSync(parentPath).forEach((file) => {
                 const filePath = normalizePath(path__namespace.resolve(parentPath, file));
                 if (!IGNORE_FILES.has(file) && !excludedPaths.has(filePath)) {
-                    node_fs.renameSync(path__namespace.resolve(parentPath, file), path__namespace.resolve(newPath, file));
+                    require$$3.renameSync(path__namespace.resolve(parentPath, file), path__namespace.resolve(newPath, file));
                 }
             });
-            node_fs.renameSync(gitDirPath, newPath + "/.git");
+            require$$3.renameSync(gitDirPath, newPath + "/.git");
             if (isGitDirSibling || isGitDirOutside) {
-                node_fs.rmSync(parentPath + "/.git");
+                require$$3.rmSync(parentPath + "/.git");
             }
         }
     }
@@ -3802,13 +3786,15 @@ function createProjectCodeWorkspace(context, next) {
     const cwd = context.cwd;
     const codeWorkSpacePath = path__namespace.resolve(cwd, PROJECT_FILES.CODE_WORKSPACE);
     const codeWorkSpace = {};
-    codeWorkSpace.folders = context.worktrees.map((e) => {
-        return {
-            name: e[2],
-            path: e[0],
-        };
-    });
-    node_fs.writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
+    if (context === null || context === void 0 ? void 0 : context.worktrees.length) {
+        codeWorkSpace.folders = context.worktrees.map((e) => {
+            return {
+                name: e[2],
+                path: e[0],
+            };
+        });
+    }
+    require$$3.writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
         mode: 0o777,
         encoding: "utf-8",
         flag: "w",
@@ -3825,7 +3811,7 @@ function updateProjectCodeWorkspace(context, next) {
             path: e[0],
         };
     });
-    node_fs.writeFileSync(workspacePath, JSON.stringify(workspaceFile), {
+    require$$3.writeFileSync(workspacePath, JSON.stringify(workspaceFile), {
         mode: 0o777,
         encoding: "utf-8",
         flag: "w",
@@ -3836,25 +3822,20 @@ function updateProjectCodeWorkspace(context, next) {
     next();
 }
 function createProjectConfiguration(context, next) {
+    var _a;
     const cwd = context.cwd;
-    const projectConfigPath = path__namespace.resolve(cwd, "wt.config.json");
-    const v = context.worktrees.reduce((prev, cur) => {
-        prev.push(cur[0]);
-        return prev;
-    }, []);
-    const config = {
-        mainWorktreePath: v.pop(),
-        linkedWorktreePaths: v,
-    };
-    try {
-        node_fs.writeFileSync(projectConfigPath, JSON.stringify(config, null, 2), {
+    const projectConfigPath = path__namespace.resolve(cwd, PROJECT_FILES.CONFIGURATION);
+    const repoName = context === null || context === void 0 ? void 0 : context.repoName;
+    if (((_a = context === null || context === void 0 ? void 0 : context.worktrees) === null || _a === void 0 ? void 0 : _a.length) && repoName) {
+        const mainWorktree = context.worktrees.slice(-1)[0];
+        const config = {
+            [repoName]: mainWorktree[0],
+        };
+        require$$3.writeFileSync(projectConfigPath, JSON.stringify(config, null, 2), {
             mode: 0o777,
             encoding: "utf-8",
             flag: "w",
         });
-    }
-    catch (error) {
-        console.info(`createConfiguration error:`, error);
     }
     context.config = {
         projectConfigPath,
@@ -3863,19 +3844,17 @@ function createProjectConfiguration(context, next) {
 }
 // FIXME: overwrite the configuration each time
 function updateProjectConfiguration(context, next) {
-    const v = context.worktrees.reduce((prev, cur) => {
-        prev.push(cur[0]);
-        return prev;
-    }, []);
-    const config = {
-        mainWorktreePath: v.pop(),
-        linkedWorktreePaths: v,
-    };
-    node_fs.writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
-        mode: 0o777,
-        encoding: "utf-8",
-        flag: "w",
-    });
+    var _a;
+    if ((_a = context === null || context === void 0 ? void 0 : context.worktrees) === null || _a === void 0 ? void 0 : _a.length) {
+        const config = {
+            [context.repoName]: context.worktrees.slice(-1)[0][0],
+        };
+        require$$3.writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
+            mode: 0o777,
+            encoding: "utf-8",
+            flag: "w",
+        });
+    }
     next();
 }
 var FileProcessor = {
@@ -3886,15 +3865,641 @@ var FileProcessor = {
     updateProjectConfiguration,
 };
 
+const ANSI_BACKGROUND_OFFSET = 10;
+
+const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
+
+const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
+
+const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
+
+const styles$1 = {
+	modifier: {
+		reset: [0, 0],
+		// 21 isn't widely supported and 22 does the same thing
+		bold: [1, 22],
+		dim: [2, 22],
+		italic: [3, 23],
+		underline: [4, 24],
+		overline: [53, 55],
+		inverse: [7, 27],
+		hidden: [8, 28],
+		strikethrough: [9, 29],
+	},
+	color: {
+		black: [30, 39],
+		red: [31, 39],
+		green: [32, 39],
+		yellow: [33, 39],
+		blue: [34, 39],
+		magenta: [35, 39],
+		cyan: [36, 39],
+		white: [37, 39],
+
+		// Bright color
+		blackBright: [90, 39],
+		gray: [90, 39], // Alias of `blackBright`
+		grey: [90, 39], // Alias of `blackBright`
+		redBright: [91, 39],
+		greenBright: [92, 39],
+		yellowBright: [93, 39],
+		blueBright: [94, 39],
+		magentaBright: [95, 39],
+		cyanBright: [96, 39],
+		whiteBright: [97, 39],
+	},
+	bgColor: {
+		bgBlack: [40, 49],
+		bgRed: [41, 49],
+		bgGreen: [42, 49],
+		bgYellow: [43, 49],
+		bgBlue: [44, 49],
+		bgMagenta: [45, 49],
+		bgCyan: [46, 49],
+		bgWhite: [47, 49],
+
+		// Bright color
+		bgBlackBright: [100, 49],
+		bgGray: [100, 49], // Alias of `bgBlackBright`
+		bgGrey: [100, 49], // Alias of `bgBlackBright`
+		bgRedBright: [101, 49],
+		bgGreenBright: [102, 49],
+		bgYellowBright: [103, 49],
+		bgBlueBright: [104, 49],
+		bgMagentaBright: [105, 49],
+		bgCyanBright: [106, 49],
+		bgWhiteBright: [107, 49],
+	},
+};
+
+Object.keys(styles$1.modifier);
+const foregroundColorNames = Object.keys(styles$1.color);
+const backgroundColorNames = Object.keys(styles$1.bgColor);
+[...foregroundColorNames, ...backgroundColorNames];
+
+function assembleStyles() {
+	const codes = new Map();
+
+	for (const [groupName, group] of Object.entries(styles$1)) {
+		for (const [styleName, style] of Object.entries(group)) {
+			styles$1[styleName] = {
+				open: `\u001B[${style[0]}m`,
+				close: `\u001B[${style[1]}m`,
+			};
+
+			group[styleName] = styles$1[styleName];
+
+			codes.set(style[0], style[1]);
+		}
+
+		Object.defineProperty(styles$1, groupName, {
+			value: group,
+			enumerable: false,
+		});
+	}
+
+	Object.defineProperty(styles$1, 'codes', {
+		value: codes,
+		enumerable: false,
+	});
+
+	styles$1.color.close = '\u001B[39m';
+	styles$1.bgColor.close = '\u001B[49m';
+
+	styles$1.color.ansi = wrapAnsi16();
+	styles$1.color.ansi256 = wrapAnsi256();
+	styles$1.color.ansi16m = wrapAnsi16m();
+	styles$1.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
+	styles$1.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
+	styles$1.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
+
+	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
+	Object.defineProperties(styles$1, {
+		rgbToAnsi256: {
+			value(red, green, blue) {
+				// We use the extended greyscale palette here, with the exception of
+				// black and white. normal palette only has 4 greyscale shades.
+				if (red === green && green === blue) {
+					if (red < 8) {
+						return 16;
+					}
+
+					if (red > 248) {
+						return 231;
+					}
+
+					return Math.round(((red - 8) / 247) * 24) + 232;
+				}
+
+				return 16
+					+ (36 * Math.round(red / 255 * 5))
+					+ (6 * Math.round(green / 255 * 5))
+					+ Math.round(blue / 255 * 5);
+			},
+			enumerable: false,
+		},
+		hexToRgb: {
+			value(hex) {
+				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
+				if (!matches) {
+					return [0, 0, 0];
+				}
+
+				let [colorString] = matches;
+
+				if (colorString.length === 3) {
+					colorString = [...colorString].map(character => character + character).join('');
+				}
+
+				const integer = Number.parseInt(colorString, 16);
+
+				return [
+					/* eslint-disable no-bitwise */
+					(integer >> 16) & 0xFF,
+					(integer >> 8) & 0xFF,
+					integer & 0xFF,
+					/* eslint-enable no-bitwise */
+				];
+			},
+			enumerable: false,
+		},
+		hexToAnsi256: {
+			value: hex => styles$1.rgbToAnsi256(...styles$1.hexToRgb(hex)),
+			enumerable: false,
+		},
+		ansi256ToAnsi: {
+			value(code) {
+				if (code < 8) {
+					return 30 + code;
+				}
+
+				if (code < 16) {
+					return 90 + (code - 8);
+				}
+
+				let red;
+				let green;
+				let blue;
+
+				if (code >= 232) {
+					red = (((code - 232) * 10) + 8) / 255;
+					green = red;
+					blue = red;
+				} else {
+					code -= 16;
+
+					const remainder = code % 36;
+
+					red = Math.floor(code / 36) / 5;
+					green = Math.floor(remainder / 6) / 5;
+					blue = (remainder % 6) / 5;
+				}
+
+				const value = Math.max(red, green, blue) * 2;
+
+				if (value === 0) {
+					return 30;
+				}
+
+				// eslint-disable-next-line no-bitwise
+				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
+
+				if (value === 2) {
+					result += 60;
+				}
+
+				return result;
+			},
+			enumerable: false,
+		},
+		rgbToAnsi: {
+			value: (red, green, blue) => styles$1.ansi256ToAnsi(styles$1.rgbToAnsi256(red, green, blue)),
+			enumerable: false,
+		},
+		hexToAnsi: {
+			value: hex => styles$1.ansi256ToAnsi(styles$1.hexToAnsi256(hex)),
+			enumerable: false,
+		},
+	});
+
+	return styles$1;
+}
+
+const ansiStyles = assembleStyles();
+
+// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
+function hasFlag(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$2.argv) {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+}
+
+const {env} = process$2;
+
+let flagForceColor;
+if (
+	hasFlag('no-color')
+	|| hasFlag('no-colors')
+	|| hasFlag('color=false')
+	|| hasFlag('color=never')
+) {
+	flagForceColor = 0;
+} else if (
+	hasFlag('color')
+	|| hasFlag('colors')
+	|| hasFlag('color=true')
+	|| hasFlag('color=always')
+) {
+	flagForceColor = 1;
+}
+
+function envForceColor() {
+	if ('FORCE_COLOR' in env) {
+		if (env.FORCE_COLOR === 'true') {
+			return 1;
+		}
+
+		if (env.FORCE_COLOR === 'false') {
+			return 0;
+		}
+
+		return env.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env.FORCE_COLOR, 10), 3);
+	}
+}
+
+function translateLevel(level) {
+	if (level === 0) {
+		return false;
+	}
+
+	return {
+		level,
+		hasBasic: true,
+		has256: level >= 2,
+		has16m: level >= 3,
+	};
+}
+
+function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
+	const noFlagForceColor = envForceColor();
+	if (noFlagForceColor !== undefined) {
+		flagForceColor = noFlagForceColor;
+	}
+
+	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
+
+	if (forceColor === 0) {
+		return 0;
+	}
+
+	if (sniffFlags) {
+		if (hasFlag('color=16m')
+			|| hasFlag('color=full')
+			|| hasFlag('color=truecolor')) {
+			return 3;
+		}
+
+		if (hasFlag('color=256')) {
+			return 2;
+		}
+	}
+
+	// Check for Azure DevOps pipelines.
+	// Has to be above the `!streamIsTTY` check.
+	if ('TF_BUILD' in env && 'AGENT_NAME' in env) {
+		return 1;
+	}
+
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
+		return 0;
+	}
+
+	const min = forceColor || 0;
+
+	if (env.TERM === 'dumb') {
+		return min;
+	}
+
+	if (process$2.platform === 'win32') {
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+		const osRelease = os.release().split('.');
+		if (
+			Number(osRelease[0]) >= 10
+			&& Number(osRelease[2]) >= 10_586
+		) {
+			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
+		}
+
+		return 1;
+	}
+
+	if ('CI' in env) {
+		if ('GITHUB_ACTIONS' in env) {
+			return 3;
+		}
+
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+			return 1;
+		}
+
+		return min;
+	}
+
+	if ('TEAMCITY_VERSION' in env) {
+		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+	}
+
+	if (env.COLORTERM === 'truecolor') {
+		return 3;
+	}
+
+	if (env.TERM === 'xterm-kitty') {
+		return 3;
+	}
+
+	if ('TERM_PROGRAM' in env) {
+		const version = Number.parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+		switch (env.TERM_PROGRAM) {
+			case 'iTerm.app': {
+				return version >= 3 ? 3 : 2;
+			}
+
+			case 'Apple_Terminal': {
+				return 2;
+			}
+			// No default
+		}
+	}
+
+	if (/-256(color)?$/i.test(env.TERM)) {
+		return 2;
+	}
+
+	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
+		return 1;
+	}
+
+	if ('COLORTERM' in env) {
+		return 1;
+	}
+
+	return min;
+}
+
+function createSupportsColor(stream, options = {}) {
+	const level = _supportsColor(stream, {
+		streamIsTTY: stream && stream.isTTY,
+		...options,
+	});
+
+	return translateLevel(level);
+}
+
+const supportsColor = {
+	stdout: createSupportsColor({isTTY: tty.isatty(1)}),
+	stderr: createSupportsColor({isTTY: tty.isatty(2)}),
+};
+
+// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
+function stringReplaceAll(string, substring, replacer) {
+	let index = string.indexOf(substring);
+	if (index === -1) {
+		return string;
+	}
+
+	const substringLength = substring.length;
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		returnValue += string.slice(endIndex, index) + substring + replacer;
+		endIndex = index + substringLength;
+		index = string.indexOf(substring, endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+function stringEncaseCRLFWithFirstIndex(string, prefix, postfix, index) {
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		const gotCR = string[index - 1] === '\r';
+		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
+		endIndex = index + 1;
+		index = string.indexOf('\n', endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+const {stdout: stdoutColor, stderr: stderrColor} = supportsColor;
+
+const GENERATOR = Symbol('GENERATOR');
+const STYLER = Symbol('STYLER');
+const IS_EMPTY = Symbol('IS_EMPTY');
+
+// `supportsColor.level` → `ansiStyles.color[name]` mapping
+const levelMapping = [
+	'ansi',
+	'ansi',
+	'ansi256',
+	'ansi16m',
+];
+
+const styles = Object.create(null);
+
+const applyOptions = (object, options = {}) => {
+	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
+		throw new Error('The `level` option should be an integer from 0 to 3');
+	}
+
+	// Detect level if not set manually
+	const colorLevel = stdoutColor ? stdoutColor.level : 0;
+	object.level = options.level === undefined ? colorLevel : options.level;
+};
+
+const chalkFactory = options => {
+	const chalk = (...strings) => strings.join(' ');
+	applyOptions(chalk, options);
+
+	Object.setPrototypeOf(chalk, createChalk.prototype);
+
+	return chalk;
+};
+
+function createChalk(options) {
+	return chalkFactory(options);
+}
+
+Object.setPrototypeOf(createChalk.prototype, Function.prototype);
+
+for (const [styleName, style] of Object.entries(ansiStyles)) {
+	styles[styleName] = {
+		get() {
+			const builder = createBuilder(this, createStyler(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
+			Object.defineProperty(this, styleName, {value: builder});
+			return builder;
+		},
+	};
+}
+
+styles.visible = {
+	get() {
+		const builder = createBuilder(this, this[STYLER], true);
+		Object.defineProperty(this, 'visible', {value: builder});
+		return builder;
+	},
+};
+
+const getModelAnsi = (model, level, type, ...arguments_) => {
+	if (model === 'rgb') {
+		if (level === 'ansi16m') {
+			return ansiStyles[type].ansi16m(...arguments_);
+		}
+
+		if (level === 'ansi256') {
+			return ansiStyles[type].ansi256(ansiStyles.rgbToAnsi256(...arguments_));
+		}
+
+		return ansiStyles[type].ansi(ansiStyles.rgbToAnsi(...arguments_));
+	}
+
+	if (model === 'hex') {
+		return getModelAnsi('rgb', level, type, ...ansiStyles.hexToRgb(...arguments_));
+	}
+
+	return ansiStyles[type][model](...arguments_);
+};
+
+const usedModels = ['rgb', 'hex', 'ansi256'];
+
+for (const model of usedModels) {
+	styles[model] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'color', ...arguments_), ansiStyles.color.close, this[STYLER]);
+				return createBuilder(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+
+	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
+	styles[bgModel] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler(getModelAnsi(model, levelMapping[level], 'bgColor', ...arguments_), ansiStyles.bgColor.close, this[STYLER]);
+				return createBuilder(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+}
+
+const proto = Object.defineProperties(() => {}, {
+	...styles,
+	level: {
+		enumerable: true,
+		get() {
+			return this[GENERATOR].level;
+		},
+		set(level) {
+			this[GENERATOR].level = level;
+		},
+	},
+});
+
+const createStyler = (open, close, parent) => {
+	let openAll;
+	let closeAll;
+	if (parent === undefined) {
+		openAll = open;
+		closeAll = close;
+	} else {
+		openAll = parent.openAll + open;
+		closeAll = close + parent.closeAll;
+	}
+
+	return {
+		open,
+		close,
+		openAll,
+		closeAll,
+		parent,
+	};
+};
+
+const createBuilder = (self, _styler, _isEmpty) => {
+	// Single argument is hot path, implicit coercion is faster than anything
+	// eslint-disable-next-line no-implicit-coercion
+	const builder = (...arguments_) => applyStyle(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
+
+	// We alter the prototype because we must return a function, but there is
+	// no way to create a function with a different prototype
+	Object.setPrototypeOf(builder, proto);
+
+	builder[GENERATOR] = self;
+	builder[STYLER] = _styler;
+	builder[IS_EMPTY] = _isEmpty;
+
+	return builder;
+};
+
+const applyStyle = (self, string) => {
+	if (self.level <= 0 || !string) {
+		return self[IS_EMPTY] ? '' : string;
+	}
+
+	let styler = self[STYLER];
+
+	if (styler === undefined) {
+		return string;
+	}
+
+	const {openAll, closeAll} = styler;
+	if (string.includes('\u001B')) {
+		while (styler !== undefined) {
+			// Replace any instances already present with a re-opening code
+			// otherwise only the part of the string until said closing code
+			// will be colored, and the rest will simply be 'plain'.
+			string = stringReplaceAll(string, styler.close, styler.open);
+
+			styler = styler.parent;
+		}
+	}
+
+	// We can move both next actions out of loop, because remaining actions in loop won't have
+	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
+	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
+	const lfIndex = string.indexOf('\n');
+	if (lfIndex !== -1) {
+		string = stringEncaseCRLFWithFirstIndex(string, closeAll, openAll, lfIndex);
+	}
+
+	return openAll + string + closeAll;
+};
+
+Object.defineProperties(createChalk.prototype, styles);
+
+const chalk = createChalk();
+createChalk({level: stderrColor ? stderrColor.level : 0});
+
 function captureError(context, next) {
-    var _a;
     try {
         next();
     }
     catch (error) {
         //TODO: To come up with a natty solution to show the error message
-        console.info(`error capture:\n`, (_a = error === null || error === void 0 ? void 0 : error.stderr) === null || _a === void 0 ? void 0 : _a.toString());
-        console.info(`error:`, error);
+        console.log(`
+  ${chalk.redBright("✗ ERROR INFO:")}
+
+    ${chalk.bold("::")} ${error.message}
+    `);
     }
 }
 var ErrorProcessor = {
@@ -3904,26 +4509,26 @@ var ErrorProcessor = {
 function checkInitPrerequisite(context, next) {
     const repoPath = context.cwd;
     if (checkIsGitDir(repoPath)) {
-        throw new Error("cannot initialize in a git directory");
-    }
-    // FIXME: deal with donot know if can initial inside a linked worktree
-    if (checkIsWorktree(repoPath)) {
-        context.isMainWorktree = checkIsMainWorktree(repoPath);
-    }
-    else {
-        context.isMainWorktree = true;
+        throw new Error(`Cannot create inside the ".Git" folder`);
     }
     next();
 }
+function checkClonePrerequisite(context, next) {
+    checkInitPrerequisite(context, next);
+}
 function checkAddPrerequisite(context, next) {
     const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
-    context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+    const repoInfo = Object.entries(projectConfig)[0][1];
+    context.config = {
+        projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? worktreeConfig.path
-            : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+            : path__namespace.resolve(context.cwd, "wt.config.json"),
+        projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? path__namespace.dirname(worktreeConfig.path)
-            : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
-            ? context.cwd
-            : projectConfig.mainWorktreePath });
+            : context.cwd,
+        worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path) ? context.cwd : repoInfo[1],
+        repoName: repoInfo[0],
+    };
     context.codeWorkspace = getProjectFile(context.config.projectPath, PROJECT_FILES.CODE_WORKSPACE);
     next();
 }
@@ -3932,41 +4537,35 @@ function checkRemovePrerequisite(context, next) {
 }
 function checkUpdatePrerequisite(context, next) {
     const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
+    const repoInfo = Object.entries(projectConfig)[0][1];
     context.config = Object.assign(Object.assign({}, projectConfig), { projectConfigPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? worktreeConfig.path
             : path__namespace.resolve(context.cwd, "wt.config.json"), projectPath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
             ? path__namespace.dirname(worktreeConfig.path)
-            : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
-            ? context.cwd
-            : projectConfig.mainWorktreePath });
+            : context.cwd, worktreePath: (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path) ? context.cwd : repoInfo[1], repoName: repoInfo[0] });
     next();
 }
 function inspectPotentialWorktrees(context, next) {
-    const files = node_fs.readdirSync(context.config.projectPath);
+    const files = require$$3.readdirSync(context.config.projectPath);
     // TODO: feature suppport multi-repo
     const multiRepoWorktrees = {};
     files.forEach((file) => {
         const _path = path__namespace.resolve(context.config.projectPath, file);
         if (checkIsWorktree(_path)) {
-            try {
-                const gitDirPath = getGitDir(_path);
-                const idx = gitDirPath.lastIndexOf("/.git/worktrees");
-                if (idx !== -1) {
-                    const key = gitDirPath.substring(0, idx);
-                    if (Object.hasOwn(multiRepoWorktrees, key)) {
-                        multiRepoWorktrees[key].push(_path);
-                    }
-                    else {
-                        multiRepoWorktrees[key] = [_path];
-                    }
+            const gitDirPath = getGitDir(_path);
+            const idx = gitDirPath.lastIndexOf("/.git/worktrees");
+            if (idx !== -1) {
+                const key = gitDirPath.substring(0, idx);
+                if (Object.hasOwn(multiRepoWorktrees, key)) {
+                    multiRepoWorktrees[key].push(_path);
                 }
-                else if (!Object.hasOwn(multiRepoWorktrees, gitDirPath.replace(/\/.git/, ""))) {
-                    // main worktree path as the key
-                    multiRepoWorktrees[gitDirPath] = [];
+                else {
+                    multiRepoWorktrees[key] = [_path];
                 }
             }
-            catch (error) {
-                console.info(`error:`, error);
+            else if (!Object.hasOwn(multiRepoWorktrees, gitDirPath.replace(/\/.git/, ""))) {
+                // main worktree path as the key
+                multiRepoWorktrees[gitDirPath] = [];
             }
         }
     });
@@ -3974,13 +4573,14 @@ function inspectPotentialWorktrees(context, next) {
     let worktrees = [];
     for (const [key, value] of Object.entries(multiRepoWorktrees)) {
         value.push(key);
-        worktrees = value.map(e => [e]);
+        worktrees = value.map((e) => [e]);
     }
     context.worktrees = worktrees;
     next();
 }
 var CheckProcessor = {
     checkInitPrerequisite,
+    checkClonePrerequisite,
     checkAddPrerequisite,
     checkRemovePrerequisite,
     checkUpdatePrerequisite,
@@ -3995,16 +4595,16 @@ var CheckProcessor = {
 var initCommand = new Command()
     .command("init")
     .aliases(["i"])
-    .summary("Initialize a multiple worktrees repository.\n\n")
-    .description(`Initialize a multiple worktrees repository that leverages the workspace from VScode.\n\nThe options will be used in "git init".`)
-    .option("--branch [branch-name]", ":: The specified name for the initial branch in the newly created repository.\n\n")
+    .summary("Create a worktree project and init a Git repository.\n\n")
+    .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init\n\n".`)
+    .option("--branch [branch-name]", ":: The specified name for the initial branch in the newly created git repository.\n\n")
     .helpOption("-h, --help", "Display help for command")
     .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
     .action(function () {
     const context = {
         command: {
             options: this.opts(),
-            arugments: {
+            arguments: {
                 directory: path__namespace.resolve(this.processedArgs[0]),
             },
         },
@@ -4022,7 +4622,11 @@ var initCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log("DONE");
+        console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt init ${context.command.arguments.directory}`}
+      `);
     });
 });
 
@@ -4035,7 +4639,9 @@ var addCommand = new Command()
     .command("add")
     .summary("Add a new linked worktree.\n")
     .description(`Create a linked worktree and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
-    .option("--base <commit-hash>", ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
+    .option("--base <commit-hash>", "If you want to log messages in two columns in the console, you can achieve this by formatting your log messages using tabs or fixed-width spacing. Here's an example of how you can achieve it"
+// ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
+)
     .helpOption("-h, --help", "Display help for command")
     .argument("<branch-name>", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
     .action(function () {
@@ -4052,13 +4658,14 @@ var addCommand = new Command()
         ErrorProcessor.captureError,
         CheckProcessor.checkAddPrerequisite,
         GitProcessor.addWorktree,
-        GitProcessor.configWorktree,
         FileProcessor.updateProjectCodeWorkspace,
-        FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log("done add");
+        console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+  ${chalk.bold("::")} ${`wt add ${context.command.arguments.branchName}`}
+      `);
     });
 });
 
@@ -4072,9 +4679,9 @@ var addCommand = new Command()
  */
 var removeCommand = new Command()
     .command("rm")
-    .aliases(["remove", "delete",])
-    .summary("remove a linked worktree.\n")
-    .description(`Remove a linked worktree`)
+    .aliases(["remove", "delete"])
+    .summary("Remove a linked worktree.\n")
+    .description(`To remove a linked worktree from the worktree project`)
     .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
     .helpOption("-h, --help", "Display help for command")
     .argument("<branch-name>", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
@@ -4093,11 +4700,14 @@ var removeCommand = new Command()
         CheckProcessor.checkRemovePrerequisite,
         GitProcessor.removeWorktree,
         FileProcessor.updateProjectCodeWorkspace,
-        FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.info(`done remove`);
+        console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt remove ${context.command.arguments.branchName}`}
+      `);
     });
 });
 
@@ -4127,7 +4737,13 @@ var updateCommand = new Command()
         FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context, () => console.log('done update'));
+    executer.run(context, () => {
+        console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt update`}
+      `);
+    });
 });
 
 /**
@@ -4141,7 +4757,7 @@ var updateCommand = new Command()
 var cloneCommand = new Command()
     .command("clone")
     .summary("Clone and initialize\n\n")
-    .description(`Clone the git repository, and initialize a multiple worktrees project.\n\n`)
+    .description(`Clone a git repository, and initialize it as a multiple worktrees project.\n\n`)
     .argument("<repo>", "The url of a git repository.")
     .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
     .action(function () {
@@ -4156,7 +4772,7 @@ var cloneCommand = new Command()
     };
     const processes = [
         ErrorProcessor.captureError,
-        CheckProcessor.checkInitPrerequisite,
+        CheckProcessor.checkClonePrerequisite,
         GitProcessor.cloneRepository,
         FileProcessor.initDirectory,
         FileProcessor.createProjectConfiguration,
@@ -4165,7 +4781,11 @@ var cloneCommand = new Command()
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-        console.log("DONE");
+        console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt clone ${context.command.arguments.repoURL}`}
+      `);
     });
 });
 
@@ -4176,8 +4796,9 @@ main
     .version("1.0.0")
     .addHelpCommand("help [command]", "Show command details")
     .addCommand(initCommand)
+    .addCommand(cloneCommand)
     .addCommand(addCommand)
     .addCommand(removeCommand)
-    .addCommand(updateCommand)
-    .addCommand(cloneCommand);
+    .addCommand(updateCommand);
 main.parse(process.argv);
+//# sourceMappingURL=index.js.map

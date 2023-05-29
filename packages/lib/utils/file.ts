@@ -4,9 +4,9 @@ import {
   readdirSync,
   rmdirSync,
   statSync,
-} from "node:fs";
-import * as path from "node:path";
-import { PROJECT_FILES, ProjectConfig, WorktreeConfig } from "./types";
+} from "fs";
+import * as path from "path";
+import { PROJECT_FILES, IProjectConfig, IWorktreeConfig } from "./types";
 import { getWorktreeConfiguration } from "./git";
 
 export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
@@ -16,13 +16,14 @@ export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
     return {};
   }
 }
-export function getConfigs(cwdPath: string): [ProjectConfig, WorktreeConfig] {
-  const projectConfig: ProjectConfig = getProjectFile(
+export function getConfigs(cwdPath: string): [IProjectConfig, IWorktreeConfig] {
+  const projectConfig: IProjectConfig = getProjectFile(
     cwdPath,
     PROJECT_FILES.CONFIGURATION
   );
-  let worktreeConfig: WorktreeConfig = {};
-  if (!projectConfig.mainWorktreePath) {
+  let worktreeConfig: IWorktreeConfig = {};
+  const entries = Object.entries(projectConfig)
+  if (!entries.length) {
     worktreeConfig = getWorktreeConfiguration(cwdPath);
     if (!worktreeConfig.path) {
       throw new Error("Current working directory has not been initialized");

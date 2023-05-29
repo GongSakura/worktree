@@ -15,6 +15,7 @@ import {
   CheckProcessor,
   GitProcessor,
 } from "../core";
+import chalk from "chalk";
 
 export default new Command()
   .command("update")
@@ -35,5 +36,11 @@ export default new Command()
       FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context,()=>console.log('done update'));
+    executer.run(context, () => {
+      console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt update`}
+      `);
+    });
   });

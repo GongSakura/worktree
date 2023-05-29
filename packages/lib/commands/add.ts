@@ -12,6 +12,7 @@ import {
   ErrorProcessor,
   CheckProcessor,
 } from "../core";
+import chalk from "chalk";
 
 export default new Command()
   .command("add")
@@ -21,7 +22,8 @@ export default new Command()
   )
   .option(
     "--base <commit-hash>",
-    ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
+    "If you want to log messages in two columns in the console, you can achieve this by formatting your log messages using tabs or fixed-width spacing. Here's an example of how you can achieve it"
+    // ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
   )
   .helpOption("-h, --help", "Display help for command")
   .argument(
@@ -43,12 +45,13 @@ export default new Command()
       ErrorProcessor.captureError,
       CheckProcessor.checkAddPrerequisite,
       GitProcessor.addWorktree,
-      GitProcessor.configWorktree,
       FileProcessor.updateProjectCodeWorkspace,
-      FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
-      console.log("done add");
+      console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+  ${chalk.bold("::")} ${`wt add ${context.command.arguments.branchName}`}
+      `);
     });
   });

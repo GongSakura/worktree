@@ -8,11 +8,13 @@ module.exports = {
   output: {
     dir: "bin",
     format: "cjs",
+    sourcemap:true,
   },
   plugins: [
-    commonjs(),
+    commonjs(
+    ),
     nodeResolve({
-      browser: false,
+      exportConditions:['node']
     }),
     typescript({
       compilerOptions: {

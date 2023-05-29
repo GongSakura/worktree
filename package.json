@@ -1,6 +1,6 @@
 {
   "name": "@kanamara/worktree",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "./bin/index.js",
   "keywords": [
     "git",
@@ -18,10 +18,7 @@
     "prepare":"node scripts/prepare.js",
     "dev": "rollup -c --watch"
   },
-  "devDependencies": {
-    "@babel/preset-env": "^7.21.5",
-    "@babel/preset-typescript": "^7.21.5",
-    "@rollup/plugin-babel": "^6.0.3",
+  "devDependencies": {    
     "@rollup/plugin-commonjs": "^25.0.0",
     "@rollup/plugin-node-resolve": "^15.0.2",
     "@rollup/plugin-typescript": "^11.1.1",

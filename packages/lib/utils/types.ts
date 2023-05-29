@@ -1,23 +1,22 @@
-export interface Processor {
+export interface IProcessor {
   (context: any, next: CallableFunction): void;
 }
 
-export interface Workspace {
+export interface IWorkspace {
   path?: string;
   name?: string;
 }
 
-export interface CodeWorkSpaceConfig {
-  folders: Workspace[];
+export interface ICodeWorkSpaceConfig {
+  folders: IWorkspace[];
 }
 
-export interface WorktreeConfig {
+export interface IWorktreeConfig {
   path?: string;
- 
 }
-export interface ProjectConfig {
-  mainWorktreePath?: string;
-  linkedWorktreePaths?: [];
+
+export interface IProjectConfig {
+  [key:string]:string
 }
 
 export enum PROJECT_FILES {
@@ -25,6 +24,6 @@ export enum PROJECT_FILES {
   CONFIGURATION = "wt.config.json",
 }
 
-export interface MultiRepoWorktreePaths{
-  [key:string]:string[]
+export interface IMultiRepoWorktreePaths {
+  [key: string]: string[];
 }

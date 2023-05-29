@@ -11,9 +11,9 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-} from "node:fs";
-import * as path from "node:path";
-import { CodeWorkSpaceConfig, PROJECT_FILES } from "../../utils/types";
+} from "fs";
+import * as path from "path";
+import { ICodeWorkSpaceConfig, PROJECT_FILES } from "../../utils/types";
 import {
   checkArePathsIdentical,
   checkIsDirectChildPath,
@@ -61,7 +61,6 @@ function initDirectory(context: any, next: CallableFunction) {
       newPathStat = statSync(newPath);
     } catch (error) {}
     if (newPathStat) {
-      console.log("path exited, cannot move to ...");
       continue;
     }
 
@@ -128,13 +127,15 @@ function initDirectory(context: any, next: CallableFunction) {
 function createProjectCodeWorkspace(context: any, next: CallableFunction) {
   const cwd = context.cwd;
   const codeWorkSpacePath = path.resolve(cwd, PROJECT_FILES.CODE_WORKSPACE);
-  const codeWorkSpace = {} as CodeWorkSpaceConfig;
-  codeWorkSpace.folders = context.worktrees.map((e: string[]) => {
-    return {
-      name: e[2],
-      path: e[0],
-    };
-  });
+  const codeWorkSpace = {} as ICodeWorkSpaceConfig;
+  if (context?.worktrees.length) {
+    codeWorkSpace.folders = context.worktrees.map((e: string[]) => {
+      return {
+        name: e[2],
+        path: e[0],
+      };
+    });
+  }
   writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
     mode: 0o777,
     encoding: "utf-8",
@@ -149,7 +150,7 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
     path.dirname(context.config.projectConfigPath),
     PROJECT_FILES.CODE_WORKSPACE
   );
-  const workspaceFile = {} as CodeWorkSpaceConfig;
+  const workspaceFile = {} as ICodeWorkSpaceConfig;
 
   workspaceFile.folders = context.worktrees.map((e: string[]) => {
     return {
@@ -172,26 +173,19 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
 
 function createProjectConfiguration(context: any, next: CallableFunction) {
   const cwd = context.cwd;
-  const projectConfigPath = path.resolve(cwd, "wt.config.json");
+  const projectConfigPath = path.resolve(cwd, PROJECT_FILES.CONFIGURATION);
+  const repoName = context?.repoName;
 
-  const v = context.worktrees.reduce((prev: string[], cur: string[]) => {
-    prev.push(cur[0]);
-    return prev;
-  }, []);
-
-  const config = {
-    mainWorktreePath: v.pop(),
-    linkedWorktreePaths: v,
-  };
-
-  try {
+  if (context?.worktrees?.length && repoName) {
+    const mainWorktree = context.worktrees.slice(-1)[0];
+    const config = {
+      [repoName]: mainWorktree[0],
+    };
     writeFileSync(projectConfigPath, JSON.stringify(config, null, 2), {
       mode: 0o777,
       encoding: "utf-8",
       flag: "w",
     });
-  } catch (error) {
-    console.info(`createConfiguration error:`, error);
   }
 
   context.config = {
@@ -202,21 +196,17 @@ function createProjectConfiguration(context: any, next: CallableFunction) {
 
 // FIXME: overwrite the configuration each time
 function updateProjectConfiguration(context: any, next: CallableFunction) {
-  const v = context.worktrees.reduce((prev: string[], cur: string[]) => {
-    prev.push(cur[0]);
-    return prev;
-  }, []);
+  if (context?.worktrees?.length) {
+    const config = {
+      [context.repoName]: context.worktrees.slice(-1)[0][0],
+    };
 
-  const config = {
-    mainWorktreePath: v.pop(),
-    linkedWorktreePaths: v,
-  };
-
-  writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
-    mode: 0o777,
-    encoding: "utf-8",
-    flag: "w",
-  });
+    writeFileSync(context.config.projectConfigPath, JSON.stringify(config), {
+      mode: 0o777,
+      encoding: "utf-8",
+      flag: "w",
+    });
+  }
 
   next();
 }

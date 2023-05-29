@@ -15,12 +15,13 @@ import {
   ErrorProcessor,
   CheckProcessor,
 } from "../core";
+import chalk from "chalk";
 
 export default new Command()
   .command("rm")
-  .aliases(["remove", "delete",])
-  .summary("remove a linked worktree.\n")
-  .description(`Remove a linked worktree`)
+  .aliases(["remove", "delete"])
+  .summary("Remove a linked worktree.\n")
+  .description(`To remove a linked worktree from the worktree project`)
   .option(
     "-f, --force",
     `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`
@@ -46,10 +47,13 @@ export default new Command()
       CheckProcessor.checkRemovePrerequisite,
       GitProcessor.removeWorktree,
       FileProcessor.updateProjectCodeWorkspace,
-      FileProcessor.updateProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context,()=>{
-      console.info(`done remove`)
+    executer.run(context, () => {
+      console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt remove ${context.command.arguments.branchName}`}
+      `);
     });
   });

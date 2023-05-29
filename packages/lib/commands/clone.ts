@@ -7,7 +7,7 @@
  *   wt clone <repo> <directory>
  * =============================
  */
-import * as path from "node:path";
+import * as path from "path";
 import { Command } from "commander";
 import {
   Executer,
@@ -16,12 +16,13 @@ import {
   CheckProcessor,
   ErrorProcessor,
 } from "../core";
+import chalk from "chalk";
 
 export default new Command()
   .command("clone")
   .summary("Clone and initialize\n\n")
   .description(
-    `Clone the git repository, and initialize a multiple worktrees project.\n\n`
+    `Clone a git repository, and initialize it as a multiple worktrees project.\n\n`
   )
   .argument("<repo>", "The url of a git repository.")
   .argument(
@@ -30,7 +31,6 @@ export default new Command()
     process.cwd()
   )
   .action(function () {
-   
     const context = {
       command: {
         arguments: {
@@ -43,7 +43,7 @@ export default new Command()
 
     const processes = [
       ErrorProcessor.captureError,
-      CheckProcessor.checkInitPrerequisite,
+      CheckProcessor.checkClonePrerequisite,
       GitProcessor.cloneRepository,
       FileProcessor.initDirectory,
       FileProcessor.createProjectConfiguration,
@@ -53,6 +53,10 @@ export default new Command()
 
     const executer = new Executer(processes);
     executer.run(context, () => {
-      console.log("DONE");
+      console.log(`
+${chalk.cyanBright.bold(`✔ DONE:`)}
+
+  ${chalk.bold("::")} ${`wt clone ${context.command.arguments.repoURL}`}
+      `);
     });
   });
