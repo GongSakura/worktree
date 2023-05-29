@@ -18,7 +18,7 @@ One window, all projects!
 <br/>
 
 ## Requirement
-- node version >=14
+- node version >=14.18.0
 
 <br/>
 

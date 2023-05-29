@@ -11,6 +11,7 @@ module.exports = {
     sourcemap:true,
   },
   plugins: [
+ 
     commonjs(
     ),
     nodeResolve({

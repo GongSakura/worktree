@@ -33,5 +33,9 @@
   },
   "bin": {
     "wt": "./bin/index.js"
+  },
+  "engines": {
+    "node": ">=v14.18.0"
+
   }
 }
