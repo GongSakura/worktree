@@ -2,8 +2,8 @@ import { execSync } from "node:child_process";
 
 import { IGitConfig, EGIT_CONFIGURATION } from "./types";
 
-export function getWorktrees(cwdPath: string): [string, string, string][] {
-  const worktrees: [string, string, string][] = [];
+export function getWorktrees(cwdPath: string): string[][] {
+  const worktrees: string[][] = [];
   execSync("git worktree list", {
     cwd: cwdPath,
     stdio: "pipe",

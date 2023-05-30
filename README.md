@@ -18,6 +18,7 @@ One window, all projects!
 <br/>
 
 ## Requirement
+
 - node version >=14.18.0 (Due to the prefix "node:" in internal modules)
 
 <br/>
@@ -73,11 +74,34 @@ To add a worktree based on \<branch-name\>.
 
 <br/>
 
+## Kind Reminder
 
-## Kindly reminder
 - This tool will generate some folders and configuration files to help you automatically manage your worktrees, please do not change the name of these files and folders. If you accidentally changed it, use "wt update" to repair it.
 
+- For convention, worktree directories inside a **single-repo** project are named after the \<branch-name\>
 
+  ```text
+  project(single-repo)/
+  ├─ <branch-name>/
+  ├─ <branch-name>/
+  ├─ ...
+  ├─ <branch-name>/
+  ├─ wt.config.json
+  ├─ wt.code-workspace
+  ```
+
+- If worktree directories are inside a **multi-repos** project, then named after \<repo-name\>#\<branch-name\>
+  ```text
+  project(multi-repos)/
+  ├─ <repo-name>#<branch-name>/
+  ├─ <repo-name>#<branch-name>/
+  ├─ ...
+  ├─ <repo-name>#<branch-name>/
+  ├─ wt.config.json
+  ├─ wt.code-workspace
+  ```
+
+<br/>
 
 ## Future support
 
@@ -85,6 +109,4 @@ To add a worktree based on \<branch-name\>.
 - TODO: Inquirer prompts for add/remove worktree
 - TODO: Elegant error handle
 
-
 <br/>
-

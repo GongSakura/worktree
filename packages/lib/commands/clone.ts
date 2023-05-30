@@ -46,8 +46,8 @@ export default new Command()
       CheckProcessor.checkClonePrerequisite,
       GitProcessor.cloneRepository,
       FileProcessor.initDirectory,
-      FileProcessor.createProjectConfiguration,
-      FileProcessor.createProjectCodeWorkspace,
+      FileProcessor.writeProjectConfiguration,
+      FileProcessor.writeProjectCodeWorkspace,
       GitProcessor.configWorktree,
     ];
 

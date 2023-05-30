@@ -47,8 +47,8 @@ export default new Command()
       GitProcessor.initRepository,
       FileProcessor.initDirectory,
       GitProcessor.repairWorktree,
-      FileProcessor.createProjectConfiguration,
-      FileProcessor.createProjectCodeWorkspace,
+      FileProcessor.writeProjectConfiguration,
+      FileProcessor.writeProjectCodeWorkspace,
       GitProcessor.configWorktree,
     ];
 

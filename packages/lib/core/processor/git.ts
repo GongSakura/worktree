@@ -11,9 +11,9 @@ import {
   getWorktrees,
   initBranch,
 } from "../../utils/git";
-import { IContext, IRepo, IWorkspace } from "../../utils/types";
+import { IContext, IRepo } from "../../utils/types";
 
-function cloneRepository(context: any, next: CallableFunction) {
+function cloneRepository(context: IContext, next: CallableFunction) {
   const repoURL = context.command.arguments.repoURL;
   const repoPath = context.command.arguments.directory;
   const repoName = repoURL
@@ -24,9 +24,14 @@ function cloneRepository(context: any, next: CallableFunction) {
   execSync(command, {
     stdio: "inherit",
   });
-  context.worktrees = getWorktrees(repoPath).reverse();
-  context.gitDir = getGitDir(repoPath);
-  context.repoName = repoName;
+  context.repos = [
+    {
+      name: repoName,
+      path: repoPath,
+      worktrees: getWorktrees(repoPath).reverse(),
+      gitDir: getGitDir(repoPath),
+    },
+  ];
   next();
 }
 
@@ -80,11 +85,12 @@ function configWorktree(context: any, next: CallableFunction) {
   }
 }
 
-function addWorktree(context: any, next: CallableFunction) {
+function addWorktree(context: IContext, next: CallableFunction) {
   const branchName = context.command.arguments.branchName;
   const commitHash = context.command.options?.base || "";
-  const newWorktreePath = path.resolve(context.projectPath, branchName);
-  const allBranches = new Set(getAllBranches(context.selectedRepo.path));
+  const newWorktreePath = path.resolve(context.projectPath!, branchName);
+  const mainWorktreePath = context.selectedRepo!.path!;
+  const allBranches = new Set(getAllBranches(mainWorktreePath));
 
   const command =
     "git worktree add " +
@@ -95,38 +101,34 @@ function addWorktree(context: any, next: CallableFunction) {
       : `-b ${branchName} ${newWorktreePath} ${commitHash}`);
 
   execSync(command, {
-    cwd: context.selectedRepo.path,
+    cwd: mainWorktreePath,
     stdio: "pipe",
   });
 
-  context.worktrees = getWorktrees(context.selectedRepo.path).reverse();
+  context.selectedRepo!.worktrees = getWorktrees(mainWorktreePath).reverse();
 
   next();
 }
 
-function removeWorktree(context: any, next: CallableFunction) {
-  const branchName = context.command.arguments.branchName;
-
-  const deleteWorktree = context.codeWorkspace.folders.find(
-    (e: IWorkspace) => e?.name == branchName
-  );
-
-  if (deleteWorktree?.path) {
-    execSync("git worktree remove -f " + deleteWorktree.path, {
-      cwd: context.config.worktreePath,
+function removeWorktree(context: IContext, next: CallableFunction) {
+  const [deleteWorktreePath, , branchName] = context.deleteWorktree!;
+  const mainWorktreePath = context.selectedRepo!.path!;
+  if (deleteWorktreePath) {
+    execSync("git worktree remove -f " + deleteWorktreePath, {
+      cwd: context.selectedRepo!.path!,
       stdio: "pipe",
     });
 
     const isDeleteBranch = context.command.options?.force;
     if (isDeleteBranch) {
       execSync("git branch -D " + branchName, {
-        cwd: context.config.worktreePath,
+        cwd: mainWorktreePath,
         stdio: "pipe",
       });
     }
   }
 
-  context.worktrees = getWorktrees(context.config.worktreePath).reverse();
+  context.selectedRepo!.worktrees = getWorktrees(mainWorktreePath).reverse();
   next();
 }
 function repairWorktree(context: IContext, next: CallableFunction) {

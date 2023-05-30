@@ -1,11 +1,11 @@
 /**
- * Handle "git worktree remove"
+ * Handle "git worktree repair"
  */
 
 /**
- * =============================================
+ * ===============
  *   wt update
- * =============================================
+ * ===============
  */
 import { Command } from "commander";
 import {
@@ -37,8 +37,8 @@ export default new Command()
       CheckProcessor.inspectPotentialWorktrees,
       FileProcessor.updateDirectory,
       GitProcessor.repairWorktree,
-      FileProcessor.updateProjectCodeWorkspace,
-      FileProcessor.updateProjectConfiguration,
+      FileProcessor.writeProjectCodeWorkspace,
+      FileProcessor.writeProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {

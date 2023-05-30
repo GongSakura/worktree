@@ -2,11 +2,12 @@ import * as path from "path";
 import {
   checkIsGitDir,
   checkIsWorktree,
-  getAllBranches,
+ 
   getCurrentBranch,
   getGitConfiguration,
   getGitDir,
   getUncheckoutBranches,
+  getWorktrees,
 } from "../../utils/git";
 import { getConfigs, getProjectFile } from "../../utils/file";
 import {
@@ -20,7 +21,10 @@ import {
 } from "../../utils/types";
 import { readdirSync } from "fs";
 import inquirer from "inquirer";
-import { selectBranchQuestion } from "../../utils/prompts";
+import {
+  selectBranchQuestion,
+  selectWorktreeQuestion,
+} from "../../utils/prompts";
 import { ErrorProcessor } from "..";
 
 function checkInitPrerequisite(context: any, next: CallableFunction) {
@@ -75,28 +79,23 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
 
   context.repos = projectConfig.repos;
   context.projectType = projectConfig.type;
-  context.codeWorkspace = getProjectFile(
-    context.projectPath,
-    EPROJECT_FILES.CODE_WORKSPACE
-  );
 
   if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
+    // TODO: multiple repo
     if (!context.command.options.repo) {
-      // TODO:
     }
-    // TODO:
   } else {
     context.selectedRepo = context.repos[0];
     if (!context.command.arguments.branchName) {
-      const uncheckoutBranches = getUncheckoutBranches(context.repos[0].path!);
+      const uncheckoutBranches = getUncheckoutBranches(
+        context.selectedRepo.path!
+      );
       if (!uncheckoutBranches.length) {
         throw new Error('The arugument "branch-name" is missing');
       }
 
       inquirer
-        .prompt(
-          selectBranchQuestion(getUncheckoutBranches(context.repos[0].path!))
-        )
+        .prompt(selectBranchQuestion(uncheckoutBranches))
         .then((answer) => {
           context.command.arguments.branchName = answer.branchName;
           next();
@@ -112,7 +111,7 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
   }
 }
 
-function checkRemovePrerequisite(context: any, next: CallableFunction) {
+function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
   const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
 
   if (!checkIsInsideProject([projectConfig, worktreeConfig])) {
@@ -122,6 +121,60 @@ function checkRemovePrerequisite(context: any, next: CallableFunction) {
       throw new Error(
         "The worktree project has not linked to any Git repository."
       );
+    } else {
+      throw new Error("The type of the worktree project isn't specified.");
+    }
+  }
+
+  context.projectConfig = projectConfig;
+  context.projectConfigPath = worktreeConfig?.path
+    ? worktreeConfig.path
+    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
+
+  context.projectPath = worktreeConfig?.path
+    ? path.dirname(worktreeConfig.path)
+    : context.cwd;
+
+  context.repos = projectConfig.repos;
+  context.projectType = projectConfig.type;
+
+  if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
+    // TODO: multiple repo
+    if (!context.command.options.repo) {
+    }
+  } else {
+    context.selectedRepo = context.repos[0];
+    if (!context.command.arguments.branchName) {
+      const worktrees: string[][] = getWorktrees(context.selectedRepo.path!).reverse();
+
+      // skip the main worktree
+      worktrees.pop();
+
+      inquirer
+        .prompt(
+          selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`))
+        )
+        .then((answer) => {
+          const [deleteWorktreePath, branchName] = answer.worktree.split(" ");
+          context.deleteWorktree = [
+            deleteWorktreePath,
+            "",
+            branchName.replace(/\[(.*?)\]/g, "$1"),
+          ];
+          next();
+        })
+        .catch((err) => {
+          ErrorProcessor.captureError(context, () => {
+            throw err;
+          });
+        });
+    } else {
+      context.deleteWorktree = [
+        path.resolve(context.projectPath, context.command.arguments.branchName),
+        ,
+        context.command.arguments.branchName,
+      ];
+      next();
     }
   }
 }
