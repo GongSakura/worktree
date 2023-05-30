@@ -1,16 +1,16 @@
 import {
   mkdtempSync,
   readFileSync,
-  readdirSync,
   rmdirSync,
   statSync,
+
 } from "fs";
 import * as path from "path";
 import { EPROJECT_FILES, IProjectConfig, IGitConfig } from "./types";
 import { getGitConfiguration } from "./git";
 
+
 export function getProjectFile(cwdPath: string, name: EPROJECT_FILES) {
-  
   try {
     return JSON.parse(readFileSync(path.resolve(cwdPath, name)).toString());
   } catch (error) {
@@ -66,3 +66,5 @@ export function normalizePath(rawPath: string) {
   }
   return path.normalize(rawPath.toLowerCase());
 }
+
+

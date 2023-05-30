@@ -20,8 +20,8 @@ function cloneRepository(context: IContext, next: CallableFunction) {
     .split("/")
     .pop()
     .replace(/\.git$/, "");
-  const command = `git clone ${repoURL} ${repoPath}`;
-  execSync(command, {
+
+  execSync(`git clone ${repoURL} ${repoPath}`, {
     stdio: "inherit",
   });
   context.repos = [
@@ -65,6 +65,29 @@ function initRepository(context: IContext, next: CallableFunction) {
 
   next();
 }
+function linkRepository(context: IContext, next: CallableFunction) {
+  if (context.command.arguments.repoURL[0] === "/") {
+    next();
+  } else {
+    const repoURL = context.command.arguments.repoURL;
+    const repoName = context.command.arguments.repoName;
+    const repoPath = path.resolve(context.projectPath!, `${repoName}#master`);
+    execSync(`git clone ${repoURL} ${repoPath}`, {
+      stdio: "inherit",
+    });
+    const repo: IRepo = {
+      name: repoName,
+      path: repoPath,
+      worktrees: getWorktrees(repoPath).reverse(),
+    };
+    if (Array.isArray(context.repos)) {
+      context.repos.push(repo);
+    } else {
+      context.repos = [repo];
+    }
+    next();
+  }
+}
 
 function configWorktree(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
@@ -107,10 +130,10 @@ function addWorktree(context: IContext, next: CallableFunction) {
 }
 
 function removeWorktree(context: IContext, next: CallableFunction) {
-  const [deleteWorktreePath, , branchName] = context.deleteWorktree!;
+  const [removeWorktreePath, , branchName] = context.removeWorktrees![0];
   const mainWorktreePath = context.selectedRepo!.path!;
-  if (deleteWorktreePath) {
-    execSync("git worktree remove -f " + deleteWorktreePath, {
+  if (removeWorktreePath) {
+    execSync("git worktree remove -f " + removeWorktreePath, {
       cwd: context.selectedRepo!.path!,
       stdio: "pipe",
     });
@@ -144,10 +167,10 @@ function repairWorktree(context: IContext, next: CallableFunction) {
   });
   next();
 }
-
 export default {
   cloneRepository,
   initRepository,
+  linkRepository,
   repairWorktree,
   configWorktree,
   addWorktree,

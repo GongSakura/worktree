@@ -9,11 +9,12 @@ export interface IContext {
   };
   cwd: string;
   repos?: IRepo[];
-  selectedRepo?:IRepo;
-  deleteWorktree?:string[][]
-  projectPath?:string;
-  projectConfig?:IProjectConfig;
-  projectConfigPath?:string;
+  selectedRepo?: IRepo;
+  removeWorktrees?: string[][];
+  unLinkRepo?: IRepo;
+  projectPath?: string;
+  projectConfig?: IProjectConfig;
+  projectConfigPath?: string;
   projectType?: EPROJECT_TYPE;
   codeWorkspace?: ICodeWorkSpaceConfig;
   [k: string]: any;
@@ -30,7 +31,7 @@ export interface ICodeWorkSpaceConfig {
 export interface IGitConfig {
   path?: string;
   reponame?: string;
-  alias?:string;
+  alias?: string;
 }
 
 export interface IRepo {
@@ -45,7 +46,6 @@ export interface IRepo {
 export interface IProjectConfig {
   repos: IRepo[];
   type: EPROJECT_TYPE;
-
 }
 
 export interface IMultiRepoWorktreePaths {
@@ -55,7 +55,7 @@ export interface IMultiRepoWorktreePaths {
 export enum EPROJECT_FILES {
   CODE_WORKSPACE = "wt.code-workspace",
   CONFIGURATION = "wt.config.json",
-  NULL=""
+  NULL = "",
 }
 
 export enum EPROJECT_TYPE {
@@ -63,8 +63,8 @@ export enum EPROJECT_TYPE {
   MULTIPLE = "multiple",
 }
 
-export enum EGIT_CONFIGURATION{
-  PATH="wt.config.path",
-  REPONAME="wt.config.reponame",
-  ALIAS="wt.config.alias"
+export enum EGIT_CONFIGURATION {
+  PATH = "wt.config.path",
+  REPONAME = "wt.config.reponame",
+  ALIAS = "wt.config.alias",
 }

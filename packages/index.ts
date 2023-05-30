@@ -6,6 +6,8 @@ import {
   updateCommand,
   cloneCommand,
   createCommand,
+  linkCommand,
+  unlinkCommand
 } from "./lib/commands";
 import { checkIsPathCaseSensitive } from "./lib/utils/file";
 
@@ -21,6 +23,8 @@ main
   .addHelpCommand("help [command]", "Show command details.\n\n")
   .addCommand(createCommand)
   .addCommand(initCommand)
+  .addCommand(linkCommand)
+  .addCommand(unlinkCommand)
   .addCommand(cloneCommand)
   .addCommand(addCommand)
   .addCommand(removeCommand)
