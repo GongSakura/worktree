@@ -2,7 +2,6 @@ import * as path from "path";
 import {
   checkIsGitDir,
   checkIsWorktree,
- 
   getCurrentBranch,
   getGitConfiguration,
   getGitDir,
@@ -19,29 +18,24 @@ import {
   IContext,
   IRepo,
 } from "../../utils/types";
-import { readdirSync } from "fs";
+import { mkdirSync, readdirSync, statSync } from "fs";
 import inquirer from "inquirer";
 import {
   selectBranchQuestion,
   selectWorktreeQuestion,
 } from "../../utils/prompts";
-import { ErrorProcessor } from "..";
+import { ErrorProcessor } from "../index";
 
-function checkInitPrerequisite(context: any, next: CallableFunction) {
+function checkInitPrerequisite(context: IContext, next: CallableFunction) {
   const repoPath = context.cwd;
   if (checkIsGitDir(repoPath)) {
-    throw new Error(`Cannot create inside the ".Git" folder`);
+    throw new Error(`Cannot execute commands inside a ".git" folder`);
   }
 
   const [projectConfig, worktreeConfig] = getConfigs(repoPath);
-  if (projectConfig?.type === EPROJECT_TYPE.MULTIPLE) {
-    throw new Error(
-      'Cannot initialize inside a "multiple-repositories" worktree project. If you want to init a git repo, use "wt link"'
-    );
-  }
 
-  if (worktreeConfig.path || projectConfig?.repos?.length) {
-    throw new Error(`The directory: "${repoPath}" has already initialized`);
+  if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
+    throw new Error(`The directory: "${repoPath}" has already been initialized`);
   }
 
   context.projectPath = repoPath;
@@ -49,7 +43,7 @@ function checkInitPrerequisite(context: any, next: CallableFunction) {
   next();
 }
 
-function checkClonePrerequisite(context: any, next: CallableFunction) {
+function checkClonePrerequisite(context: IContext, next: CallableFunction) {
   checkInitPrerequisite(context, next);
 }
 
@@ -145,7 +139,9 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
   } else {
     context.selectedRepo = context.repos[0];
     if (!context.command.arguments.branchName) {
-      const worktrees: string[][] = getWorktrees(context.selectedRepo.path!).reverse();
+      const worktrees: string[][] = getWorktrees(
+        context.selectedRepo.path!
+      ).reverse();
 
       // skip the main worktree
       worktrees.pop();
@@ -179,7 +175,7 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
   }
 }
 
-function checkUpdatePrerequisite(context: any, next: CallableFunction) {
+function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
   const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
 
   if (!checkIsInsideProject([projectConfig, worktreeConfig])) {
@@ -205,7 +201,32 @@ function checkUpdatePrerequisite(context: any, next: CallableFunction) {
 
   next();
 }
-function checkCreatePrerequisite(context: any, next: CallableFunction) {}
+
+function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
+  const repoPath = context.cwd;
+  if (checkIsGitDir(repoPath)) {
+    throw new Error(`Cannot create inside the ".git" folder`);
+  }
+
+  const [projectConfig, worktreeConfig] = getConfigs(repoPath);
+  if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
+    throw new Error(`The directory: "${repoPath}" has already been initialized`);
+  }
+  try {
+    const stat = statSync(repoPath);
+    if (stat.isFile()) {
+      throw new Error(
+        `Cannot create the project inside a file path: ${repoPath}`
+      );
+    }
+  } catch {
+    mkdirSync(repoPath);
+  }
+  context.projectPath = repoPath;
+  context.projectType = EPROJECT_TYPE.MULTIPLE;
+  context.repos = [];
+  next();
+}
 
 function inspectPotentialWorktrees(context: any, next: CallableFunction) {
   const files = readdirSync(context.projectPath);
@@ -240,7 +261,6 @@ function inspectPotentialWorktrees(context: any, next: CallableFunction) {
     repos.push({
       name: gitConfiguration.reponame || "",
       path: key,
-      alias: gitConfiguration.alias,
       worktrees: [...value, [key, "", getCurrentBranch(key)]],
     });
   }
@@ -269,6 +289,7 @@ function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): boolean {
 }
 
 export default {
+  checkCreatePrerequisite,
   checkInitPrerequisite,
   checkClonePrerequisite,
   checkAddPrerequisite,

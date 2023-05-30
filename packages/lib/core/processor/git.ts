@@ -66,23 +66,19 @@ function initRepository(context: IContext, next: CallableFunction) {
   next();
 }
 
-function configWorktree(context: any, next: CallableFunction) {
-  if (context.repos.length) {
-    const configPath = context.config.projectConfigPath;
-    context.repos.forEach((repo: IRepo) => {
-      execSync("git config --local wt.config.path " + configPath, {
-        cwd: repo.path,
-        stdio: "pipe",
-      });
-      execSync("git config --local wt.config.repoName " + repo.name, {
-        cwd: repo.path,
-        stdio: "pipe",
-      });
+function configWorktree(context: IContext, next: CallableFunction) {
+  context.repos?.forEach((repo: IRepo) => {
+    const configPath = context.projectConfigPath;
+    execSync("git config --local wt.config.path " + configPath, {
+      cwd: repo.path,
+      stdio: "pipe",
     });
-    next();
-  } else {
-    throw new Error("Empty worktree list");
-  }
+    execSync("git config --local wt.config.repoName " + repo.name, {
+      cwd: repo.path,
+      stdio: "pipe",
+    });
+  });
+  next();
 }
 
 function addWorktree(context: IContext, next: CallableFunction) {

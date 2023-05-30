@@ -3367,7 +3367,7 @@ var commander = /*@__PURE__*/getDefaultExportFromCjs(commanderExports);
 // wrapper to provide named exports for ESM.
 const {
   program,
-  createCommand,
+  createCommand: createCommand$1,
   createArgument,
   createOption,
   CommanderError,
@@ -4252,23 +4252,19 @@ function initRepository(context, next) {
     next();
 }
 function configWorktree(context, next) {
-    if (context.repos.length) {
-        const configPath = context.config.projectConfigPath;
-        context.repos.forEach((repo) => {
-            require$$1$1.execSync("git config --local wt.config.path " + configPath, {
-                cwd: repo.path,
-                stdio: "pipe",
-            });
-            require$$1$1.execSync("git config --local wt.config.repoName " + repo.name, {
-                cwd: repo.path,
-                stdio: "pipe",
-            });
+    var _a;
+    (_a = context.repos) === null || _a === void 0 ? void 0 : _a.forEach((repo) => {
+        const configPath = context.projectConfigPath;
+        require$$1$1.execSync("git config --local wt.config.path " + configPath, {
+            cwd: repo.path,
+            stdio: "pipe",
         });
-        next();
-    }
-    else {
-        throw new Error("Empty worktree list");
-    }
+        require$$1$1.execSync("git config --local wt.config.repoName " + repo.name, {
+            cwd: repo.path,
+            stdio: "pipe",
+        });
+    });
+    next();
 }
 function addWorktree(context, next) {
     var _a;
@@ -4469,10 +4465,12 @@ function initDirectory(context, next) {
                     }
                 });
                 require$$0$3.renameSync(gitDirPath, newPath + "/.git");
-                repo.gitDir = newPath + "/.git";
+                // remove outside "/.git"
                 if (isGitDirSibling || isGitDirOutside) {
                     require$$0$3.rmSync(parentPath + "/.git");
                 }
+                repo.gitDir = newPath + "/.git";
+                repo.path = newPath;
             }
         }
         repo.worktrees = newWorktrees;
@@ -4514,7 +4512,6 @@ function updateDirectory(context, next) {
 }
 function writeProjectCodeWorkspace(context, next) {
     var _a;
-    console.info(` context.repos:`, context.repos);
     const codeWorkSpacePath = path__namespace.resolve(context.projectPath, EPROJECT_FILES.CODE_WORKSPACE);
     const codeWorkSpace = { folders: [] };
     (_a = context.repos) === null || _a === void 0 ? void 0 : _a.forEach((repo) => {
@@ -4541,7 +4538,7 @@ function writeProjectConfiguration(context, next) {
     const projectConfigPath = path__namespace.resolve(context.projectPath, EPROJECT_FILES.CONFIGURATION);
     const config = {
         repos: (_a = context.repos) === null || _a === void 0 ? void 0 : _a.map((repo) => {
-            return { name: repo.name, alias: repo.alias, path: repo.path };
+            return { name: repo.name, path: repo.path };
         }),
         type: context.projectType || EPROJECT_TYPE.SINGLE,
     };
@@ -59842,17 +59839,13 @@ function selectWorktreeQuestion(worktrees) {
 }
 
 function checkInitPrerequisite(context, next) {
-    var _a;
     const repoPath = context.cwd;
     if (checkIsGitDir(repoPath)) {
-        throw new Error(`Cannot create inside the ".Git" folder`);
+        throw new Error(`Cannot execute commands inside a ".git" folder`);
     }
     const [projectConfig, worktreeConfig] = getConfigs(repoPath);
-    if ((projectConfig === null || projectConfig === void 0 ? void 0 : projectConfig.type) === EPROJECT_TYPE.MULTIPLE) {
-        throw new Error('Cannot initialize inside a "multiple-repositories" worktree project. If you want to init a git repo, use "wt link"');
-    }
-    if (worktreeConfig.path || ((_a = projectConfig === null || projectConfig === void 0 ? void 0 : projectConfig.repos) === null || _a === void 0 ? void 0 : _a.length)) {
-        throw new Error(`The directory: "${repoPath}" has already initialized`);
+    if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
+        throw new Error(`The directory: "${repoPath}" has already been initialized`);
     }
     context.projectPath = repoPath;
     context.projectType = EPROJECT_TYPE.SINGLE;
@@ -59995,6 +59988,29 @@ function checkUpdatePrerequisite(context, next) {
     context.projectType = projectConfig.type;
     next();
 }
+function checkCreatePrerequisite(context, next) {
+    const repoPath = context.cwd;
+    if (checkIsGitDir(repoPath)) {
+        throw new Error(`Cannot create inside the ".git" folder`);
+    }
+    const [projectConfig, worktreeConfig] = getConfigs(repoPath);
+    if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
+        throw new Error(`The directory: "${repoPath}" has already been initialized`);
+    }
+    try {
+        const stat = require$$0$3.statSync(repoPath);
+        if (stat.isFile()) {
+            throw new Error(`Cannot create the project inside a file path: ${repoPath}`);
+        }
+    }
+    catch (_a) {
+        require$$0$3.mkdirSync(repoPath);
+    }
+    context.projectPath = repoPath;
+    context.projectType = EPROJECT_TYPE.MULTIPLE;
+    context.repos = [];
+    next();
+}
 function inspectPotentialWorktrees(context, next) {
     const files = require$$0$3.readdirSync(context.projectPath);
     // TODO: feature suppport multi-repo
@@ -60026,7 +60042,6 @@ function inspectPotentialWorktrees(context, next) {
         repos.push({
             name: gitConfiguration.reponame || "",
             path: key,
-            alias: gitConfiguration.alias,
             worktrees: [...value, [key, "", getCurrentBranch(key)]],
         });
     }
@@ -60050,6 +60065,7 @@ function checkIsInsideProject(configs) {
     return false;
 }
 var CheckProcessor = {
+    checkCreatePrerequisite,
     checkInitPrerequisite,
     checkClonePrerequisite,
     checkAddPrerequisite,
@@ -60105,7 +60121,7 @@ var addCommand = new Command()
     .command("add")
     .summary("Create a linked worktree.\n\n")
     .description(`Create a linked worktree which used the <branch-name> as the worktree directory name, and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
-    .option("--repo <repo-name>", "When create a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n")
+    .option("--repo <repo-name>", "When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n")
     .option("--base <commit-hash>", ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
     .helpOption("-h, --help", "Display help for command")
     .argument("[branch-name]", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
@@ -60180,6 +60196,7 @@ var removeCommand = new Command()
  */
 var updateCommand = new Command()
     .command("update")
+    .alias("ud")
     .summary("Update the project configuration.\n\n")
     .description(`Update the project configuration`)
     .helpOption("-h, --help", "Display help for command")
@@ -60245,12 +60262,40 @@ var cloneCommand = new Command()
     });
 });
 
+var createCommand = new Command()
+    .name("create")
+    .alias('c')
+    .summary("Create an empty worktree project")
+    .description("To create an empty worktree project that used for multiple git repositories")
+    .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
+    .action(function () {
+    const context = {
+        command: {
+            arguments: {
+                directory: path__namespace.resolve(this.processedArgs[0]),
+            },
+        },
+        cwd: path__namespace.resolve(this.processedArgs[0]),
+    };
+    const processes = [
+        ErrorProcessor.captureError,
+        CheckProcessor.checkCreatePrerequisite,
+        FileProcessor.writeProjectCodeWorkspace,
+        FileProcessor.writeProjectConfiguration,
+    ];
+    const executer = new Executer(processes);
+    executer.run(context, () => {
+        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
+    });
+});
+
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 const main = new Command();
 main
     .name(`wt`)
     .version("1.0.0")
     .addHelpCommand("help [command]", "Show command details.\n\n")
+    .addCommand(createCommand)
     .addCommand(initCommand)
     .addCommand(cloneCommand)
     .addCommand(addCommand)
