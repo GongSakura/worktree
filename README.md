@@ -1,4 +1,4 @@
-A fast and natty tool automatically manages git worktrees. 🚀 whooooosh~
+A fast and natty tool automatically manages git worktrees for multiple repositories. 🚀 whooooosh~
 
 <br/>
 
@@ -31,16 +31,23 @@ npm i -g @kanamara/worktree
 
 <br/>
 
+## Quick Start
+
+### Single repo, multiple branches
+
+### Multiple repo, multiple branches
+
+
 ## Usage
 
 ### 1. "wt init \<directory\>"
-
+- Only for single-repo project
 - To initialize a worktree project that manages all git worktrees. If the directory is not a git repository, it will create a new one via **"git init \<directory\>"**
 
 <br/>
 
 ### 2. "wt clone \<repo\> \<directory\>"
-
+- Only for single-repo project
 - To clone a git repository and initialize a worktree project."
 
 <br/>
@@ -50,9 +57,8 @@ npm i -g @kanamara/worktree
 To add a worktree based on \<branch-name\>.
 
 - If the \<branch-name\> has already been checkout, then the command will fail.
-- If the \<branch-name\> doesn't existed, it will create a new branch based on HEAD
+- If the \<branch-name\> doesn't existed in git branches, it will create a new branch based on HEAD
 - If you want to create a worktree with a new branch that based on a commit or branch, use **"wt add --base \<commit-hash\> \<branch-name\>"**
-
 <br/>
 
 ### 4. "wt rm \<branch-name\>"

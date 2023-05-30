@@ -11,7 +11,7 @@ import {
   getWorktrees,
   initBranch,
 } from "../../utils/git";
-import { IContext, IRepo } from "../../utils/types";
+import { EPROJECT_TYPE, IContext, IRepo } from "../../utils/types";
 
 function cloneRepository(context: IContext, next: CallableFunction) {
   const repoURL = context.command.arguments.repoURL;
@@ -107,8 +107,14 @@ function configWorktree(context: IContext, next: CallableFunction) {
 function addWorktree(context: IContext, next: CallableFunction) {
   const branchName = context.command.arguments.branchName;
   const commitHash = context.command.options?.base || "";
-  const newWorktreePath = path.resolve(context.projectPath!, branchName);
-  const mainWorktreePath = context.selectedRepo!.path!;
+  const repo = context.selectedRepo;
+  const mainWorktreePath = repo?.path!;
+  const newWorktreePath = path.resolve(
+    context.projectPath!,
+    context.projectType === EPROJECT_TYPE.MULTIPLE
+      ? `${repo?.name}#${branchName}`
+      : branchName
+  );
   const allBranches = new Set(getAllBranches(mainWorktreePath));
 
   const command =
