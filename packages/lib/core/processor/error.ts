@@ -1,6 +1,7 @@
 import chalk from "chalk";
+import { IContext } from "../../utils/types";
 
-function captureError(context: any, next: CallableFunction) {
+function captureError(context: IContext, next: CallableFunction) {
   try {
     next();
   } catch (error: any) {

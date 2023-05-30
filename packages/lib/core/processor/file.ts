@@ -148,9 +148,8 @@ function updateDirectory(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
     const renameTodoMap = new Map();
     const newWorktrees: string[][] = [];
-    console.info(`worktree:`,repo.worktrees)
+
     repo.worktrees?.forEach((worktree) => {
-     
       const [worktreePath, , worktreeBranch] = worktree;
       const newWorktreePath = path.resolve(
         context.projectPath!,
@@ -166,7 +165,6 @@ function updateDirectory(context: IContext, next: CallableFunction) {
         renameTodoMap.set(worktreePath, newWorktreePath);
       }
     });
-    
 
     while (renameTodoMap.size) {
       for (const [oldPath, newPath] of renameTodoMap.entries()) {
@@ -186,35 +184,11 @@ function updateDirectory(context: IContext, next: CallableFunction) {
   next();
 }
 
-function createProjectCodeWorkspace(context: IContext, next: CallableFunction) {
-  const cwd = context.cwd;
-  const codeWorkSpacePath = path.resolve(cwd, EPROJECT_FILES.CODE_WORKSPACE);
-  const codeWorkSpace = { folders: [] } as ICodeWorkSpaceConfig;
+function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
 
-  context.repos?.forEach((repo: IRepo) => {
-    repo.worktrees?.forEach((e: string[]) => {
-      codeWorkSpace.folders.push({
-        name:
-          context?.projectType !== EPROJECT_TYPE.SINGLE
-            ? e[2]
-            : `${repo.name}#${e[2]}`,
-        path: e[0],
-      });
-    });
-  });
-
-  writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
-    mode: 0o777,
-    encoding: "utf-8",
-    flag: "w",
-  });
-  context.codeWorkspace = codeWorkSpace;
-  next();
-}
-
-function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
+ console.info(` context.repos:`, context.repos)
   const codeWorkSpacePath = path.resolve(
-    context.projectPath,
+    context.projectPath!,
     EPROJECT_FILES.CODE_WORKSPACE
   );
   const codeWorkSpace = { folders: [] } as ICodeWorkSpaceConfig;
@@ -223,7 +197,7 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
     repo.worktrees?.forEach((e: string[]) => {
       codeWorkSpace.folders.push({
         name:
-          context?.projectType !== EPROJECT_TYPE.SINGLE
+          context?.projectType === EPROJECT_TYPE.SINGLE
             ? e[2]
             : `${repo.name}#${e[2]}`,
         path: e[0],
@@ -240,13 +214,13 @@ function updateProjectCodeWorkspace(context: any, next: CallableFunction) {
   next();
 }
 
-function createProjectConfiguration(context: any, next: CallableFunction) {
+function writeProjectConfiguration(context: IContext, next: CallableFunction) {
   const projectConfigPath = path.resolve(
-    context.projectPath,
+    context.projectPath!,
     EPROJECT_FILES.CONFIGURATION
   );
   const config = {
-    repos: context.repos.map((repo: IRepo) => {
+    repos: context.repos?.map((repo: IRepo) => {
       return { name: repo.name, alias: repo.alias, path: repo.path };
     }),
     type: context.projectType || EPROJECT_TYPE.SINGLE,
@@ -263,16 +237,9 @@ function createProjectConfiguration(context: any, next: CallableFunction) {
   next();
 }
 
-// FIXME: overwrite the configuration each time
-function updateProjectConfiguration(context: any, next: CallableFunction) {
-  createProjectConfiguration(context, next);
-}
-
 export default {
   initDirectory,
   updateDirectory,
-  createProjectCodeWorkspace,
-  updateProjectCodeWorkspace,
-  createProjectConfiguration,
-  updateProjectConfiguration,
+  writeProjectCodeWorkspace,
+  writeProjectConfiguration,
 };

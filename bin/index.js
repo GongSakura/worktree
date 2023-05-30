@@ -4216,9 +4216,14 @@ function cloneRepository(context, next) {
     require$$1$1.execSync(command, {
         stdio: "inherit",
     });
-    context.worktrees = getWorktrees(repoPath).reverse();
-    context.gitDir = getGitDir(repoPath);
-    context.repoName = repoName;
+    context.repos = [
+        {
+            name: repoName,
+            path: repoPath,
+            worktrees: getWorktrees(repoPath).reverse(),
+            gitDir: getGitDir(repoPath),
+        },
+    ];
     next();
 }
 function initRepository(context, next) {
@@ -4270,7 +4275,8 @@ function addWorktree(context, next) {
     const branchName = context.command.arguments.branchName;
     const commitHash = ((_a = context.command.options) === null || _a === void 0 ? void 0 : _a.base) || "";
     const newWorktreePath = path__namespace.resolve(context.projectPath, branchName);
-    const allBranches = new Set(getAllBranches(context.selectedRepo.path));
+    const mainWorktreePath = context.selectedRepo.path;
+    const allBranches = new Set(getAllBranches(mainWorktreePath));
     const command = "git worktree add " +
         (allBranches.has(branchName)
             ? commitHash
@@ -4278,30 +4284,30 @@ function addWorktree(context, next) {
                 : `${newWorktreePath} ${branchName}`
             : `-b ${branchName} ${newWorktreePath} ${commitHash}`);
     require$$1$1.execSync(command, {
-        cwd: context.selectedRepo.path,
+        cwd: mainWorktreePath,
         stdio: "pipe",
     });
-    context.worktrees = getWorktrees(context.selectedRepo.path).reverse();
+    context.selectedRepo.worktrees = getWorktrees(mainWorktreePath).reverse();
     next();
 }
 function removeWorktree(context, next) {
     var _a;
-    const branchName = context.command.arguments.branchName;
-    const deleteWorktree = context.codeWorkspace.folders.find((e) => (e === null || e === void 0 ? void 0 : e.name) == branchName);
-    if (deleteWorktree === null || deleteWorktree === void 0 ? void 0 : deleteWorktree.path) {
-        require$$1$1.execSync("git worktree remove -f " + deleteWorktree.path, {
-            cwd: context.config.worktreePath,
+    const [deleteWorktreePath, , branchName] = context.deleteWorktree;
+    const mainWorktreePath = context.selectedRepo.path;
+    if (deleteWorktreePath) {
+        require$$1$1.execSync("git worktree remove -f " + deleteWorktreePath, {
+            cwd: context.selectedRepo.path,
             stdio: "pipe",
         });
         const isDeleteBranch = (_a = context.command.options) === null || _a === void 0 ? void 0 : _a.force;
         if (isDeleteBranch) {
             require$$1$1.execSync("git branch -D " + branchName, {
-                cwd: context.config.worktreePath,
+                cwd: mainWorktreePath,
                 stdio: "pipe",
             });
         }
     }
-    context.worktrees = getWorktrees(context.config.worktreePath).reverse();
+    context.selectedRepo.worktrees = getWorktrees(mainWorktreePath).reverse();
     next();
 }
 function repairWorktree(context, next) {
@@ -4479,7 +4485,6 @@ function updateDirectory(context, next) {
         var _a;
         const renameTodoMap = new Map();
         const newWorktrees = [];
-        console.info(`worktree:`, repo.worktrees);
         (_a = repo.worktrees) === null || _a === void 0 ? void 0 : _a.forEach((worktree) => {
             const [worktreePath, , worktreeBranch] = worktree;
             const newWorktreePath = path__namespace.resolve(context.projectPath, `${context.projectType === EPROJECT_TYPE.SINGLE
@@ -4507,39 +4512,16 @@ function updateDirectory(context, next) {
     });
     next();
 }
-function createProjectCodeWorkspace(context, next) {
+function writeProjectCodeWorkspace(context, next) {
     var _a;
-    const cwd = context.cwd;
-    const codeWorkSpacePath = path__namespace.resolve(cwd, EPROJECT_FILES.CODE_WORKSPACE);
-    const codeWorkSpace = { folders: [] };
-    (_a = context.repos) === null || _a === void 0 ? void 0 : _a.forEach((repo) => {
-        var _a;
-        (_a = repo.worktrees) === null || _a === void 0 ? void 0 : _a.forEach((e) => {
-            codeWorkSpace.folders.push({
-                name: (context === null || context === void 0 ? void 0 : context.projectType) !== EPROJECT_TYPE.SINGLE
-                    ? e[2]
-                    : `${repo.name}#${e[2]}`,
-                path: e[0],
-            });
-        });
-    });
-    require$$0$3.writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
-        mode: 0o777,
-        encoding: "utf-8",
-        flag: "w",
-    });
-    context.codeWorkspace = codeWorkSpace;
-    next();
-}
-function updateProjectCodeWorkspace(context, next) {
-    var _a;
+    console.info(` context.repos:`, context.repos);
     const codeWorkSpacePath = path__namespace.resolve(context.projectPath, EPROJECT_FILES.CODE_WORKSPACE);
     const codeWorkSpace = { folders: [] };
     (_a = context.repos) === null || _a === void 0 ? void 0 : _a.forEach((repo) => {
         var _a;
         (_a = repo.worktrees) === null || _a === void 0 ? void 0 : _a.forEach((e) => {
             codeWorkSpace.folders.push({
-                name: (context === null || context === void 0 ? void 0 : context.projectType) !== EPROJECT_TYPE.SINGLE
+                name: (context === null || context === void 0 ? void 0 : context.projectType) === EPROJECT_TYPE.SINGLE
                     ? e[2]
                     : `${repo.name}#${e[2]}`,
                 path: e[0],
@@ -4554,10 +4536,11 @@ function updateProjectCodeWorkspace(context, next) {
     context.codeWorkspace = codeWorkSpace;
     next();
 }
-function createProjectConfiguration(context, next) {
+function writeProjectConfiguration(context, next) {
+    var _a;
     const projectConfigPath = path__namespace.resolve(context.projectPath, EPROJECT_FILES.CONFIGURATION);
     const config = {
-        repos: context.repos.map((repo) => {
+        repos: (_a = context.repos) === null || _a === void 0 ? void 0 : _a.map((repo) => {
             return { name: repo.name, alias: repo.alias, path: repo.path };
         }),
         type: context.projectType || EPROJECT_TYPE.SINGLE,
@@ -4572,17 +4555,11 @@ function createProjectConfiguration(context, next) {
     };
     next();
 }
-// FIXME: overwrite the configuration each time
-function updateProjectConfiguration(context, next) {
-    createProjectConfiguration(context, next);
-}
 var FileProcessor = {
     initDirectory,
     updateDirectory,
-    createProjectCodeWorkspace,
-    updateProjectCodeWorkspace,
-    createProjectConfiguration,
-    updateProjectConfiguration,
+    writeProjectCodeWorkspace,
+    writeProjectConfiguration,
 };
 
 function captureError$1(context, next) {
@@ -59855,6 +59832,14 @@ function selectBranchQuestion(branches) {
         choices: branches,
     };
 }
+function selectWorktreeQuestion(worktrees) {
+    return {
+        type: "list",
+        name: "worktree",
+        message: "Select a worktree:",
+        choices: worktrees
+    };
+}
 
 function checkInitPrerequisite(context, next) {
     var _a;
@@ -59899,20 +59884,19 @@ function checkAddPrerequisite(context, next) {
         : context.cwd;
     context.repos = projectConfig.repos;
     context.projectType = projectConfig.type;
-    context.codeWorkspace = getProjectFile(context.projectPath, EPROJECT_FILES.CODE_WORKSPACE);
     if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
+        // TODO: multiple repo
         if (!context.command.options.repo) ;
-        // TODO:
     }
     else {
         context.selectedRepo = context.repos[0];
         if (!context.command.arguments.branchName) {
-            const uncheckoutBranches = getUncheckoutBranches(context.repos[0].path);
+            const uncheckoutBranches = getUncheckoutBranches(context.selectedRepo.path);
             if (!uncheckoutBranches.length) {
                 throw new Error('The arugument "branch-name" is missing');
             }
             inquirer
-                .prompt(selectBranchQuestion(getUncheckoutBranches(context.repos[0].path)))
+                .prompt(selectBranchQuestion(uncheckoutBranches))
                 .then((answer) => {
                 context.command.arguments.branchName = answer.branchName;
                 next();
@@ -59937,6 +59921,54 @@ function checkRemovePrerequisite(context, next) {
         }
         else if (!((_b = projectConfig.repos) === null || _b === void 0 ? void 0 : _b.length)) {
             throw new Error("The worktree project has not linked to any Git repository.");
+        }
+        else {
+            throw new Error("The type of the worktree project isn't specified.");
+        }
+    }
+    context.projectConfig = projectConfig;
+    context.projectConfigPath = (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+        ? worktreeConfig.path
+        : path__namespace.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
+    context.projectPath = (worktreeConfig === null || worktreeConfig === void 0 ? void 0 : worktreeConfig.path)
+        ? path__namespace.dirname(worktreeConfig.path)
+        : context.cwd;
+    context.repos = projectConfig.repos;
+    context.projectType = projectConfig.type;
+    if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
+        // TODO: multiple repo
+        if (!context.command.options.repo) ;
+    }
+    else {
+        context.selectedRepo = context.repos[0];
+        if (!context.command.arguments.branchName) {
+            const worktrees = getWorktrees(context.selectedRepo.path).reverse();
+            // skip the main worktree
+            worktrees.pop();
+            inquirer
+                .prompt(selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`)))
+                .then((answer) => {
+                const [deleteWorktreePath, branchName] = answer.worktree.split(" ");
+                context.deleteWorktree = [
+                    deleteWorktreePath,
+                    "",
+                    branchName.replace(/\[(.*?)\]/g, "$1"),
+                ];
+                next();
+            })
+                .catch((err) => {
+                ErrorProcessor.captureError(context, () => {
+                    throw err;
+                });
+            });
+        }
+        else {
+            context.deleteWorktree = [
+                path__namespace.resolve(context.projectPath, context.command.arguments.branchName),
+                ,
+                context.command.arguments.branchName,
+            ];
+            next();
         }
     }
 }
@@ -60054,8 +60086,8 @@ var initCommand = new Command()
         GitProcessor.initRepository,
         FileProcessor.initDirectory,
         GitProcessor.repairWorktree,
-        FileProcessor.createProjectConfiguration,
-        FileProcessor.createProjectCodeWorkspace,
+        FileProcessor.writeProjectConfiguration,
+        FileProcessor.writeProjectCodeWorkspace,
         GitProcessor.configWorktree,
     ];
     const executer = new Executer(processes);
@@ -60072,7 +60104,7 @@ var initCommand = new Command()
 var addCommand = new Command()
     .command("add")
     .summary("Create a linked worktree.\n\n")
-    .description(`Create a linked worktree and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
+    .description(`Create a linked worktree which used the <branch-name> as the worktree directory name, and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
     .option("--repo <repo-name>", "When create a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n")
     .option("--base <commit-hash>", ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
     .helpOption("-h, --help", "Display help for command")
@@ -60091,7 +60123,7 @@ var addCommand = new Command()
         ErrorProcessor.captureError,
         CheckProcessor.checkAddPrerequisite,
         GitProcessor.addWorktree,
-        FileProcessor.updateProjectCodeWorkspace,
+        FileProcessor.writeProjectCodeWorkspace,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
@@ -60113,8 +60145,9 @@ var removeCommand = new Command()
     .summary("Remove a linked worktree.\n\n")
     .description(`To remove a linked worktree from the worktree project`)
     .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
+    .option("--repo <repo-name>", "When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n")
     .helpOption("-h, --help", "Display help for command")
-    .argument("<branch-name>", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
+    .argument("[branch-name]", ":: If the branch name is not specified, then it will prompt the options")
     .action(function () {
     const context = {
         command: {
@@ -60129,7 +60162,7 @@ var removeCommand = new Command()
         ErrorProcessor.captureError,
         CheckProcessor.checkRemovePrerequisite,
         GitProcessor.removeWorktree,
-        FileProcessor.updateProjectCodeWorkspace,
+        FileProcessor.writeProjectCodeWorkspace,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
@@ -60138,12 +60171,12 @@ var removeCommand = new Command()
 });
 
 /**
- * Handle "git worktree remove"
+ * Handle "git worktree repair"
  */
 /**
- * =============================================
+ * ===============
  *   wt update
- * =============================================
+ * ===============
  */
 var updateCommand = new Command()
     .command("update")
@@ -60164,8 +60197,8 @@ var updateCommand = new Command()
         CheckProcessor.inspectPotentialWorktrees,
         FileProcessor.updateDirectory,
         GitProcessor.repairWorktree,
-        FileProcessor.updateProjectCodeWorkspace,
-        FileProcessor.updateProjectConfiguration,
+        FileProcessor.writeProjectCodeWorkspace,
+        FileProcessor.writeProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
@@ -60202,8 +60235,8 @@ var cloneCommand = new Command()
         CheckProcessor.checkClonePrerequisite,
         GitProcessor.cloneRepository,
         FileProcessor.initDirectory,
-        FileProcessor.createProjectConfiguration,
-        FileProcessor.createProjectCodeWorkspace,
+        FileProcessor.writeProjectConfiguration,
+        FileProcessor.writeProjectCodeWorkspace,
         GitProcessor.configWorktree,
     ];
     const executer = new Executer(processes);
