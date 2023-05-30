@@ -130,11 +130,14 @@ function initDirectory(context: IContext, next: CallableFunction) {
         });
 
         renameSync(gitDirPath, newPath + "/.git");
-        repo.gitDir = newPath + "/.git";
-
+        
+        // remove outside "/.git"
         if (isGitDirSibling || isGitDirOutside) {
           rmSync(parentPath + "/.git");
         }
+
+        repo.gitDir = newPath + "/.git";
+        repo.path = newPath
       }
     }
 
@@ -185,8 +188,6 @@ function updateDirectory(context: IContext, next: CallableFunction) {
 }
 
 function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
-
- console.info(` context.repos:`, context.repos)
   const codeWorkSpacePath = path.resolve(
     context.projectPath!,
     EPROJECT_FILES.CODE_WORKSPACE
@@ -221,7 +222,7 @@ function writeProjectConfiguration(context: IContext, next: CallableFunction) {
   );
   const config = {
     repos: context.repos?.map((repo: IRepo) => {
-      return { name: repo.name, alias: repo.alias, path: repo.path };
+      return { name: repo.name, path: repo.path };
     }),
     type: context.projectType || EPROJECT_TYPE.SINGLE,
   };

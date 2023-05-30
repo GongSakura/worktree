@@ -22,7 +22,7 @@ export default new Command()
   )
   .option(
     "--repo <repo-name>",
-    "When create a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n"
+    "When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n"
   )
   .option(
     "--base <commit-hash>",

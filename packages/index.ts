@@ -5,6 +5,7 @@ import {
   removeCommand,
   updateCommand,
   cloneCommand,
+  createCommand,
 } from "./lib/commands";
 import { checkIsPathCaseSensitive } from "./lib/utils/file";
 
@@ -18,9 +19,10 @@ main
   .name(`wt`)
   .version("1.0.0")
   .addHelpCommand("help [command]", "Show command details.\n\n")
+  .addCommand(createCommand)
   .addCommand(initCommand)
   .addCommand(cloneCommand)
   .addCommand(addCommand)
   .addCommand(removeCommand)
-  .addCommand(updateCommand)
+  .addCommand(updateCommand);
 main.parse(process.argv);
