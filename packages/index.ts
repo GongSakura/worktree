@@ -15,7 +15,7 @@ global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
 const main = new Command();
 main
-  .name("wt")
+  .name(`wt`)
   .version("1.0.0")
   .addHelpCommand("help [command]", "Show command details.\n\n")
   .addCommand(initCommand)

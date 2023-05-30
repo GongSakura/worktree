@@ -1,6 +1,6 @@
-import { execSync } from "child_process";
-import * as path from "path";
-import { IWorktreeConfig } from "./types";
+import { execSync } from "node:child_process";
+
+import { IGitConfig, EGIT_CONFIGURATION } from "./types";
 
 export function getWorktrees(cwdPath: string): [string, string, string][] {
   const worktrees: [string, string, string][] = [];
@@ -48,31 +48,24 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
     return false;
   }
 }
-// export function enableWorktreeConfig(cwdPath: string) {
-//   execSync("git config extensions.worktreeConfig true", {
-//     stdio: "pipe",
-//     cwd: cwdPath,
-//   });
-// }
 
-export function getWorktreeConfiguration(cwdPath: string): IWorktreeConfig {
-  const config: IWorktreeConfig = {};
+export function getGitConfiguration(cwdPath: string): IGitConfig {
+  const config: IGitConfig = {};
   try {
     const stdout = execSync("git config --list", {
       cwd: cwdPath,
       stdio: "pipe",
     });
-
     stdout
       .toString()
       .trim()
       .split("\n")
       .forEach((e) => {
         const [k, v] = e.split("=");
-        if (k === "wt.config.path") {
+        if (k === EGIT_CONFIGURATION.PATH) {
           config.path = v;
-        } else if (k === "wt.config.reponame") {
-          config.repoName = v;
+        } else if (k === EGIT_CONFIGURATION.REPONAME) {
+          config.reponame = v;
         }
       });
   } finally {
@@ -128,7 +121,19 @@ export function initBranch(repoPath: string) {
     stdio: "pipe",
   });
 }
-export function getBranches(cwdPath: string): string[] {
+export function getCurrentBranch(cwdPath: string) {
+  try {
+    return execSync("git branch --show-current", {
+      cwd: cwdPath,
+      stdio: "pipe",
+    })
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
+}
+export function getAllBranches(cwdPath: string): string[] {
   try {
     const branches: string[] = [];
     execSync("git branch -a", {
@@ -139,11 +144,30 @@ export function getBranches(cwdPath: string): string[] {
       .trim()
       .split("\n")
       .forEach((e) => {
-        if (e) {
-          const v = e.split(" ").pop();
-          if (v) {
-            branches.push(v);
-          }
+        const branch = e.trim().replace(/^\W*/, "")
+        if(branch){
+          branches.push(branch);
+        }
+     
+      });
+    return branches;
+  } catch (error) {
+    return [];
+  }
+}
+export function getUncheckoutBranches(cwdPath: string): string[] {
+  try {
+    const branches: string[] = [];
+    execSync("git branch -a", {
+      cwd: cwdPath,
+      stdio: "pipe",
+    })
+      .toString()
+      .trim()
+      .split("\n")
+      .forEach((e) => {
+        if (!/^[*+]/.test(e.trim())) {
+          branches.push(e.trim().replace(/^\W*/, ""));
         }
       });
     return branches;
@@ -151,4 +175,3 @@ export function getBranches(cwdPath: string): string[] {
     return [];
   }
 }
-

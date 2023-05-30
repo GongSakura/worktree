@@ -1,5 +1,4 @@
-import type { IProcessor } from "../utils/types";
-
+import type { IContext, IProcessor } from "../utils/types";
 
 /**
  * middleware executor
@@ -12,7 +11,7 @@ export default class Executer {
     this.isDone = false;
   }
 
-  run(context: any = {}, done?: CallableFunction) {
+  run(context: IContext = {} as IContext, done?: CallableFunction) {
     const next = () => {
       if (this.inputs.length) {
         const fn = this.inputs.pop() as IProcessor;
