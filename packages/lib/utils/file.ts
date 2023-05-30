@@ -6,30 +6,22 @@ import {
   statSync,
 } from "fs";
 import * as path from "path";
-import { PROJECT_FILES, IProjectConfig, IWorktreeConfig } from "./types";
-import { getWorktreeConfiguration } from "./git";
+import { EPROJECT_FILES, IProjectConfig, IGitConfig } from "./types";
+import { getGitConfiguration } from "./git";
 
-export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
+export function getProjectFile(cwdPath: string, name: EPROJECT_FILES) {
+  
   try {
     return JSON.parse(readFileSync(path.resolve(cwdPath, name)).toString());
   } catch (error) {
     return {};
   }
 }
-export function getConfigs(cwdPath: string): [IProjectConfig, IWorktreeConfig] {
-  const projectConfig: IProjectConfig = getProjectFile(
-    cwdPath,
-    PROJECT_FILES.CONFIGURATION
-  );
-  let worktreeConfig: IWorktreeConfig = {};
-  const entries = Object.entries(projectConfig);
-  if (!entries.length) {
-    worktreeConfig = getWorktreeConfiguration(cwdPath);
-    if (!worktreeConfig.path) {
-      throw new Error("Current working directory has not been initialized");
-    }
-  }
-  return [projectConfig, worktreeConfig];
+export function getConfigs(cwdPath: string): [IProjectConfig, IGitConfig] {
+  return [
+    getProjectFile(cwdPath, EPROJECT_FILES.CONFIGURATION),
+    getGitConfiguration(cwdPath),
+  ];
 }
 
 export function checkIsDirectChildPath(
@@ -67,9 +59,10 @@ export function checkIsPathCaseSensitive() {
     rmdirSync(path);
   }
 }
-export function normalizePath(path: string) {
+
+export function normalizePath(rawPath: string) {
   if ((global as any).isPathCaseSensitive) {
-    return path;
+    return path.normalize(rawPath);
   }
-  return path.toLowerCase();
+  return path.normalize(rawPath.toLowerCase());
 }

@@ -5,6 +5,7 @@
  */
 import * as path from "path";
 import { Command } from "commander";
+import chalk from "chalk";
 import {
   Executer,
   GitProcessor,
@@ -12,7 +13,6 @@ import {
   CheckProcessor,
   ErrorProcessor,
 } from "../core";
-import chalk from "chalk";
 
 export default new Command()
   .command("init")
@@ -53,7 +53,7 @@ export default new Command()
     ];
 
     const executer = new Executer(processes);
-    executer.run(context,() => {
+    executer.run(context, () => {
       process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
   });

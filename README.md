@@ -73,6 +73,12 @@ To add a worktree based on \<branch-name\>.
 
 <br/>
 
+
+## Kindly reminder
+- This tool will generate some folders and configuration files to help you automatically manage your worktrees, please do not change the name of these files and folders. If you accidentally changed it, use "wt update" to repair it.
+
+
+
 ## Future support
 
 - TODO: Multiple git repos

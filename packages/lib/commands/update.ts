@@ -24,6 +24,10 @@ export default new Command()
   .helpOption("-h, --help", "Display help for command")
   .action(function () {
     const context = {
+      command: {
+        options: {},
+        arguments: {},
+      },
       cwd: process.cwd(),
     };
 
@@ -31,6 +35,7 @@ export default new Command()
       ErrorProcessor.captureError,
       CheckProcessor.checkUpdatePrerequisite,
       CheckProcessor.inspectPotentialWorktrees,
+      FileProcessor.updateDirectory,
       GitProcessor.repairWorktree,
       FileProcessor.updateProjectCodeWorkspace,
       FileProcessor.updateProjectConfiguration,
