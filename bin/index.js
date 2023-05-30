@@ -4295,8 +4295,11 @@ function addWorktree(context, next) {
     var _a;
     const branchName = context.command.arguments.branchName;
     const commitHash = ((_a = context.command.options) === null || _a === void 0 ? void 0 : _a.base) || "";
-    const newWorktreePath = path__namespace.resolve(context.projectPath, branchName);
-    const mainWorktreePath = context.selectedRepo.path;
+    const repo = context.selectedRepo;
+    const mainWorktreePath = repo === null || repo === void 0 ? void 0 : repo.path;
+    const newWorktreePath = path__namespace.resolve(context.projectPath, context.projectType === EPROJECT_TYPE.MULTIPLE
+        ? `${repo === null || repo === void 0 ? void 0 : repo.name}#${branchName}`
+        : branchName);
     const allBranches = new Set(getAllBranches(mainWorktreePath));
     const command = "git worktree add " +
         (allBranches.has(branchName)
@@ -62461,11 +62464,11 @@ function checkClonePrerequisite(context, next) {
     checkInitPrerequisite(context, next);
 }
 function checkAddPrerequisite(context, next) {
-    var _a;
+    var _a, _b;
     const [projectConfig, gitConfig] = getConfigs(context.cwd);
     checkIsInsideProject([projectConfig, gitConfig]);
     if (!((_a = projectConfig.repos) === null || _a === void 0 ? void 0 : _a.length)) {
-        throw new Error("The worktree project has not linked to any Git repository.");
+        throw new Error("The project hasn't linked to any repository.");
     }
     context.projectConfig = projectConfig;
     context.projectConfigPath = (gitConfig === null || gitConfig === void 0 ? void 0 : gitConfig.path)
@@ -62477,8 +62480,50 @@ function checkAddPrerequisite(context, next) {
     context.repos = projectConfig.repos;
     context.projectType = projectConfig.type;
     if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
-        // TODO: multiple repo
-        if (!context.command.options.repo) ;
+        if (!context.repos.length) {
+            throw new Error("No linked repository");
+        }
+        if (!context.command.options.repo && context.command.arguments.branchName) {
+            throw new Error(`The option "--repo" is missing.`);
+        }
+        if (context.command.options.repo && !context.command.arguments.branchName) {
+            throw new Error(`The argument "branch-name" is missing.`);
+        }
+        if (!context.command.options.repo &&
+            !context.command.arguments.branchName) {
+            inquirer
+                .prompt(selectRepoQuestion(context.repos.map((repo) => repo.name)))
+                .then((answer) => {
+                var _a;
+                const repo = (_a = context.repos) === null || _a === void 0 ? void 0 : _a.find((repo) => repo.name === answer.repoName);
+                if (!repo || !repo.path) {
+                    throw new Error(`Cannot find the repository "${answer.repoName}" in the project`);
+                }
+                context.selectedRepo = repo;
+                const uncheckoutBranches = getUncheckoutBranches(context.selectedRepo.path);
+                if (!uncheckoutBranches.length) {
+                    throw new Error(`No available branches can be checkout.\n       You should use "wt add --repo [repo-name] [branch-name]" to add a linked worktree. `);
+                }
+                return inquirer.prompt(selectBranchQuestion(uncheckoutBranches));
+            })
+                .then((answer) => {
+                context.command.arguments.branchName = answer.branchName;
+                next();
+            })
+                .catch((error) => {
+                ErrorProcessor.captureError(context, () => {
+                    throw error;
+                });
+            });
+        }
+        else {
+            const repo = (_b = context.repos) === null || _b === void 0 ? void 0 : _b.find((repo) => repo.name === context.command.options.repo);
+            if (!repo || !repo.path) {
+                throw new Error(`Cannot find the "${context.command.options.repo}" repository in the project`);
+            }
+            context.selectedRepo = repo;
+            next();
+        }
     }
     else {
         context.selectedRepo = context.repos[0];
@@ -62505,11 +62550,11 @@ function checkAddPrerequisite(context, next) {
     }
 }
 function checkRemovePrerequisite(context, next) {
-    var _a;
+    var _a, _b;
     const [projectConfig, gitConfig] = getConfigs(context.cwd);
     checkIsInsideProject([projectConfig, gitConfig]);
     if (!((_a = projectConfig.repos) === null || _a === void 0 ? void 0 : _a.length)) {
-        throw new Error("The worktree project has not linked to any Git repository.");
+        throw new Error("The project hasn't linked to any repository.");
     }
     context.projectConfig = projectConfig;
     context.projectConfigPath = (gitConfig === null || gitConfig === void 0 ? void 0 : gitConfig.path)
@@ -62521,8 +62566,61 @@ function checkRemovePrerequisite(context, next) {
     context.repos = projectConfig.repos;
     context.projectType = projectConfig.type;
     if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
-        // TODO: multiple repo
-        if (!context.command.options.repo) ;
+        if (!context.repos.length) {
+            throw new Error("No linked repository");
+        }
+        if (!context.command.options.repo && context.command.arguments.branchName) {
+            throw new Error(`The option "--repo" is missing.`);
+        }
+        if (context.command.options.repo && !context.command.arguments.branchName) {
+            throw new Error(`The argument "branch-name" is missing.`);
+        }
+        if (!context.command.options.repo &&
+            !context.command.arguments.branchName) {
+            inquirer
+                .prompt(selectRepoQuestion(context.repos.map((repo) => repo.name)))
+                .then((answer) => {
+                var _a;
+                const repo = (_a = context.repos) === null || _a === void 0 ? void 0 : _a.find((repo) => repo.name === answer.repoName);
+                if (!repo || !repo.path) {
+                    throw new Error(`Cannot find the repository: "${answer.repoName}" in the project`);
+                }
+                context.selectedRepo = repo;
+                const worktrees = getWorktrees(context.selectedRepo.path).reverse();
+                // skip the main worktree
+                worktrees.pop();
+                if (!worktrees.length) {
+                    throw new Error("No available worktrees can be removed");
+                }
+                return inquirer.prompt(selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`)));
+            })
+                .then((answer) => {
+                const [removeWorktreePath, branchName] = answer.worktree.split(" ");
+                context.removeWorktrees = [
+                    [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
+                ];
+                next();
+            })
+                .catch((error) => {
+                ErrorProcessor.captureError(context, () => {
+                    throw error;
+                });
+            });
+        }
+        else {
+            const repo = (_b = context.repos) === null || _b === void 0 ? void 0 : _b.find((repo) => repo.name === context.command.options.repo);
+            if (!repo || !repo.path) {
+                throw new Error(`Cannot find the repository: "${context.command.options.repo}" in the project`);
+            }
+            context.removeWorktrees = [
+                [
+                    path__namespace.resolve(context.projectPath, `${context.command.options.repo}#${context.command.arguments.branchName}`),
+                    ,
+                    context.command.arguments.branchName,
+                ],
+            ];
+            next();
+        }
     }
     else {
         context.selectedRepo = context.repos[0];
@@ -62530,6 +62628,9 @@ function checkRemovePrerequisite(context, next) {
             const worktrees = getWorktrees(context.selectedRepo.path).reverse();
             // skip the main worktree
             worktrees.pop();
+            if (!worktrees.length) {
+                throw new Error("No available worktrees can be removed");
+            }
             inquirer
                 .prompt(selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`)))
                 .then((answer) => {
@@ -62562,7 +62663,7 @@ function checkUpdatePrerequisite(context, next) {
     const [projectConfig, gitConfig] = getConfigs(context.cwd);
     checkIsInsideProject([projectConfig, gitConfig]);
     if (!((_a = projectConfig.repos) === null || _a === void 0 ? void 0 : _a.length)) {
-        throw new Error("The worktree project has not linked to any Git repository.");
+        throw new Error("The project hasn't linked to any repository.");
     }
     context.projectConfigPath = (gitConfig === null || gitConfig === void 0 ? void 0 : gitConfig.path)
         ? gitConfig.path
