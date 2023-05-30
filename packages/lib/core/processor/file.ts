@@ -25,7 +25,8 @@ import {
   checkIsDirectChildPath,
   normalizePath,
 } from "../../utils/file";
-import { getGitConfiguration } from "../../utils/git";
+import { checkIsWorktree, getWorktrees } from "../../utils/git";
+import { copySync, ensureDirSync } from "fs-extra";
 
 const IGNORE_FILES = new Set([".git", ".code-workpace"]);
 
@@ -130,14 +131,14 @@ function initDirectory(context: IContext, next: CallableFunction) {
         });
 
         renameSync(gitDirPath, newPath + "/.git");
-        
+
         // remove outside "/.git"
         if (isGitDirSibling || isGitDirOutside) {
           rmSync(parentPath + "/.git");
         }
 
         repo.gitDir = newPath + "/.git";
-        repo.path = newPath
+        repo.path = newPath;
       }
     }
 
@@ -186,12 +187,64 @@ function updateDirectory(context: IContext, next: CallableFunction) {
 
   next();
 }
+function linkDirectory(context: IContext, next: CallableFunction) {
+  if (context.command.arguments.repoURL[0] !== "/") {
+    next();
+  } else {
+    let linkPath = path.resolve(context.command.arguments.repoURL);
+    if (checkIsWorktree(linkPath)) {
+      const worktree = getWorktrees(linkPath)[0];
+      linkPath = worktree[0];
+    }
+
+    const repo: IRepo = {
+      name: context.command.arguments.repoName,
+      path: path.resolve(
+        context.projectPath!,
+        `${context.command.arguments.repoName}#master`
+      ),
+    };
+
+    ensureDirSync(repo.path!);
+    copySync(linkPath, repo.path!);
+    repo.worktrees = [[repo.path!, "", "master"]];
+    if (Array.isArray(context.repos)) {
+      context.repos.push(repo);
+    } else {
+      context.repos = [repo];
+    }
+    next();
+  }
+}
+function unlinkDirectory(context: IContext, next: CallableFunction) {
+  const repos = context.repos?.filter(
+    (_repo: IRepo) => _repo.name !== context.command.arguments.repoName
+  );
+  const unlinkRepo = context.repos?.find(
+    (_repo: IRepo) => _repo.name === context.command.arguments.repoName
+  );
+  const worktrees = getWorktrees(unlinkRepo?.path!);
+  worktrees.forEach((e) => {
+    rmSync(e[0], {
+      force: true,
+      recursive: true,
+    });
+  });
+  context.repos = repos;
+  context.repos!.forEach((repo:IRepo)=>{
+    if(repo.path){
+      repo.worktrees = getWorktrees(repo.path).reverse()
+    }
+  })
+  next();
+}
 
 function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
   const codeWorkSpacePath = path.resolve(
     context.projectPath!,
     EPROJECT_FILES.CODE_WORKSPACE
   );
+
   const codeWorkSpace = { folders: [] } as ICodeWorkSpaceConfig;
 
   context.repos?.forEach((repo: IRepo) => {
@@ -241,6 +294,8 @@ function writeProjectConfiguration(context: IContext, next: CallableFunction) {
 export default {
   initDirectory,
   updateDirectory,
+  linkDirectory,
+  unlinkDirectory,
   writeProjectCodeWorkspace,
   writeProjectConfiguration,
 };

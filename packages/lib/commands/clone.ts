@@ -1,12 +1,10 @@
-/**
- * TODO: handle "git clone"
- */
 
 /**
- * =============================
- *   wt clone <repo> <directory>
- * =============================
+ * =====================================
+ *   wt clone <repository> <directory>
+ * =====================================
  */
+
 import * as path from "path";
 import { Command } from "commander";
 import {
@@ -24,7 +22,7 @@ export default new Command()
   .description(
     `Clone a git repository, and initialize it as a worktree project.\n\n`
   )
-  .argument("<repo>", "The url of a git repository.")
+  .argument("<repository>", "The url of a git repository.")
   .argument(
     "[directory]",
     "Specify a directory that the command is run inside it.",

@@ -1,45 +1,47 @@
-
 /**
  * =============================
- *   wt create <directory>
+ *   wt link <repo-url> <repo-name>
  * =============================
  */
 
 import { Command } from "commander";
-import * as path from "path";
-import { CheckProcessor, ErrorProcessor, Executer, FileProcessor } from "../core";
+
+import {
+  CheckProcessor,
+  ErrorProcessor,
+  Executer,
+  FileProcessor,
+  GitProcessor,
+} from "../core";
 import chalk from "chalk";
 
 export default new Command()
-  .name("create")
-  .alias('c')
-  .summary("Create an empty worktree project")
-  .description("To create an empty worktree project that used for multiple git repositories")
+  .name("unlink")
+  .alias("un")
+  .summary("Remove a Git repository from current project\n\n")
+  .description("To remove a Git repository from current project\n\n")
   .argument(
-    "[directory]",
-    "Specify a directory that the command is run inside it.",
-    process.cwd()
+    "[repo-name]"
   )
   .action(function () {
     const context = {
       command: {
         arguments: {
-          directory: path.resolve(this.processedArgs[0]),
+          repoName: this.processedArgs[0],
         },
       },
-      cwd: path.resolve(this.processedArgs[0]),
+      cwd: process.cwd(),
     };
 
- 
     const processes = [
       ErrorProcessor.captureError,
-      CheckProcessor.checkCreatePrerequisite,
+      CheckProcessor.checkUnlinkPrerequisite,
+      FileProcessor.unlinkDirectory,
       FileProcessor.writeProjectCodeWorkspace,
       FileProcessor.writeProjectConfiguration,
-    ]
+    ];
     const executer = new Executer(processes);
     executer.run(context, () => {
       process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
     });
   });
-

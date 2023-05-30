@@ -9,14 +9,15 @@ export function selectBranchQuestion(branches: string[]): ListQuestion {
   };
 }
 
-export function selectWorktreeQuestion(worktrees:string[]):ListQuestion{
+export function selectWorktreeQuestion(worktrees: string[]): ListQuestion {
   return {
-    type:"list",
-    name:"worktree",
-    message:"Select a worktree:",
-    choices:worktrees
-  }
+    type: "list",
+    name: "worktree",
+    message: "Select a worktree:",
+    choices: worktrees,
+  };
 }
+
 export function selectRepoQuestion(repos: string[]): ListQuestion {
   return {
     type: "list",
@@ -25,5 +26,3 @@ export function selectRepoQuestion(repos: string[]): ListQuestion {
     choices: repos,
   };
 }
-
-

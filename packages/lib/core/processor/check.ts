@@ -22,6 +22,7 @@ import { mkdirSync, readdirSync, statSync } from "fs";
 import inquirer from "inquirer";
 import {
   selectBranchQuestion,
+  selectRepoQuestion,
   selectWorktreeQuestion,
 } from "../../utils/prompts";
 import { ErrorProcessor } from "../index";
@@ -35,7 +36,9 @@ function checkInitPrerequisite(context: IContext, next: CallableFunction) {
   const [projectConfig, worktreeConfig] = getConfigs(repoPath);
 
   if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
-    throw new Error(`The directory: "${repoPath}" has already been initialized`);
+    throw new Error(
+      `The directory: "${repoPath}" has already been initialized`
+    );
   }
 
   context.projectPath = repoPath;
@@ -48,27 +51,22 @@ function checkClonePrerequisite(context: IContext, next: CallableFunction) {
 }
 
 function checkAddPrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
+  const [projectConfig, gitConfig] = getConfigs(context.cwd);
 
-  if (!checkIsInsideProject([projectConfig, worktreeConfig])) {
-    if (!projectConfig.type && !projectConfig.repos?.length) {
-      throw new Error("Cannot add a worktree outside the worktree project.");
-    } else if (!projectConfig.repos?.length) {
-      throw new Error(
-        "The worktree project has not linked to any Git repository."
-      );
-    } else {
-      throw new Error("The type of the worktree project isn't specified.");
-    }
+  checkIsInsideProject([projectConfig, gitConfig]);
+  if (!projectConfig.repos?.length) {
+    throw new Error(
+      "The worktree project has not linked to any Git repository."
+    );
   }
 
   context.projectConfig = projectConfig;
-  context.projectConfigPath = worktreeConfig?.path
-    ? worktreeConfig.path
+  context.projectConfigPath = gitConfig?.path
+    ? gitConfig.path
     : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
 
-  context.projectPath = worktreeConfig?.path
-    ? path.dirname(worktreeConfig.path)
+  context.projectPath = gitConfig?.path
+    ? path.dirname(gitConfig.path)
     : context.cwd;
 
   context.repos = projectConfig.repos;
@@ -106,27 +104,22 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
 }
 
 function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
+  const [projectConfig, gitConfig] = getConfigs(context.cwd);
+  checkIsInsideProject([projectConfig, gitConfig]);
 
-  if (!checkIsInsideProject([projectConfig, worktreeConfig])) {
-    if (!projectConfig.type && !projectConfig.repos?.length) {
-      throw new Error("Cannot remove a worktree outside the worktree project.");
-    } else if (!projectConfig.repos?.length) {
-      throw new Error(
-        "The worktree project has not linked to any Git repository."
-      );
-    } else {
-      throw new Error("The type of the worktree project isn't specified.");
-    }
+  if (!projectConfig.repos?.length) {
+    throw new Error(
+      "The worktree project has not linked to any Git repository."
+    );
   }
 
   context.projectConfig = projectConfig;
-  context.projectConfigPath = worktreeConfig?.path
-    ? worktreeConfig.path
+  context.projectConfigPath = gitConfig?.path
+    ? gitConfig.path
     : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
 
-  context.projectPath = worktreeConfig?.path
-    ? path.dirname(worktreeConfig.path)
+  context.projectPath = gitConfig?.path
+    ? path.dirname(gitConfig!.path)
     : context.cwd;
 
   context.repos = projectConfig.repos;
@@ -138,6 +131,7 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
     }
   } else {
     context.selectedRepo = context.repos[0];
+
     if (!context.command.arguments.branchName) {
       const worktrees: string[][] = getWorktrees(
         context.selectedRepo.path!
@@ -151,11 +145,9 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
           selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`))
         )
         .then((answer) => {
-          const [deleteWorktreePath, branchName] = answer.worktree.split(" ");
-          context.deleteWorktree = [
-            deleteWorktreePath,
-            "",
-            branchName.replace(/\[(.*?)\]/g, "$1"),
+          const [removeWorktreePath, branchName] = answer.worktree.split(" ");
+          context.removeWorktrees = [
+            [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
           ];
           next();
         })
@@ -165,10 +157,15 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
           });
         });
     } else {
-      context.deleteWorktree = [
-        path.resolve(context.projectPath, context.command.arguments.branchName),
-        ,
-        context.command.arguments.branchName,
+      context.removeWorktrees = [
+        [
+          path.resolve(
+            context.projectPath,
+            context.command.arguments.branchName
+          ),
+          ,
+          context.command.arguments.branchName,
+        ],
       ];
       next();
     }
@@ -176,25 +173,21 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
 }
 
 function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, worktreeConfig] = getConfigs(context.cwd);
+  const [projectConfig, gitConfig] = getConfigs(context.cwd);
 
-  if (!checkIsInsideProject([projectConfig, worktreeConfig])) {
-    if (!projectConfig.type && !projectConfig.repos?.length) {
-      throw new Error("Cannot upate outside the worktree project.");
-    } else if (!projectConfig.repos?.length) {
-      throw new Error(
-        "The worktree project has not linked to any Git repository."
-      );
-    } else {
-      throw new Error("The type of the worktree project isn't specified.");
-    }
+  checkIsInsideProject([projectConfig, gitConfig]);
+
+  if (!projectConfig.repos?.length) {
+    throw new Error(
+      "The worktree project has not linked to any Git repository."
+    );
   }
 
-  context.projectConfigPath = worktreeConfig?.path
-    ? worktreeConfig.path
+  context.projectConfigPath = gitConfig?.path
+    ? gitConfig.path
     : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
-  context.projectPath = worktreeConfig?.path
-    ? path.dirname(worktreeConfig.path)
+  context.projectPath = gitConfig?.path
+    ? path.dirname(gitConfig.path)
     : context.cwd;
 
   context.projectType = projectConfig.type;
@@ -208,9 +201,11 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
     throw new Error(`Cannot create inside the ".git" folder`);
   }
 
-  const [projectConfig, worktreeConfig] = getConfigs(repoPath);
-  if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
-    throw new Error(`The directory: "${repoPath}" has already been initialized`);
+  const [projectConfig, gitConfig] = getConfigs(repoPath);
+  if (Object.keys(gitConfig).length || Object.keys(projectConfig).length) {
+    throw new Error(
+      `The directory: "${repoPath}" has already been initialized`
+    );
   }
   try {
     const stat = statSync(repoPath);
@@ -228,14 +223,74 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
   next();
 }
 
-function inspectPotentialWorktrees(context: any, next: CallableFunction) {
-  const files = readdirSync(context.projectPath);
+function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
+  const [projectConfig, gitConfig] = getConfigs(context.cwd);
+  checkIsInsideProject([projectConfig, gitConfig]);
+  if (projectConfig?.type !== EPROJECT_TYPE.MULTIPLE) {
+    throw new Error('Cannot use "wt link" inside a "single-repo" project.');
+  }
+
+  context.projectConfigPath = gitConfig?.path
+    ? gitConfig.path
+    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
+  context.projectPath = gitConfig?.path
+    ? path.dirname(gitConfig.path)
+    : context.cwd;
+
+  context.projectType = projectConfig.type;
+  context.repos = projectConfig.repos;
+  context.repos.forEach((repo: IRepo) => {
+    if (repo.name === context.command.arguments.repoName) {
+      throw new Error(`The repo name: ${repo.name} is exited`);
+    }
+    if (repo.path) {
+      repo.worktrees = getWorktrees(repo.path).reverse();
+    }
+  });
+  next();
+}
+function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
+  const [projectConfig, gitConfig] = getConfigs(context.cwd);
+  checkIsInsideProject([projectConfig, gitConfig]);
+  if (projectConfig?.type !== EPROJECT_TYPE.MULTIPLE) {
+    throw new Error('Cannot use "wt unlink" inside a "single-repo" project.');
+  }
+  context.projectConfigPath = gitConfig?.path
+    ? gitConfig.path
+    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
+  context.projectPath = gitConfig?.path
+    ? path.dirname(gitConfig.path)
+    : context.cwd;
+  context.projectType = projectConfig.type;
+  context.repos = projectConfig.repos;
+  if (!context.repos.length) {
+    throw new Error("No linked repository");
+  }
+  if (context.command.arguments.repoName) {
+    next();
+  } else {
+    inquirer
+      .prompt(selectRepoQuestion(context.repos.map((repo) => repo.name)))
+      .then((answer) => {
+        context.command.arguments.repoName = answer.repoName;
+        next();
+      })
+      .catch((error) => {
+        ErrorProcessor.captureError(context, () => {
+          throw error;
+        });
+      });
+  }
+}
+
+function inspectPotentialWorktrees(context: IContext, next: CallableFunction) {
+  const files = readdirSync(context.projectPath!);
 
   // TODO: feature suppport multi-repo
   const multiRepoWorktrees: IMultiRepoWorktreePaths = {};
 
   files.forEach((file) => {
-    const _path = path.resolve(context.projectPath, file);
+    const _path = path.resolve(context.projectPath!, file);
 
     if (checkIsWorktree(_path)) {
       const gitDirPath = getGitDir(_path);
@@ -269,27 +324,36 @@ function inspectPotentialWorktrees(context: any, next: CallableFunction) {
   next();
 }
 
-function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): boolean {
-  let [projectConfig, worktreeConfig] = configs;
-  if (projectConfig?.repos?.length && projectConfig?.type) {
-    return true;
-  } else if (worktreeConfig.path && worktreeConfig.reponame) {
+function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): void {
+  let [projectConfig, gitConfig] = configs;
+
+  if (!Object.keys(projectConfig).length && !gitConfig.path) {
+    throw new Error("Cannot execute commands outside a worktree project.");
+  }
+
+  if (gitConfig.path) {
     const tempProjectConfig = getProjectFile(
-      path.dirname(worktreeConfig.path),
+      path.dirname(gitConfig.path),
       EPROJECT_FILES.CONFIGURATION
     );
 
-    if (tempProjectConfig?.repos?.length && tempProjectConfig?.type) {
-      projectConfig.repos = tempProjectConfig.repos;
-      projectConfig.type = tempProjectConfig.type;
-      return true;
+    if (!Object.keys(tempProjectConfig).length) {
+      throw new Error(`"wt.config.json" is missing.`);
     }
+
+    projectConfig.repos = tempProjectConfig.repos;
+    projectConfig.type = tempProjectConfig.type;
   }
-  return false;
+
+  if (projectConfig.type === undefined) {
+    throw new Error(`The property "type" in "wt.config.json" is missing.`);
+  }
 }
 
 export default {
   checkCreatePrerequisite,
+  checkLinkPrerequisite,
+  checkUnlinkPrerequisite,
   checkInitPrerequisite,
   checkClonePrerequisite,
   checkAddPrerequisite,

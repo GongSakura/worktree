@@ -78,7 +78,7 @@ To add a worktree based on \<branch-name\>.
 
 - This tool will generate some folders and configuration files to help you automatically manage your worktrees, please do not change the name of these files and folders. If you accidentally changed it, use "wt update" to repair it.
 
-- For convention, worktree directories inside a **single-repo** project are named after the \<branch-name\>
+- For convenience, worktree directories inside a **single-repo** project are named after the \<branch-name\>
 
   ```text
   project(single-repo)/
