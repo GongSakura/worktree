@@ -37,7 +37,7 @@
     "inquirer": "^9.2.6"
   },
   "bin": {
-    "wtdev": "./bin/index.js"
+    "wt": "./bin/index.js"
   },
   "engines": {
     "node": ">=v14.18.0"
