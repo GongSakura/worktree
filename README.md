@@ -31,8 +31,6 @@ node version >=14.18.0 (Due to the prefix "node:" in internal modules)
 npm i -g @kanamara/worktree
 ```
 
-
-
 <br/>
 
 ## Quick Start
@@ -199,5 +197,9 @@ To remove a git repository from the current project.
 
 - TODO: More informative and elegant error processor
 - TODO: Unit test
+
+
+## Welcome to contribute and raise issues
+https://github.com/GongSakura/worktree
 
 <br/>
