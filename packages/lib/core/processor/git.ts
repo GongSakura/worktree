@@ -3,8 +3,8 @@
  * By default, the last element of the worktree list is the main worktree
  *
  */
-import { execSync } from "child_process";
-import * as path from "path";
+import { execSync } from "node:child_process";
+import * as path from "node:path";
 import {
   getAllBranches,
   getGitDir,

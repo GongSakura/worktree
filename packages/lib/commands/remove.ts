@@ -1,11 +1,8 @@
-/**
- * Handle "git worktree remove"
- */
 
 /**
- * =============================================
+ * ===============================
  *   wt remove -f <branch-name>
- * =============================================
+ * ===============================
  */
 import { Command } from "commander";
 import {
@@ -18,8 +15,8 @@ import {
 import chalk from "chalk";
 
 export default new Command()
-  .command("rm")
-  .aliases(["remove", "delete"])
+  .command("rmove")
+  .aliases(["rm"])
   .summary("Remove a linked worktree.\n\n")
   .description(`To remove a linked worktree from the worktree project`)
   .option(

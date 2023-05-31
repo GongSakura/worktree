@@ -1,11 +1,10 @@
-
 /**
  * =====================================
  *   wt clone <repository> <directory>
  * =====================================
  */
 
-import * as path from "path";
+import * as path from "node:path";
 import { Command } from "commander";
 import {
   Executer,
@@ -18,25 +17,26 @@ import chalk from "chalk";
 
 export default new Command()
   .command("clone")
-  .summary("Clone \n\n")
-  .description(
-    `Clone a git repository, and initialize it as a worktree project.\n\n`
+  .summary(
+    `Create a "single-repo" worktree project and clone a git repository.  \n\n`
   )
-  .argument("<repository>", "The url of a git repository.")
+  .description(
+    `Create a "single-repo" worktree project and clone a git repository.  \n\n`
+  )
+  .argument("<repo-url>", "The url of a git repository.")
   .argument(
     "[directory]",
-    "Specify a directory that the command is run inside it.",
-    process.cwd()
+    "Specify a directory that the command is run inside it."
   )
   .action(function () {
     const context = {
       command: {
         arguments: {
           repoURL: this.processedArgs[0],
-          directory: path.resolve(this.processedArgs[1]),
+          directory: path.resolve(this.processedArgs[1] || process.cwd()),
         },
       },
-      cwd: path.resolve(this.processedArgs[1]),
+      cwd: path.resolve(this.processedArgs[1] || process.cwd()),
     };
 
     const processes = [

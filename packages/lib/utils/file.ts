@@ -4,8 +4,8 @@ import {
   rmdirSync,
   statSync,
 
-} from "fs";
-import * as path from "path";
+} from "node:fs";
+import * as path from "node:path";
 import { EPROJECT_FILES, IProjectConfig, IGitConfig } from "./types";
 import { getGitConfiguration } from "./git";
 

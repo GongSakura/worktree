@@ -166,7 +166,7 @@ export function getUncheckoutBranches(cwdPath: string): string[] {
       .trim()
       .split("\n")
       .forEach((e) => {
-        if (!/^[*+]/.test(e.trim())) {
+        if (!/^[*+]/.test(e.trim()) && !/->*/.test(e.trim())) {
           branches.push(e.trim().replace(/^\W*/, ""));
         }
       });

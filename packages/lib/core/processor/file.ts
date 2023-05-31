@@ -11,8 +11,8 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-} from "fs";
-import * as path from "path";
+} from "node:fs";
+import * as path from "node:path";
 import {
   ICodeWorkSpaceConfig,
   EPROJECT_FILES,
