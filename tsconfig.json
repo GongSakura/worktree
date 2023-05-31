@@ -1,16 +1,18 @@
 {
     "include": [
         "packages/**/*"
-    ],
+, "packages/__test__", "packages/__test__"    ],
     "compilerOptions": {
         "lib": [
-            "ESNext","ES2017"
+            "ESNext",
+            "ES2017"
         ],
         "module": "ESNext",
         "target": "ES6",
         "moduleResolution": "node",
         "esModuleInterop": true,
         "strict": true,
+        "allowJs": true,
         "noImplicitThis": false
     },
 }

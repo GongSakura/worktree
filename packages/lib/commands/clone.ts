@@ -13,22 +13,9 @@ import {
   CheckProcessor,
   ErrorProcessor,
 } from "../core";
-import chalk from "chalk";
 
-export default new Command()
-  .command("clone")
-  .summary(
-    `Create a "single-repo" worktree project and clone a git repository.  \n\n`
-  )
-  .description(
-    `Create a "single-repo" worktree project and clone a git repository.  \n\n`
-  )
-  .argument("<repo-url>", "The url of a git repository.")
-  .argument(
-    "[directory]",
-    "Specify a directory that the command is run inside it."
-  )
-  .action(function () {
+export function cloneAction(done: CallableFunction) {
+  return function () {
     const context = {
       command: {
         arguments: {
@@ -50,7 +37,23 @@ export default new Command()
     ];
 
     const executer = new Executer(processes);
-    executer.run(context, () => {
-      process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
-    });
-  });
+    executer.run(context, done);
+  };
+}
+
+export function cloneCommand(action: (...args: any[]) => void) {
+  return new Command()
+    .command("clone")
+    .summary(
+      `Create a "single-repo" worktree project and clone a git repository.  \n\n`
+    )
+    .description(
+      `Create a "single-repo" worktree project and clone a git repository.  \n\n`
+    )
+    .argument("<repo-url>", "The url of a git repository.")
+    .argument(
+      "[directory]",
+      "Specify a directory that the command is run inside it."
+    )
+    .action(action);
+}

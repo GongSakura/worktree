@@ -13,25 +13,9 @@ import {
   FileProcessor,
   GitProcessor,
 } from "../core";
-import chalk from "chalk";
 
-
-export default new Command()
-  .name("link")
-  .alias("ln")
-  .summary("Link a Git repo into current project\n\n")
-  .description(
-    "To link a Git repo into current project, <repo-url> can be a remote url or the local path\n\n"
-  )
-  .argument(
-    "<repo-url>",
-    "The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n"
-  )
-  .argument(
-    "<repo-name>",
-    `Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`
-  )
-  .action(function () {
+export function linkAction(done: CallableFunction) {
+  return function () {
     const context = {
       command: {
         arguments: {
@@ -41,7 +25,7 @@ export default new Command()
       },
       cwd: process.cwd(),
     };
- 
+
     const processes = [
       ErrorProcessor.captureError,
       CheckProcessor.checkLinkPrerequisite,
@@ -52,7 +36,25 @@ export default new Command()
       GitProcessor.configWorktree,
     ];
     const executer = new Executer(processes);
-    executer.run(context, () => {
-      process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
-    });
-  });
+    executer.run(context, done);
+  };
+}
+
+export function linkCommand (action: (...args: any[]) => void){
+  return new Command()
+    .name("link")
+    .alias("ln")
+    .summary("Link a Git repo into current project.\n\n")
+    .description(
+      "To link a Git repo into current project, <repo-url> can be a remote url or the local path.\n\n"
+    )
+    .argument(
+      "<repo-url>",
+      "The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n"
+    )
+    .argument(
+      "<repo-name>",
+      `Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`
+    )
+    .action(action);
+};

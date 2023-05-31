@@ -28,21 +28,30 @@ import {
 import { ErrorProcessor } from "../index";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
-  const repoPath = context.cwd;
+
+  const repoPath = context.command.arguments.directory;
   if (checkIsGitDir(repoPath)) {
     throw new Error(`Cannot execute commands inside a ".git" folder`);
   }
-
+  console.info(`repoPath:`,repoPath)
   const [projectConfig, worktreeConfig] = getConfigs(repoPath);
+  console.info(`:`,123)
 
+  console.info(`[projectConfig, worktreeConfig]:`,projectConfig, worktreeConfig)
   if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
     throw new Error(
       `The directory: "${repoPath}" has already been initialized`
     );
   }
-
+ console.info(`:`,456)
+  console.info(`context:`,context)
+  context.projectConfigPath = path.resolve(
+    repoPath,
+    EPROJECT_FILES.CONFIGURATION
+  );
   context.projectPath = repoPath;
   context.projectType = EPROJECT_TYPE.SINGLE;
+ 
   next();
 }
 

@@ -1,4 +1,3 @@
-
 /**
  * =============================
  *   wt create <directory>
@@ -7,20 +6,15 @@
 
 import { Command } from "commander";
 import * as path from "node:path";
-import { CheckProcessor, ErrorProcessor, Executer, FileProcessor } from "../core";
-import chalk from "chalk";
+import {
+  CheckProcessor,
+  ErrorProcessor,
+  Executer,
+  FileProcessor,
+} from "../core";
 
-export default new Command()
-  .name("create")
-  .alias('c')
-  .summary("Create an empty worktree project")
-  .description("To create an empty worktree project that used for multiple git repositories")
-  .argument(
-    "[directory]",
-    "Specify a directory that the command is run inside it.",
-    process.cwd()
-  )
-  .action(function () {
+export function createAction(done: CallableFunction) {
+  return function () {
     const context = {
       command: {
         arguments: {
@@ -30,16 +24,29 @@ export default new Command()
       cwd: path.resolve(this.processedArgs[0]),
     };
 
- 
     const processes = [
       ErrorProcessor.captureError,
       CheckProcessor.checkCreatePrerequisite,
       FileProcessor.writeProjectCodeWorkspace,
       FileProcessor.writeProjectConfiguration,
-    ]
+    ];
     const executer = new Executer(processes);
-    executer.run(context, () => {
-      process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
-    });
-  });
+    executer.run(context, done);
+  };
+}
 
+export function createCommand(action: (...args: any[]) => void) {
+  return new Command()
+    .name("create")
+    .alias("c")
+    .summary("Create an empty worktree project.\n\n")
+    .description(
+      "To create an empty worktree project that used for multiple git repositories.\n\n"
+    )
+    .argument(
+      "[directory]",
+      "Specify a directory that the command is run inside it.",
+      process.cwd()
+    )
+    .action(action);
+}
