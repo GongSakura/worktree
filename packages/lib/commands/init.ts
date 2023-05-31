@@ -3,7 +3,7 @@
  *   wt init <directory>
  * =======================
  */
-import * as path from "path";
+import * as path from "node:path";
 import { Command } from "commander";
 import chalk from "chalk";
 import {
@@ -22,23 +22,22 @@ export default new Command()
   )
   .option(
     "--branch [branch-name]",
-    ":: The specified name for the initial branch in the newly created git repository.\n\n"
+    "[OPTIONAL] The specified name for the initial branch in the newly created git repository.\n\n"
   )
   .helpOption("-h, --help", "Display help for command")
   .argument(
     "[directory]",
-    "Specify a directory that the command is run inside it.",
-    process.cwd()
+    "[OPTIONAL] Specify a directory that the command is run inside it."
   )
   .action(function () {
     const context = {
       command: {
         options: this.opts(),
         arguments: {
-          directory: path.resolve(this.processedArgs[0]),
+          directory: path.resolve(this.processedArgs[0] || process.cwd()),
         },
       },
-      cwd: path.resolve(this.processedArgs[0]),
+      cwd: path.resolve(this.processedArgs[0] || process.cwd()),
     };
 
     const processes = [

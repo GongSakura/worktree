@@ -1,7 +1,7 @@
 /**
- * =============================
+ * ==================================
  *   wt link <repo-url> <repo-name>
- * =============================
+ * ==================================
  */
 
 import { Command } from "commander";
@@ -49,6 +49,7 @@ export default new Command()
       FileProcessor.linkDirectory,
       FileProcessor.writeProjectCodeWorkspace,
       FileProcessor.writeProjectConfiguration,
+      GitProcessor.configWorktree,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {

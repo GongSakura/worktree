@@ -15,7 +15,7 @@ module.exports = {
     json(),
     commonjs(),
     nodeResolve({
-      preferBuiltins:false,
+      preferBuiltins: true,
       exportConditions: ["node"],
     }),
     typescript(),

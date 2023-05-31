@@ -1,6 +1,6 @@
 {
-  "name": "@kanamara/worktree-dev",
-  "version": "0.0.7",
+  "name": "@kanamara/worktree",
+  "version": "0.1.0",
   "main": "./bin/index.js",
   "keywords": [
     "git",

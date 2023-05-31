@@ -1,4 +1,4 @@
-import * as path from "path";
+import * as path from "node:path";
 import {
   checkIsGitDir,
   checkIsWorktree,
@@ -18,7 +18,7 @@ import {
   IContext,
   IRepo,
 } from "../../utils/types";
-import { mkdirSync, readdirSync, statSync } from "fs";
+import { mkdirSync, readdirSync, statSync } from "node:fs";
 import inquirer from "inquirer";
 import {
   selectBranchQuestion,

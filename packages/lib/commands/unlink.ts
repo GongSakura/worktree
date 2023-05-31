@@ -1,7 +1,7 @@
 /**
- * =============================
- *   wt link <repo-url> <repo-name>
- * =============================
+ * =========================
+ *   wt unlink <repo-name>
+ * =========================
  */
 
 import { Command } from "commander";
@@ -11,13 +11,12 @@ import {
   ErrorProcessor,
   Executer,
   FileProcessor,
-  GitProcessor,
 } from "../core";
 import chalk from "chalk";
 
 export default new Command()
   .name("unlink")
-  .alias("un")
+  .alias("ul")
   .summary("Remove a Git repository from current project\n\n")
   .description("To remove a Git repository from current project\n\n")
   .argument(

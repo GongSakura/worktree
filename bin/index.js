@@ -3,13 +3,15 @@
 
 var require$$0$2 = require('events');
 var require$$1$1 = require('child_process');
-var path$e = require('path');
+var require$$1$2 = require('path');
 var require$$0$3 = require('fs');
 var require$$4$1 = require('process');
+var path$e = require('node:path');
 var process$4 = require('node:process');
 var os$1 = require('node:os');
 var tty$1 = require('node:tty');
 var node_child_process = require('node:child_process');
+var node_fs = require('node:fs');
 var require$$0$4 = require('constants');
 var require$$0$5 = require('stream');
 var require$$0$6 = require('util');
@@ -19,7 +21,7 @@ var require$$0$7 = require('tty');
 var require$$0$a = require('readline');
 var require$$0$8 = require('os');
 var require$$0$9 = require('buffer');
-var require$$1$2 = require('string_decoder');
+var require$$1$3 = require('string_decoder');
 var require$$2$1 = require('crypto');
 var readline$1 = require('node:readline');
 
@@ -1156,7 +1158,7 @@ suggestSimilar$2.suggestSimilar = suggestSimilar$1;
 
 const EventEmitter = require$$0$2.EventEmitter;
 const childProcess = require$$1$1;
-const path$d = path$e;
+const path$d = require$$1$2;
 const fs$k = require$$0$3;
 const process$3 = require$$4$1;
 
@@ -4190,7 +4192,7 @@ function getUncheckoutBranches(cwdPath) {
             .trim()
             .split("\n")
             .forEach((e) => {
-            if (!/^[*+]/.test(e.trim())) {
+            if (!/^[*+]/.test(e.trim()) && !/->*/.test(e.trim())) {
                 branches.push(e.trim().replace(/^\W*/, ""));
             }
         });
@@ -4213,7 +4215,7 @@ function cloneRepository(context, next) {
         .split("/")
         .pop()
         .replace(/\.git$/, "");
-    require$$1$1.execSync(`git clone ${repoURL} ${repoPath}`, {
+    node_child_process.execSync(`git clone ${repoURL} ${repoPath}`, {
         stdio: "inherit",
     });
     context.repos = [
@@ -4230,7 +4232,7 @@ function initRepository(context, next) {
     var _a, _b, _c, _d;
     const repoPath = context.cwd;
     const repoName = context.cwd.split("/").pop();
-    require$$1$1.execSync("git init " +
+    node_child_process.execSync("git init " +
         (((_b = (_a = context.command) === null || _a === void 0 ? void 0 : _a.options) === null || _b === void 0 ? void 0 : _b.branch)
             ? `-b ${(_d = (_c = context.command) === null || _c === void 0 ? void 0 : _c.options) === null || _d === void 0 ? void 0 : _d.branch} `
             : " ") +
@@ -4259,7 +4261,7 @@ function linkRepository(context, next) {
         const repoURL = context.command.arguments.repoURL;
         const repoName = context.command.arguments.repoName;
         const repoPath = path__namespace.resolve(context.projectPath, `${repoName}#master`);
-        require$$1$1.execSync(`git clone ${repoURL} ${repoPath}`, {
+        node_child_process.execSync(`git clone ${repoURL} ${repoPath}`, {
             stdio: "inherit",
         });
         const repo = {
@@ -4280,11 +4282,11 @@ function configWorktree(context, next) {
     var _a;
     (_a = context.repos) === null || _a === void 0 ? void 0 : _a.forEach((repo) => {
         const configPath = context.projectConfigPath;
-        require$$1$1.execSync("git config --local wt.config.path " + configPath, {
+        node_child_process.execSync("git config --local wt.config.path " + configPath, {
             cwd: repo.path,
             stdio: "pipe",
         });
-        require$$1$1.execSync("git config --local wt.config.repoName " + repo.name, {
+        node_child_process.execSync("git config --local wt.config.repoName " + repo.name, {
             cwd: repo.path,
             stdio: "pipe",
         });
@@ -4307,7 +4309,7 @@ function addWorktree(context, next) {
                 ? `${newWorktreePath} ${commitHash}`
                 : `${newWorktreePath} ${branchName}`
             : `-b ${branchName} ${newWorktreePath} ${commitHash}`);
-    require$$1$1.execSync(command, {
+    node_child_process.execSync(command, {
         cwd: mainWorktreePath,
         stdio: "pipe",
     });
@@ -4319,13 +4321,13 @@ function removeWorktree(context, next) {
     const [removeWorktreePath, , branchName] = context.removeWorktrees[0];
     const mainWorktreePath = context.selectedRepo.path;
     if (removeWorktreePath) {
-        require$$1$1.execSync("git worktree remove -f " + removeWorktreePath, {
+        node_child_process.execSync("git worktree remove -f " + removeWorktreePath, {
             cwd: context.selectedRepo.path,
             stdio: "pipe",
         });
         const isDeleteBranch = (_a = context.command.options) === null || _a === void 0 ? void 0 : _a.force;
         if (isDeleteBranch) {
-            require$$1$1.execSync("git branch -D " + branchName, {
+            node_child_process.execSync("git branch -D " + branchName, {
                 cwd: mainWorktreePath,
                 stdio: "pipe",
             });
@@ -4342,7 +4344,7 @@ function repairWorktree(context, next) {
         const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
             return `${prev} ${cur[0]}`;
         }, "");
-        require$$1$1.execSync("git worktree repair " + linkedWorktreePaths, {
+        node_child_process.execSync("git worktree repair " + linkedWorktreePaths, {
             cwd: mainWorktreePath,
             stdio: "pipe",
         });
@@ -4363,7 +4365,7 @@ var GitProcessor = {
 
 function getProjectFile(cwdPath, name) {
     try {
-        return JSON.parse(require$$0$3.readFileSync(path__namespace.resolve(cwdPath, name)).toString());
+        return JSON.parse(node_fs.readFileSync(path__namespace.resolve(cwdPath, name)).toString());
     }
     catch (error) {
         return {};
@@ -4383,7 +4385,7 @@ function checkArePathsIdentical(...paths) {
     let flag;
     for (const p of paths) {
         try {
-            const stat = require$$0$3.statSync(p);
+            const stat = node_fs.statSync(p);
             if (!flag) {
                 flag = stat.ino;
             }
@@ -4398,16 +4400,16 @@ function checkArePathsIdentical(...paths) {
     return true;
 }
 function checkIsPathCaseSensitive() {
-    const path = require$$0$3.mkdtempSync("_");
+    const path = node_fs.mkdtempSync("_");
     try {
-        const stat = require$$0$3.statSync(path.toUpperCase());
+        const stat = node_fs.statSync(path.toUpperCase());
         return !stat.isDirectory();
     }
     catch (error) {
         return true;
     }
     finally {
-        require$$0$3.rmdirSync(path);
+        node_fs.rmdirSync(path);
     }
 }
 function normalizePath(rawPath) {
@@ -5536,7 +5538,7 @@ var makeDir$1 = {};
 
 var utils$1 = {};
 
-const path$c = path$e;
+const path$c = require$$1$2;
 
 // https://github.com/nodejs/node/issues/8987
 // https://github.com/libuv/libuv/pull/1088
@@ -5631,7 +5633,7 @@ var utimes = {
 };
 
 const fs$e = fs$j;
-const path$b = path$e;
+const path$b = require$$1$2;
 const util$3 = require$$0$6;
 
 function getStats$2 (src, dest, opts) {
@@ -5784,7 +5786,7 @@ var stat$4 = {
 };
 
 const fs$d = gracefulFs;
-const path$a = path$e;
+const path$a = require$$1$2;
 const mkdirs$1 = mkdirs$2.mkdirs;
 const pathExists$5 = pathExists_1.pathExists;
 const utimesMillis = utimes.utimesMillis;
@@ -6021,7 +6023,7 @@ function copyLink$1 (resolvedSrc, dest, cb) {
 var copy_1 = copy$2;
 
 const fs$c = gracefulFs;
-const path$9 = path$e;
+const path$9 = require$$1$2;
 const mkdirsSync$1 = mkdirs$2.mkdirsSync;
 const utimesMillisSync = utimes.utimesMillisSync;
 const stat$2 = stat$4;
@@ -6204,7 +6206,7 @@ var remove_1 = {
 
 const u$6 = universalify$1.fromPromise;
 const fs$a = fs$j;
-const path$8 = path$e;
+const path$8 = require$$1$2;
 const mkdir$3 = mkdirs$2;
 const remove$1 = remove_1;
 
@@ -6241,7 +6243,7 @@ var empty$1 = {
 };
 
 const u$5 = universalify$1.fromCallback;
-const path$7 = path$e;
+const path$7 = require$$1$2;
 const fs$9 = gracefulFs;
 const mkdir$2 = mkdirs$2;
 
@@ -6309,7 +6311,7 @@ var file$1 = {
 };
 
 const u$4 = universalify$1.fromCallback;
-const path$6 = path$e;
+const path$6 = require$$1$2;
 const fs$8 = gracefulFs;
 const mkdir$1 = mkdirs$2;
 const pathExists$4 = pathExists_1.pathExists;
@@ -6371,7 +6373,7 @@ var link = {
   createLinkSync: createLinkSync$1
 };
 
-const path$5 = path$e;
+const path$5 = require$$1$2;
 const fs$7 = gracefulFs;
 const pathExists$3 = pathExists_1.pathExists;
 
@@ -6500,7 +6502,7 @@ var symlinkType_1 = {
 };
 
 const u$3 = universalify$1.fromCallback;
-const path$4 = path$e;
+const path$4 = require$$1$2;
 const fs$5 = fs$j;
 const _mkdirs = mkdirs$2;
 const mkdirs = _mkdirs.mkdirs;
@@ -6718,7 +6720,7 @@ var jsonfile = {
 
 const u$2 = universalify$1.fromCallback;
 const fs$4 = gracefulFs;
-const path$3 = path$e;
+const path$3 = require$$1$2;
 const mkdir = mkdirs$2;
 const pathExists$1 = pathExists_1.pathExists;
 
@@ -6793,7 +6795,7 @@ jsonFile.readJSONSync = jsonFile.readJsonSync;
 var json = jsonFile;
 
 const fs$3 = gracefulFs;
-const path$2 = path$e;
+const path$2 = require$$1$2;
 const copy = copy$1.copy;
 const remove = remove_1.remove;
 const mkdirp = mkdirs$2.mkdirp;
@@ -6868,7 +6870,7 @@ function moveAcrossDevice$1 (src, dest, overwrite, cb) {
 var move_1 = move$1;
 
 const fs$2 = gracefulFs;
-const path$1 = path$e;
+const path$1 = require$$1$2;
 const copySync = copy$1.copySync;
 const removeSync = remove_1.removeSync;
 const mkdirpSync = mkdirs$2.mkdirpSync;
@@ -6976,7 +6978,7 @@ function initDirectory(context, next) {
             // if the new worktree path is existed, then skip
             let newPathStat;
             try {
-                newPathStat = require$$0$3.statSync(newPath);
+                newPathStat = node_fs.statSync(newPath);
             }
             catch (error) { }
             if (newPathStat) {
@@ -6988,8 +6990,8 @@ function initDirectory(context, next) {
                     // FIXME: have not decided to use hardlink or directly move the linked worktrees
                     // outside the current work directory
                     newPath.startsWith(parentPath)
-                        ? require$$0$3.renameSync(oldPath, newPath)
-                        : require$$0$3.linkSync(oldPath, newPath);
+                        ? node_fs.renameSync(oldPath, newPath)
+                        : node_fs.linkSync(oldPath, newPath);
                 }
                 catch (error) {
                     break;
@@ -7007,21 +7009,21 @@ function initDirectory(context, next) {
                 const isGitDirSibling = !checkArePathsIdentical(oldParentPath, parentPath);
                 const isGitDirOutside = parentPath !== gitDirDirname && parentPath.startsWith(gitDirDirname);
                 if (isGitDirSibling) {
-                    require$$0$3.renameSync(oldParentPath, newPath);
+                    node_fs.renameSync(oldParentPath, newPath);
                 }
                 else {
-                    require$$0$3.mkdirSync(newPath);
+                    node_fs.mkdirSync(newPath);
                 }
-                require$$0$3.readdirSync(parentPath).forEach((file) => {
+                node_fs.readdirSync(parentPath).forEach((file) => {
                     const filePath = normalizePath(path__namespace.resolve(parentPath, file));
                     if (!IGNORE_FILES.has(file) && !excludedPaths.has(filePath)) {
-                        require$$0$3.renameSync(path__namespace.resolve(parentPath, file), path__namespace.resolve(newPath, file));
+                        node_fs.renameSync(path__namespace.resolve(parentPath, file), path__namespace.resolve(newPath, file));
                     }
                 });
-                require$$0$3.renameSync(gitDirPath, newPath + "/.git");
+                node_fs.renameSync(gitDirPath, newPath + "/.git");
                 // remove outside "/.git"
                 if (isGitDirSibling || isGitDirOutside) {
-                    require$$0$3.rmSync(parentPath + "/.git");
+                    node_fs.rmSync(parentPath + "/.git");
                 }
                 repo.gitDir = newPath + "/.git";
                 repo.path = newPath;
@@ -7053,7 +7055,7 @@ function updateDirectory(context, next) {
                     continue;
                 }
                 try {
-                    require$$0$3.renameSync(oldPath, newPath);
+                    node_fs.renameSync(oldPath, newPath);
                     renameTodoMap.delete(oldPath);
                 }
                 catch (error) { }
@@ -7096,7 +7098,7 @@ function unlinkDirectory(context, next) {
     const unlinkRepo = (_b = context.repos) === null || _b === void 0 ? void 0 : _b.find((_repo) => _repo.name === context.command.arguments.repoName);
     const worktrees = getWorktrees(unlinkRepo === null || unlinkRepo === void 0 ? void 0 : unlinkRepo.path);
     worktrees.forEach((e) => {
-        require$$0$3.rmSync(e[0], {
+        node_fs.rmSync(e[0], {
             force: true,
             recursive: true,
         });
@@ -7124,7 +7126,7 @@ function writeProjectCodeWorkspace(context, next) {
             });
         });
     });
-    require$$0$3.writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
+    node_fs.writeFileSync(codeWorkSpacePath, JSON.stringify(codeWorkSpace, null, 2), {
         mode: 0o777,
         encoding: "utf-8",
         flag: "w",
@@ -7141,7 +7143,7 @@ function writeProjectConfiguration(context, next) {
         }),
         type: context.projectType || EPROJECT_TYPE.SINGLE,
     };
-    require$$0$3.writeFileSync(projectConfigPath, JSON.stringify(config, null, 2), {
+    node_fs.writeFileSync(projectConfigPath, JSON.stringify(config, null, 2), {
         mode: 0o777,
         encoding: "utf-8",
         flag: "w",
@@ -49197,7 +49199,7 @@ function requireInternal () {
 	//------------------------------------------------------------------------------
 
 	// We use node.js internal decoder. Its signature is the same as ours.
-	var StringDecoder = require$$1$2.StringDecoder;
+	var StringDecoder = require$$1$3.StringDecoder;
 
 	if (!StringDecoder.prototype.end) // Node v0.8 doesn't have this method.
 	    StringDecoder.prototype.end = function() {};
@@ -60136,7 +60138,7 @@ var osTmpdir = function () {
  * Module dependencies.
  */
 const fs = require$$0$3;
-const path = path$e;
+const path = require$$1$2;
 const crypto = require$$2$1;
 const osTmpDir = osTmpdir;
 const _c = process.binding('constants');
@@ -62684,13 +62686,13 @@ function checkCreatePrerequisite(context, next) {
         throw new Error(`The directory: "${repoPath}" has already been initialized`);
     }
     try {
-        const stat = require$$0$3.statSync(repoPath);
+        const stat = node_fs.statSync(repoPath);
         if (stat.isFile()) {
             throw new Error(`Cannot create the project inside a file path: ${repoPath}`);
         }
     }
     catch (_a) {
-        require$$0$3.mkdirSync(repoPath);
+        node_fs.mkdirSync(repoPath);
     }
     context.projectPath = repoPath;
     context.projectType = EPROJECT_TYPE.MULTIPLE;
@@ -62756,7 +62758,7 @@ function checkUnlinkPrerequisite(context, next) {
     }
 }
 function inspectPotentialWorktrees(context, next) {
-    const files = require$$0$3.readdirSync(context.projectPath);
+    const files = node_fs.readdirSync(context.projectPath);
     // TODO: feature suppport multi-repo
     const multiRepoWorktrees = {};
     files.forEach((file) => {
@@ -62830,18 +62832,18 @@ var initCommand = new Command()
     .command("init")
     .summary("Create a worktree project and init a Git repository.\n\n")
     .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init\n\n".`)
-    .option("--branch [branch-name]", ":: The specified name for the initial branch in the newly created git repository.\n\n")
+    .option("--branch [branch-name]", "[OPTIONAL] The specified name for the initial branch in the newly created git repository.\n\n")
     .helpOption("-h, --help", "Display help for command")
-    .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
+    .argument("[directory]", "[OPTIONAL] Specify a directory that the command is run inside it.")
     .action(function () {
     const context = {
         command: {
             options: this.opts(),
             arguments: {
-                directory: path__namespace.resolve(this.processedArgs[0]),
+                directory: path__namespace.resolve(this.processedArgs[0] || process.cwd()),
             },
         },
-        cwd: path__namespace.resolve(this.processedArgs[0]),
+        cwd: path__namespace.resolve(this.processedArgs[0] || process.cwd()),
     };
     const processes = [
         ErrorProcessor.captureError,
@@ -62895,16 +62897,13 @@ var addCommand = new Command()
 });
 
 /**
- * Handle "git worktree remove"
- */
-/**
- * =============================================
+ * ===============================
  *   wt remove -f <branch-name>
- * =============================================
+ * ===============================
  */
 var removeCommand = new Command()
-    .command("rm")
-    .aliases(["remove", "delete"])
+    .command("rmove")
+    .aliases(["rm"])
     .summary("Remove a linked worktree.\n\n")
     .description(`To remove a linked worktree from the worktree project`)
     .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
@@ -62977,19 +62976,19 @@ var updateCommand = new Command()
  */
 var cloneCommand = new Command()
     .command("clone")
-    .summary("Clone \n\n")
-    .description(`Clone a git repository, and initialize it as a worktree project.\n\n`)
-    .argument("<repository>", "The url of a git repository.")
-    .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
+    .summary(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
+    .description(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
+    .argument("<repo-url>", "The url of a git repository.")
+    .argument("[directory]", "Specify a directory that the command is run inside it.")
     .action(function () {
     const context = {
         command: {
             arguments: {
                 repoURL: this.processedArgs[0],
-                directory: path__namespace.resolve(this.processedArgs[1]),
+                directory: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
             },
         },
-        cwd: path__namespace.resolve(this.processedArgs[1]),
+        cwd: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
     };
     const processes = [
         ErrorProcessor.captureError,
@@ -63039,9 +63038,9 @@ var createCommand = new Command()
 });
 
 /**
- * =============================
+ * ==================================
  *   wt link <repo-url> <repo-name>
- * =============================
+ * ==================================
  */
 var linkCommand = new Command()
     .name("link")
@@ -63067,6 +63066,7 @@ var linkCommand = new Command()
         FileProcessor.linkDirectory,
         FileProcessor.writeProjectCodeWorkspace,
         FileProcessor.writeProjectConfiguration,
+        GitProcessor.configWorktree,
     ];
     const executer = new Executer(processes);
     executer.run(context, () => {
@@ -63075,13 +63075,13 @@ var linkCommand = new Command()
 });
 
 /**
- * =============================
- *   wt link <repo-url> <repo-name>
- * =============================
+ * =========================
+ *   wt unlink <repo-name>
+ * =========================
  */
 var unlinkCommand = new Command()
     .name("unlink")
-    .alias("un")
+    .alias("ul")
     .summary("Remove a Git repository from current project\n\n")
     .description("To remove a Git repository from current project\n\n")
     .argument("[repo-name]")
