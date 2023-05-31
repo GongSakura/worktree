@@ -12,17 +12,9 @@ import {
   Executer,
   FileProcessor,
 } from "../core";
-import chalk from "chalk";
 
-export default new Command()
-  .name("unlink")
-  .alias("ul")
-  .summary("Remove a Git repository from current project\n\n")
-  .description("To remove a Git repository from current project\n\n")
-  .argument(
-    "[repo-name]"
-  )
-  .action(function () {
+export function unlinkAction(done: CallableFunction) {
+  return function () {
     const context = {
       command: {
         arguments: {
@@ -40,7 +32,16 @@ export default new Command()
       FileProcessor.writeProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context, () => {
-      process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
-    });
-  });
+    executer.run(context, done);
+  };
+}
+
+export function unlinkCommand(action: (...args: any[]) => void) {
+  return new Command()
+    .name("unlink")
+    .alias("ul")
+    .summary("Remove a Git repository from current project\n\n")
+    .description("To remove a Git repository from current project\n\n")
+    .argument("[repo-name]")
+    .action(action);
+}

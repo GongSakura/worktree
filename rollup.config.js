@@ -9,7 +9,6 @@ module.exports = {
   output: {
     dir: "bin",
     format: "cjs",
-    // sourcemap:true,
   },
   plugins: [
     json(),

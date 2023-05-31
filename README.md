@@ -196,7 +196,7 @@ To remove a git repository from the current project.
 ## Future
 
 - TODO: More informative and elegant error processor
-- TODO: Unit test
+- TODO: Description for "wt.config.json"
 
 
 ## Welcome to contribute and raise issues

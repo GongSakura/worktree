@@ -41,7 +41,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
     // if so, then to get the real main worktree path
     const gitDirPath = normalizePath(repo.gitDir!);
     const gitDirDirname = normalizePath(path.dirname(repo.gitDir!));
-    const oldParentPath = normalizePath(context.cwd);
+    const oldParentPath = normalizePath(context.projectPath!);
     const parentPath = checkIsDirectChildPath(
       gitDirPath.replace(/\/.git$/, ""),
       oldParentPath
@@ -141,7 +141,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
         repo.path = newPath;
       }
     }
-
+   
     repo.worktrees = newWorktrees;
   });
 

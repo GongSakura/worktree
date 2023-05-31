@@ -51,8 +51,9 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
 
 export function getGitConfiguration(cwdPath: string): IGitConfig {
   const config: IGitConfig = {};
+  const properties = new Set();
   try {
-    const stdout = execSync("git config --list", {
+    const stdout = execSync("git config --local --list", {
       cwd: cwdPath,
       stdio: "pipe",
     });
@@ -62,10 +63,13 @@ export function getGitConfiguration(cwdPath: string): IGitConfig {
       .split("\n")
       .forEach((e) => {
         const [k, v] = e.split("=");
-        if (k === EGIT_CONFIGURATION.PATH) {
-          config.path = v;
-        } else if (k === EGIT_CONFIGURATION.REPONAME) {
-          config.reponame = v;
+        if (!properties.has(k)) {
+          properties.add(k);
+          if (k === EGIT_CONFIGURATION.PATH) {
+            config.path = v;
+          } else if (k === EGIT_CONFIGURATION.REPONAME) {
+            config.reponame = v;
+          }
         }
       });
   } finally {
@@ -144,11 +148,10 @@ export function getAllBranches(cwdPath: string): string[] {
       .trim()
       .split("\n")
       .forEach((e) => {
-        const branch = e.trim().replace(/^\W*/, "")
-        if(branch){
+        const branch = e.trim().replace(/^\W*/, "");
+        if (branch) {
           branches.push(branch);
         }
-     
       });
     return branches;
   } catch (error) {

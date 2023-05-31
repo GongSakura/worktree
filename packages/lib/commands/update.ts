@@ -15,15 +15,9 @@ import {
   CheckProcessor,
   GitProcessor,
 } from "../core";
-import chalk from "chalk";
 
-export default new Command()
-  .command("update")
-  .alias("ud")
-  .summary("Update the project configuration.\n\n")
-  .description(`Update the project configuration`)
-  .helpOption("-h, --help", "Display help for command")
-  .action(function () {
+export function updateAction(done: CallableFunction) {
+  return function () {
     const context = {
       command: {
         options: {},
@@ -42,7 +36,17 @@ export default new Command()
       FileProcessor.writeProjectConfiguration,
     ];
     const executer = new Executer(processes);
-    executer.run(context, () => {
-      process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
-    });
-  });
+    executer.run(context, done);
+  };
+}
+
+
+export function updateCommand(action: (...args: any[]) => void) {
+  return new Command()
+    .command("update")
+    .alias("ud")
+    .summary("Update the project configuration.\n\n")
+    .description(`Update the project configuration`)
+    .helpOption("-h, --help", "Display help for command")
+    .action(action);
+}

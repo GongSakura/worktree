@@ -7,15 +7,15 @@ var require$$1$2 = require('path');
 var require$$0$3 = require('fs');
 var require$$4$1 = require('process');
 var path$e = require('node:path');
-var process$4 = require('node:process');
-var os$1 = require('node:os');
-var tty$1 = require('node:tty');
 var node_child_process = require('node:child_process');
 var node_fs = require('node:fs');
 var require$$0$4 = require('constants');
 var require$$0$5 = require('stream');
 var require$$0$6 = require('util');
 var require$$5$1 = require('assert');
+var process$4 = require('node:process');
+var os$1 = require('node:os');
+var tty$1 = require('node:tty');
 var assert$1 = require('node:assert');
 var require$$0$7 = require('tty');
 var require$$0$a = require('readline');
@@ -3369,7 +3369,7 @@ var commander = /*@__PURE__*/getDefaultExportFromCjs(commanderExports);
 
 // wrapper to provide named exports for ESM.
 const {
-  program,
+  program: program$1,
   createCommand: createCommand$1,
   createArgument,
   createOption,
@@ -3381,630 +3381,6 @@ const {
   Option,
   Help
 } = commander;
-
-const ANSI_BACKGROUND_OFFSET = 10;
-
-const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
-
-const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
-
-const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
-
-const styles$3 = {
-	modifier: {
-		reset: [0, 0],
-		// 21 isn't widely supported and 22 does the same thing
-		bold: [1, 22],
-		dim: [2, 22],
-		italic: [3, 23],
-		underline: [4, 24],
-		overline: [53, 55],
-		inverse: [7, 27],
-		hidden: [8, 28],
-		strikethrough: [9, 29],
-	},
-	color: {
-		black: [30, 39],
-		red: [31, 39],
-		green: [32, 39],
-		yellow: [33, 39],
-		blue: [34, 39],
-		magenta: [35, 39],
-		cyan: [36, 39],
-		white: [37, 39],
-
-		// Bright color
-		blackBright: [90, 39],
-		gray: [90, 39], // Alias of `blackBright`
-		grey: [90, 39], // Alias of `blackBright`
-		redBright: [91, 39],
-		greenBright: [92, 39],
-		yellowBright: [93, 39],
-		blueBright: [94, 39],
-		magentaBright: [95, 39],
-		cyanBright: [96, 39],
-		whiteBright: [97, 39],
-	},
-	bgColor: {
-		bgBlack: [40, 49],
-		bgRed: [41, 49],
-		bgGreen: [42, 49],
-		bgYellow: [43, 49],
-		bgBlue: [44, 49],
-		bgMagenta: [45, 49],
-		bgCyan: [46, 49],
-		bgWhite: [47, 49],
-
-		// Bright color
-		bgBlackBright: [100, 49],
-		bgGray: [100, 49], // Alias of `bgBlackBright`
-		bgGrey: [100, 49], // Alias of `bgBlackBright`
-		bgRedBright: [101, 49],
-		bgGreenBright: [102, 49],
-		bgYellowBright: [103, 49],
-		bgBlueBright: [104, 49],
-		bgMagentaBright: [105, 49],
-		bgCyanBright: [106, 49],
-		bgWhiteBright: [107, 49],
-	},
-};
-
-Object.keys(styles$3.modifier);
-const foregroundColorNames = Object.keys(styles$3.color);
-const backgroundColorNames = Object.keys(styles$3.bgColor);
-[...foregroundColorNames, ...backgroundColorNames];
-
-function assembleStyles() {
-	const codes = new Map();
-
-	for (const [groupName, group] of Object.entries(styles$3)) {
-		for (const [styleName, style] of Object.entries(group)) {
-			styles$3[styleName] = {
-				open: `\u001B[${style[0]}m`,
-				close: `\u001B[${style[1]}m`,
-			};
-
-			group[styleName] = styles$3[styleName];
-
-			codes.set(style[0], style[1]);
-		}
-
-		Object.defineProperty(styles$3, groupName, {
-			value: group,
-			enumerable: false,
-		});
-	}
-
-	Object.defineProperty(styles$3, 'codes', {
-		value: codes,
-		enumerable: false,
-	});
-
-	styles$3.color.close = '\u001B[39m';
-	styles$3.bgColor.close = '\u001B[49m';
-
-	styles$3.color.ansi = wrapAnsi16();
-	styles$3.color.ansi256 = wrapAnsi256();
-	styles$3.color.ansi16m = wrapAnsi16m();
-	styles$3.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
-	styles$3.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
-	styles$3.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
-
-	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
-	Object.defineProperties(styles$3, {
-		rgbToAnsi256: {
-			value(red, green, blue) {
-				// We use the extended greyscale palette here, with the exception of
-				// black and white. normal palette only has 4 greyscale shades.
-				if (red === green && green === blue) {
-					if (red < 8) {
-						return 16;
-					}
-
-					if (red > 248) {
-						return 231;
-					}
-
-					return Math.round(((red - 8) / 247) * 24) + 232;
-				}
-
-				return 16
-					+ (36 * Math.round(red / 255 * 5))
-					+ (6 * Math.round(green / 255 * 5))
-					+ Math.round(blue / 255 * 5);
-			},
-			enumerable: false,
-		},
-		hexToRgb: {
-			value(hex) {
-				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
-				if (!matches) {
-					return [0, 0, 0];
-				}
-
-				let [colorString] = matches;
-
-				if (colorString.length === 3) {
-					colorString = [...colorString].map(character => character + character).join('');
-				}
-
-				const integer = Number.parseInt(colorString, 16);
-
-				return [
-					/* eslint-disable no-bitwise */
-					(integer >> 16) & 0xFF,
-					(integer >> 8) & 0xFF,
-					integer & 0xFF,
-					/* eslint-enable no-bitwise */
-				];
-			},
-			enumerable: false,
-		},
-		hexToAnsi256: {
-			value: hex => styles$3.rgbToAnsi256(...styles$3.hexToRgb(hex)),
-			enumerable: false,
-		},
-		ansi256ToAnsi: {
-			value(code) {
-				if (code < 8) {
-					return 30 + code;
-				}
-
-				if (code < 16) {
-					return 90 + (code - 8);
-				}
-
-				let red;
-				let green;
-				let blue;
-
-				if (code >= 232) {
-					red = (((code - 232) * 10) + 8) / 255;
-					green = red;
-					blue = red;
-				} else {
-					code -= 16;
-
-					const remainder = code % 36;
-
-					red = Math.floor(code / 36) / 5;
-					green = Math.floor(remainder / 6) / 5;
-					blue = (remainder % 6) / 5;
-				}
-
-				const value = Math.max(red, green, blue) * 2;
-
-				if (value === 0) {
-					return 30;
-				}
-
-				// eslint-disable-next-line no-bitwise
-				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
-
-				if (value === 2) {
-					result += 60;
-				}
-
-				return result;
-			},
-			enumerable: false,
-		},
-		rgbToAnsi: {
-			value: (red, green, blue) => styles$3.ansi256ToAnsi(styles$3.rgbToAnsi256(red, green, blue)),
-			enumerable: false,
-		},
-		hexToAnsi: {
-			value: hex => styles$3.ansi256ToAnsi(styles$3.hexToAnsi256(hex)),
-			enumerable: false,
-		},
-	});
-
-	return styles$3;
-}
-
-const ansiStyles$4 = assembleStyles();
-
-// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
-function hasFlag$2(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$4.argv) {
-	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-	const position = argv.indexOf(prefix + flag);
-	const terminatorPosition = argv.indexOf('--');
-	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-}
-
-const {env: env$1} = process$4;
-
-let flagForceColor;
-if (
-	hasFlag$2('no-color')
-	|| hasFlag$2('no-colors')
-	|| hasFlag$2('color=false')
-	|| hasFlag$2('color=never')
-) {
-	flagForceColor = 0;
-} else if (
-	hasFlag$2('color')
-	|| hasFlag$2('colors')
-	|| hasFlag$2('color=true')
-	|| hasFlag$2('color=always')
-) {
-	flagForceColor = 1;
-}
-
-function envForceColor() {
-	if ('FORCE_COLOR' in env$1) {
-		if (env$1.FORCE_COLOR === 'true') {
-			return 1;
-		}
-
-		if (env$1.FORCE_COLOR === 'false') {
-			return 0;
-		}
-
-		return env$1.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env$1.FORCE_COLOR, 10), 3);
-	}
-}
-
-function translateLevel$1(level) {
-	if (level === 0) {
-		return false;
-	}
-
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3,
-	};
-}
-
-function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
-	const noFlagForceColor = envForceColor();
-	if (noFlagForceColor !== undefined) {
-		flagForceColor = noFlagForceColor;
-	}
-
-	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
-
-	if (forceColor === 0) {
-		return 0;
-	}
-
-	if (sniffFlags) {
-		if (hasFlag$2('color=16m')
-			|| hasFlag$2('color=full')
-			|| hasFlag$2('color=truecolor')) {
-			return 3;
-		}
-
-		if (hasFlag$2('color=256')) {
-			return 2;
-		}
-	}
-
-	// Check for Azure DevOps pipelines.
-	// Has to be above the `!streamIsTTY` check.
-	if ('TF_BUILD' in env$1 && 'AGENT_NAME' in env$1) {
-		return 1;
-	}
-
-	if (haveStream && !streamIsTTY && forceColor === undefined) {
-		return 0;
-	}
-
-	const min = forceColor || 0;
-
-	if (env$1.TERM === 'dumb') {
-		return min;
-	}
-
-	if (process$4.platform === 'win32') {
-		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
-		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
-		const osRelease = os$1.release().split('.');
-		if (
-			Number(osRelease[0]) >= 10
-			&& Number(osRelease[2]) >= 10_586
-		) {
-			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
-		}
-
-		return 1;
-	}
-
-	if ('CI' in env$1) {
-		if ('GITHUB_ACTIONS' in env$1) {
-			return 3;
-		}
-
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env$1) || env$1.CI_NAME === 'codeship') {
-			return 1;
-		}
-
-		return min;
-	}
-
-	if ('TEAMCITY_VERSION' in env$1) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env$1.TEAMCITY_VERSION) ? 1 : 0;
-	}
-
-	if (env$1.COLORTERM === 'truecolor') {
-		return 3;
-	}
-
-	if (env$1.TERM === 'xterm-kitty') {
-		return 3;
-	}
-
-	if ('TERM_PROGRAM' in env$1) {
-		const version = Number.parseInt((env$1.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-		switch (env$1.TERM_PROGRAM) {
-			case 'iTerm.app': {
-				return version >= 3 ? 3 : 2;
-			}
-
-			case 'Apple_Terminal': {
-				return 2;
-			}
-			// No default
-		}
-	}
-
-	if (/-256(color)?$/i.test(env$1.TERM)) {
-		return 2;
-	}
-
-	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env$1.TERM)) {
-		return 1;
-	}
-
-	if ('COLORTERM' in env$1) {
-		return 1;
-	}
-
-	return min;
-}
-
-function createSupportsColor(stream, options = {}) {
-	const level = _supportsColor(stream, {
-		streamIsTTY: stream && stream.isTTY,
-		...options,
-	});
-
-	return translateLevel$1(level);
-}
-
-const supportsColor$1 = {
-	stdout: createSupportsColor({isTTY: tty$1.isatty(1)}),
-	stderr: createSupportsColor({isTTY: tty$1.isatty(2)}),
-};
-
-// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
-function stringReplaceAll$4(string, substring, replacer) {
-	let index = string.indexOf(substring);
-	if (index === -1) {
-		return string;
-	}
-
-	const substringLength = substring.length;
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		returnValue += string.slice(endIndex, index) + substring + replacer;
-		endIndex = index + substringLength;
-		index = string.indexOf(substring, endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-function stringEncaseCRLFWithFirstIndex$4(string, prefix, postfix, index) {
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		const gotCR = string[index - 1] === '\r';
-		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
-		endIndex = index + 1;
-		index = string.indexOf('\n', endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-const {stdout: stdoutColor$2, stderr: stderrColor$2} = supportsColor$1;
-
-const GENERATOR = Symbol('GENERATOR');
-const STYLER = Symbol('STYLER');
-const IS_EMPTY = Symbol('IS_EMPTY');
-
-// `supportsColor.level` → `ansiStyles.color[name]` mapping
-const levelMapping$2 = [
-	'ansi',
-	'ansi',
-	'ansi256',
-	'ansi16m',
-];
-
-const styles$2 = Object.create(null);
-
-const applyOptions$2 = (object, options = {}) => {
-	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
-		throw new Error('The `level` option should be an integer from 0 to 3');
-	}
-
-	// Detect level if not set manually
-	const colorLevel = stdoutColor$2 ? stdoutColor$2.level : 0;
-	object.level = options.level === undefined ? colorLevel : options.level;
-};
-
-const chalkFactory$2 = options => {
-	const chalk = (...strings) => strings.join(' ');
-	applyOptions$2(chalk, options);
-
-	Object.setPrototypeOf(chalk, createChalk.prototype);
-
-	return chalk;
-};
-
-function createChalk(options) {
-	return chalkFactory$2(options);
-}
-
-Object.setPrototypeOf(createChalk.prototype, Function.prototype);
-
-for (const [styleName, style] of Object.entries(ansiStyles$4)) {
-	styles$2[styleName] = {
-		get() {
-			const builder = createBuilder$2(this, createStyler$2(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
-			Object.defineProperty(this, styleName, {value: builder});
-			return builder;
-		},
-	};
-}
-
-styles$2.visible = {
-	get() {
-		const builder = createBuilder$2(this, this[STYLER], true);
-		Object.defineProperty(this, 'visible', {value: builder});
-		return builder;
-	},
-};
-
-const getModelAnsi = (model, level, type, ...arguments_) => {
-	if (model === 'rgb') {
-		if (level === 'ansi16m') {
-			return ansiStyles$4[type].ansi16m(...arguments_);
-		}
-
-		if (level === 'ansi256') {
-			return ansiStyles$4[type].ansi256(ansiStyles$4.rgbToAnsi256(...arguments_));
-		}
-
-		return ansiStyles$4[type].ansi(ansiStyles$4.rgbToAnsi(...arguments_));
-	}
-
-	if (model === 'hex') {
-		return getModelAnsi('rgb', level, type, ...ansiStyles$4.hexToRgb(...arguments_));
-	}
-
-	return ansiStyles$4[type][model](...arguments_);
-};
-
-const usedModels$2 = ['rgb', 'hex', 'ansi256'];
-
-for (const model of usedModels$2) {
-	styles$2[model] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'color', ...arguments_), ansiStyles$4.color.close, this[STYLER]);
-				return createBuilder$2(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-
-	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
-	styles$2[bgModel] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'bgColor', ...arguments_), ansiStyles$4.bgColor.close, this[STYLER]);
-				return createBuilder$2(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-}
-
-const proto$2 = Object.defineProperties(() => {}, {
-	...styles$2,
-	level: {
-		enumerable: true,
-		get() {
-			return this[GENERATOR].level;
-		},
-		set(level) {
-			this[GENERATOR].level = level;
-		},
-	},
-});
-
-const createStyler$2 = (open, close, parent) => {
-	let openAll;
-	let closeAll;
-	if (parent === undefined) {
-		openAll = open;
-		closeAll = close;
-	} else {
-		openAll = parent.openAll + open;
-		closeAll = close + parent.closeAll;
-	}
-
-	return {
-		open,
-		close,
-		openAll,
-		closeAll,
-		parent,
-	};
-};
-
-const createBuilder$2 = (self, _styler, _isEmpty) => {
-	// Single argument is hot path, implicit coercion is faster than anything
-	// eslint-disable-next-line no-implicit-coercion
-	const builder = (...arguments_) => applyStyle$2(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
-
-	// We alter the prototype because we must return a function, but there is
-	// no way to create a function with a different prototype
-	Object.setPrototypeOf(builder, proto$2);
-
-	builder[GENERATOR] = self;
-	builder[STYLER] = _styler;
-	builder[IS_EMPTY] = _isEmpty;
-
-	return builder;
-};
-
-const applyStyle$2 = (self, string) => {
-	if (self.level <= 0 || !string) {
-		return self[IS_EMPTY] ? '' : string;
-	}
-
-	let styler = self[STYLER];
-
-	if (styler === undefined) {
-		return string;
-	}
-
-	const {openAll, closeAll} = styler;
-	if (string.includes('\u001B')) {
-		while (styler !== undefined) {
-			// Replace any instances already present with a re-opening code
-			// otherwise only the part of the string until said closing code
-			// will be colored, and the rest will simply be 'plain'.
-			string = stringReplaceAll$4(string, styler.close, styler.open);
-
-			styler = styler.parent;
-		}
-	}
-
-	// We can move both next actions out of loop, because remaining actions in loop won't have
-	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
-	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
-	const lfIndex = string.indexOf('\n');
-	if (lfIndex !== -1) {
-		string = stringEncaseCRLFWithFirstIndex$4(string, closeAll, openAll, lfIndex);
-	}
-
-	return openAll + string + closeAll;
-};
-
-Object.defineProperties(createChalk.prototype, styles$2);
-
-const chalk$4 = createChalk();
-createChalk({level: stderrColor$2 ? stderrColor$2.level : 0});
 
 /**
  * middleware executor
@@ -4083,8 +3459,9 @@ function checkIsWorktree(cwdPath) {
 }
 function getGitConfiguration(cwdPath) {
     const config = {};
+    const properties = new Set();
     try {
-        const stdout = node_child_process.execSync("git config --list", {
+        const stdout = node_child_process.execSync("git config --local --list", {
             cwd: cwdPath,
             stdio: "pipe",
         });
@@ -4094,11 +3471,14 @@ function getGitConfiguration(cwdPath) {
             .split("\n")
             .forEach((e) => {
             const [k, v] = e.split("=");
-            if (k === EGIT_CONFIGURATION.PATH) {
-                config.path = v;
-            }
-            else if (k === EGIT_CONFIGURATION.REPONAME) {
-                config.reponame = v;
+            if (!properties.has(k)) {
+                properties.add(k);
+                if (k === EGIT_CONFIGURATION.PATH) {
+                    config.path = v;
+                }
+                else if (k === EGIT_CONFIGURATION.REPONAME) {
+                    config.reponame = v;
+                }
             }
         });
     }
@@ -4230,8 +3610,8 @@ function cloneRepository(context, next) {
 }
 function initRepository(context, next) {
     var _a, _b, _c, _d;
-    const repoPath = context.cwd;
-    const repoName = context.cwd.split("/").pop();
+    const repoPath = context.command.arguments.directory;
+    const repoName = repoPath.split("/").pop();
     node_child_process.execSync("git init " +
         (((_b = (_a = context.command) === null || _a === void 0 ? void 0 : _a.options) === null || _b === void 0 ? void 0 : _b.branch)
             ? `-b ${(_d = (_c = context.command) === null || _c === void 0 ? void 0 : _c.options) === null || _d === void 0 ? void 0 : _d.branch} `
@@ -6959,7 +6339,7 @@ function initDirectory(context, next) {
         // if so, then to get the real main worktree path
         const gitDirPath = normalizePath(repo.gitDir);
         const gitDirDirname = normalizePath(path__namespace.dirname(repo.gitDir));
-        const oldParentPath = normalizePath(context.cwd);
+        const oldParentPath = normalizePath(context.projectPath);
         const parentPath = checkIsDirectChildPath(gitDirPath.replace(/\/.git$/, ""), oldParentPath)
             ? gitDirDirname
             : oldParentPath;
@@ -7162,6 +6542,631 @@ var FileProcessor = {
     writeProjectConfiguration,
 };
 
+const ANSI_BACKGROUND_OFFSET = 10;
+
+const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
+
+const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
+
+const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
+
+const styles$3 = {
+	modifier: {
+		reset: [0, 0],
+		// 21 isn't widely supported and 22 does the same thing
+		bold: [1, 22],
+		dim: [2, 22],
+		italic: [3, 23],
+		underline: [4, 24],
+		overline: [53, 55],
+		inverse: [7, 27],
+		hidden: [8, 28],
+		strikethrough: [9, 29],
+	},
+	color: {
+		black: [30, 39],
+		red: [31, 39],
+		green: [32, 39],
+		yellow: [33, 39],
+		blue: [34, 39],
+		magenta: [35, 39],
+		cyan: [36, 39],
+		white: [37, 39],
+
+		// Bright color
+		blackBright: [90, 39],
+		gray: [90, 39], // Alias of `blackBright`
+		grey: [90, 39], // Alias of `blackBright`
+		redBright: [91, 39],
+		greenBright: [92, 39],
+		yellowBright: [93, 39],
+		blueBright: [94, 39],
+		magentaBright: [95, 39],
+		cyanBright: [96, 39],
+		whiteBright: [97, 39],
+	},
+	bgColor: {
+		bgBlack: [40, 49],
+		bgRed: [41, 49],
+		bgGreen: [42, 49],
+		bgYellow: [43, 49],
+		bgBlue: [44, 49],
+		bgMagenta: [45, 49],
+		bgCyan: [46, 49],
+		bgWhite: [47, 49],
+
+		// Bright color
+		bgBlackBright: [100, 49],
+		bgGray: [100, 49], // Alias of `bgBlackBright`
+		bgGrey: [100, 49], // Alias of `bgBlackBright`
+		bgRedBright: [101, 49],
+		bgGreenBright: [102, 49],
+		bgYellowBright: [103, 49],
+		bgBlueBright: [104, 49],
+		bgMagentaBright: [105, 49],
+		bgCyanBright: [106, 49],
+		bgWhiteBright: [107, 49],
+	},
+};
+
+Object.keys(styles$3.modifier);
+const foregroundColorNames = Object.keys(styles$3.color);
+const backgroundColorNames = Object.keys(styles$3.bgColor);
+[...foregroundColorNames, ...backgroundColorNames];
+
+function assembleStyles() {
+	const codes = new Map();
+
+	for (const [groupName, group] of Object.entries(styles$3)) {
+		for (const [styleName, style] of Object.entries(group)) {
+			styles$3[styleName] = {
+				open: `\u001B[${style[0]}m`,
+				close: `\u001B[${style[1]}m`,
+			};
+
+			group[styleName] = styles$3[styleName];
+
+			codes.set(style[0], style[1]);
+		}
+
+		Object.defineProperty(styles$3, groupName, {
+			value: group,
+			enumerable: false,
+		});
+	}
+
+	Object.defineProperty(styles$3, 'codes', {
+		value: codes,
+		enumerable: false,
+	});
+
+	styles$3.color.close = '\u001B[39m';
+	styles$3.bgColor.close = '\u001B[49m';
+
+	styles$3.color.ansi = wrapAnsi16();
+	styles$3.color.ansi256 = wrapAnsi256();
+	styles$3.color.ansi16m = wrapAnsi16m();
+	styles$3.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
+	styles$3.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
+	styles$3.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
+
+	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
+	Object.defineProperties(styles$3, {
+		rgbToAnsi256: {
+			value(red, green, blue) {
+				// We use the extended greyscale palette here, with the exception of
+				// black and white. normal palette only has 4 greyscale shades.
+				if (red === green && green === blue) {
+					if (red < 8) {
+						return 16;
+					}
+
+					if (red > 248) {
+						return 231;
+					}
+
+					return Math.round(((red - 8) / 247) * 24) + 232;
+				}
+
+				return 16
+					+ (36 * Math.round(red / 255 * 5))
+					+ (6 * Math.round(green / 255 * 5))
+					+ Math.round(blue / 255 * 5);
+			},
+			enumerable: false,
+		},
+		hexToRgb: {
+			value(hex) {
+				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
+				if (!matches) {
+					return [0, 0, 0];
+				}
+
+				let [colorString] = matches;
+
+				if (colorString.length === 3) {
+					colorString = [...colorString].map(character => character + character).join('');
+				}
+
+				const integer = Number.parseInt(colorString, 16);
+
+				return [
+					/* eslint-disable no-bitwise */
+					(integer >> 16) & 0xFF,
+					(integer >> 8) & 0xFF,
+					integer & 0xFF,
+					/* eslint-enable no-bitwise */
+				];
+			},
+			enumerable: false,
+		},
+		hexToAnsi256: {
+			value: hex => styles$3.rgbToAnsi256(...styles$3.hexToRgb(hex)),
+			enumerable: false,
+		},
+		ansi256ToAnsi: {
+			value(code) {
+				if (code < 8) {
+					return 30 + code;
+				}
+
+				if (code < 16) {
+					return 90 + (code - 8);
+				}
+
+				let red;
+				let green;
+				let blue;
+
+				if (code >= 232) {
+					red = (((code - 232) * 10) + 8) / 255;
+					green = red;
+					blue = red;
+				} else {
+					code -= 16;
+
+					const remainder = code % 36;
+
+					red = Math.floor(code / 36) / 5;
+					green = Math.floor(remainder / 6) / 5;
+					blue = (remainder % 6) / 5;
+				}
+
+				const value = Math.max(red, green, blue) * 2;
+
+				if (value === 0) {
+					return 30;
+				}
+
+				// eslint-disable-next-line no-bitwise
+				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
+
+				if (value === 2) {
+					result += 60;
+				}
+
+				return result;
+			},
+			enumerable: false,
+		},
+		rgbToAnsi: {
+			value: (red, green, blue) => styles$3.ansi256ToAnsi(styles$3.rgbToAnsi256(red, green, blue)),
+			enumerable: false,
+		},
+		hexToAnsi: {
+			value: hex => styles$3.ansi256ToAnsi(styles$3.hexToAnsi256(hex)),
+			enumerable: false,
+		},
+	});
+
+	return styles$3;
+}
+
+const ansiStyles$6 = assembleStyles();
+
+// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
+function hasFlag$2(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$4.argv) {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+}
+
+const {env: env$1} = process$4;
+
+let flagForceColor;
+if (
+	hasFlag$2('no-color')
+	|| hasFlag$2('no-colors')
+	|| hasFlag$2('color=false')
+	|| hasFlag$2('color=never')
+) {
+	flagForceColor = 0;
+} else if (
+	hasFlag$2('color')
+	|| hasFlag$2('colors')
+	|| hasFlag$2('color=true')
+	|| hasFlag$2('color=always')
+) {
+	flagForceColor = 1;
+}
+
+function envForceColor() {
+	if ('FORCE_COLOR' in env$1) {
+		if (env$1.FORCE_COLOR === 'true') {
+			return 1;
+		}
+
+		if (env$1.FORCE_COLOR === 'false') {
+			return 0;
+		}
+
+		return env$1.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env$1.FORCE_COLOR, 10), 3);
+	}
+}
+
+function translateLevel$1(level) {
+	if (level === 0) {
+		return false;
+	}
+
+	return {
+		level,
+		hasBasic: true,
+		has256: level >= 2,
+		has16m: level >= 3,
+	};
+}
+
+function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
+	const noFlagForceColor = envForceColor();
+	if (noFlagForceColor !== undefined) {
+		flagForceColor = noFlagForceColor;
+	}
+
+	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
+
+	if (forceColor === 0) {
+		return 0;
+	}
+
+	if (sniffFlags) {
+		if (hasFlag$2('color=16m')
+			|| hasFlag$2('color=full')
+			|| hasFlag$2('color=truecolor')) {
+			return 3;
+		}
+
+		if (hasFlag$2('color=256')) {
+			return 2;
+		}
+	}
+
+	// Check for Azure DevOps pipelines.
+	// Has to be above the `!streamIsTTY` check.
+	if ('TF_BUILD' in env$1 && 'AGENT_NAME' in env$1) {
+		return 1;
+	}
+
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
+		return 0;
+	}
+
+	const min = forceColor || 0;
+
+	if (env$1.TERM === 'dumb') {
+		return min;
+	}
+
+	if (process$4.platform === 'win32') {
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+		const osRelease = os$1.release().split('.');
+		if (
+			Number(osRelease[0]) >= 10
+			&& Number(osRelease[2]) >= 10_586
+		) {
+			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
+		}
+
+		return 1;
+	}
+
+	if ('CI' in env$1) {
+		if ('GITHUB_ACTIONS' in env$1) {
+			return 3;
+		}
+
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env$1) || env$1.CI_NAME === 'codeship') {
+			return 1;
+		}
+
+		return min;
+	}
+
+	if ('TEAMCITY_VERSION' in env$1) {
+		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env$1.TEAMCITY_VERSION) ? 1 : 0;
+	}
+
+	if (env$1.COLORTERM === 'truecolor') {
+		return 3;
+	}
+
+	if (env$1.TERM === 'xterm-kitty') {
+		return 3;
+	}
+
+	if ('TERM_PROGRAM' in env$1) {
+		const version = Number.parseInt((env$1.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+		switch (env$1.TERM_PROGRAM) {
+			case 'iTerm.app': {
+				return version >= 3 ? 3 : 2;
+			}
+
+			case 'Apple_Terminal': {
+				return 2;
+			}
+			// No default
+		}
+	}
+
+	if (/-256(color)?$/i.test(env$1.TERM)) {
+		return 2;
+	}
+
+	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env$1.TERM)) {
+		return 1;
+	}
+
+	if ('COLORTERM' in env$1) {
+		return 1;
+	}
+
+	return min;
+}
+
+function createSupportsColor(stream, options = {}) {
+	const level = _supportsColor(stream, {
+		streamIsTTY: stream && stream.isTTY,
+		...options,
+	});
+
+	return translateLevel$1(level);
+}
+
+const supportsColor$1 = {
+	stdout: createSupportsColor({isTTY: tty$1.isatty(1)}),
+	stderr: createSupportsColor({isTTY: tty$1.isatty(2)}),
+};
+
+// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
+function stringReplaceAll$4(string, substring, replacer) {
+	let index = string.indexOf(substring);
+	if (index === -1) {
+		return string;
+	}
+
+	const substringLength = substring.length;
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		returnValue += string.slice(endIndex, index) + substring + replacer;
+		endIndex = index + substringLength;
+		index = string.indexOf(substring, endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+function stringEncaseCRLFWithFirstIndex$4(string, prefix, postfix, index) {
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		const gotCR = string[index - 1] === '\r';
+		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
+		endIndex = index + 1;
+		index = string.indexOf('\n', endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+const {stdout: stdoutColor$2, stderr: stderrColor$2} = supportsColor$1;
+
+const GENERATOR = Symbol('GENERATOR');
+const STYLER = Symbol('STYLER');
+const IS_EMPTY = Symbol('IS_EMPTY');
+
+// `supportsColor.level` → `ansiStyles.color[name]` mapping
+const levelMapping$2 = [
+	'ansi',
+	'ansi',
+	'ansi256',
+	'ansi16m',
+];
+
+const styles$2 = Object.create(null);
+
+const applyOptions$2 = (object, options = {}) => {
+	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
+		throw new Error('The `level` option should be an integer from 0 to 3');
+	}
+
+	// Detect level if not set manually
+	const colorLevel = stdoutColor$2 ? stdoutColor$2.level : 0;
+	object.level = options.level === undefined ? colorLevel : options.level;
+};
+
+const chalkFactory$2 = options => {
+	const chalk = (...strings) => strings.join(' ');
+	applyOptions$2(chalk, options);
+
+	Object.setPrototypeOf(chalk, createChalk.prototype);
+
+	return chalk;
+};
+
+function createChalk(options) {
+	return chalkFactory$2(options);
+}
+
+Object.setPrototypeOf(createChalk.prototype, Function.prototype);
+
+for (const [styleName, style] of Object.entries(ansiStyles$6)) {
+	styles$2[styleName] = {
+		get() {
+			const builder = createBuilder$2(this, createStyler$2(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
+			Object.defineProperty(this, styleName, {value: builder});
+			return builder;
+		},
+	};
+}
+
+styles$2.visible = {
+	get() {
+		const builder = createBuilder$2(this, this[STYLER], true);
+		Object.defineProperty(this, 'visible', {value: builder});
+		return builder;
+	},
+};
+
+const getModelAnsi = (model, level, type, ...arguments_) => {
+	if (model === 'rgb') {
+		if (level === 'ansi16m') {
+			return ansiStyles$6[type].ansi16m(...arguments_);
+		}
+
+		if (level === 'ansi256') {
+			return ansiStyles$6[type].ansi256(ansiStyles$6.rgbToAnsi256(...arguments_));
+		}
+
+		return ansiStyles$6[type].ansi(ansiStyles$6.rgbToAnsi(...arguments_));
+	}
+
+	if (model === 'hex') {
+		return getModelAnsi('rgb', level, type, ...ansiStyles$6.hexToRgb(...arguments_));
+	}
+
+	return ansiStyles$6[type][model](...arguments_);
+};
+
+const usedModels$2 = ['rgb', 'hex', 'ansi256'];
+
+for (const model of usedModels$2) {
+	styles$2[model] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'color', ...arguments_), ansiStyles$6.color.close, this[STYLER]);
+				return createBuilder$2(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+
+	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
+	styles$2[bgModel] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'bgColor', ...arguments_), ansiStyles$6.bgColor.close, this[STYLER]);
+				return createBuilder$2(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+}
+
+const proto$2 = Object.defineProperties(() => {}, {
+	...styles$2,
+	level: {
+		enumerable: true,
+		get() {
+			return this[GENERATOR].level;
+		},
+		set(level) {
+			this[GENERATOR].level = level;
+		},
+	},
+});
+
+const createStyler$2 = (open, close, parent) => {
+	let openAll;
+	let closeAll;
+	if (parent === undefined) {
+		openAll = open;
+		closeAll = close;
+	} else {
+		openAll = parent.openAll + open;
+		closeAll = close + parent.closeAll;
+	}
+
+	return {
+		open,
+		close,
+		openAll,
+		closeAll,
+		parent,
+	};
+};
+
+const createBuilder$2 = (self, _styler, _isEmpty) => {
+	// Single argument is hot path, implicit coercion is faster than anything
+	// eslint-disable-next-line no-implicit-coercion
+	const builder = (...arguments_) => applyStyle$2(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
+
+	// We alter the prototype because we must return a function, but there is
+	// no way to create a function with a different prototype
+	Object.setPrototypeOf(builder, proto$2);
+
+	builder[GENERATOR] = self;
+	builder[STYLER] = _styler;
+	builder[IS_EMPTY] = _isEmpty;
+
+	return builder;
+};
+
+const applyStyle$2 = (self, string) => {
+	if (self.level <= 0 || !string) {
+		return self[IS_EMPTY] ? '' : string;
+	}
+
+	let styler = self[STYLER];
+
+	if (styler === undefined) {
+		return string;
+	}
+
+	const {openAll, closeAll} = styler;
+	if (string.includes('\u001B')) {
+		while (styler !== undefined) {
+			// Replace any instances already present with a re-opening code
+			// otherwise only the part of the string until said closing code
+			// will be colored, and the rest will simply be 'plain'.
+			string = stringReplaceAll$4(string, styler.close, styler.open);
+
+			styler = styler.parent;
+		}
+	}
+
+	// We can move both next actions out of loop, because remaining actions in loop won't have
+	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
+	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
+	const lfIndex = string.indexOf('\n');
+	if (lfIndex !== -1) {
+		string = stringEncaseCRLFWithFirstIndex$4(string, closeAll, openAll, lfIndex);
+	}
+
+	return openAll + string + closeAll;
+};
+
+Object.defineProperties(createChalk.prototype, styles$2);
+
+const chalk$4 = createChalk();
+createChalk({level: stderrColor$2 ? stderrColor$2.level : 0});
+
+// import chalk from "chalk";
 function captureError$1(context, next) {
     try {
         next();
@@ -36558,16 +36563,16 @@ stringWidth$3.exports.default = stringWidth$1;
 var stringWidthExports = stringWidth$3.exports;
 var stringWidth$2 = /*@__PURE__*/getDefaultExportFromCjs(stringWidthExports);
 
-var ansiStyles$3 = {exports: {}};
+var ansiStyles$5 = {exports: {}};
 
-var colorName;
-var hasRequiredColorName;
+var colorName$2;
+var hasRequiredColorName$2;
 
-function requireColorName () {
-	if (hasRequiredColorName) return colorName;
-	hasRequiredColorName = 1;
+function requireColorName$2 () {
+	if (hasRequiredColorName$2) return colorName$2;
+	hasRequiredColorName$2 = 1;
 
-	colorName = {
+	colorName$2 = {
 		"aliceblue": [240, 248, 255],
 		"antiquewhite": [250, 235, 215],
 		"aqua": [0, 255, 255],
@@ -36717,19 +36722,19 @@ function requireColorName () {
 		"yellow": [255, 255, 0],
 		"yellowgreen": [154, 205, 50]
 	};
-	return colorName;
+	return colorName$2;
 }
 
 /* MIT license */
 
-var conversions;
-var hasRequiredConversions;
+var conversions$2;
+var hasRequiredConversions$2;
 
-function requireConversions () {
-	if (hasRequiredConversions) return conversions;
-	hasRequiredConversions = 1;
+function requireConversions$2 () {
+	if (hasRequiredConversions$2) return conversions$2;
+	hasRequiredConversions$2 = 1;
 	/* eslint-disable no-mixed-operators */
-	const cssKeywords = requireColorName();
+	const cssKeywords = requireColorName$2();
 
 	// NOTE: conversions should only return primitive values (i.e. arrays, or
 	//       values that give correct `typeof` results).
@@ -36758,7 +36763,7 @@ function requireConversions () {
 		gray: {channels: 1, labels: ['gray']}
 	};
 
-	conversions = convert;
+	conversions$2 = convert;
 
 	// Hide .channels and .labels properties
 	for (const model of Object.keys(convert)) {
@@ -37566,16 +37571,16 @@ function requireConversions () {
 		const val = (rgb[0] + rgb[1] + rgb[2]) / 3;
 		return [val / 255 * 100];
 	};
-	return conversions;
+	return conversions$2;
 }
 
-var route;
-var hasRequiredRoute;
+var route$2;
+var hasRequiredRoute$2;
 
-function requireRoute () {
-	if (hasRequiredRoute) return route;
-	hasRequiredRoute = 1;
-	const conversions = requireConversions();
+function requireRoute$2 () {
+	if (hasRequiredRoute$2) return route$2;
+	hasRequiredRoute$2 = 1;
+	const conversions = requireConversions$2();
 
 	/*
 		This function routes a model to all other models.
@@ -37652,7 +37657,7 @@ function requireRoute () {
 		return fn;
 	}
 
-	route = function (fromModel) {
+	route$2 = function (fromModel) {
 		const graph = deriveBFS(fromModel);
 		const conversion = {};
 
@@ -37671,17 +37676,17 @@ function requireRoute () {
 
 		return conversion;
 	};
-	return route;
+	return route$2;
 }
 
-var colorConvert;
-var hasRequiredColorConvert;
+var colorConvert$2;
+var hasRequiredColorConvert$2;
 
-function requireColorConvert () {
-	if (hasRequiredColorConvert) return colorConvert;
-	hasRequiredColorConvert = 1;
-	const conversions = requireConversions();
-	const route = requireRoute();
+function requireColorConvert$2 () {
+	if (hasRequiredColorConvert$2) return colorConvert$2;
+	hasRequiredColorConvert$2 = 1;
+	const conversions = requireConversions$2();
+	const route = requireRoute$2();
 
 	const convert = {};
 
@@ -37760,11 +37765,11 @@ function requireColorConvert () {
 		});
 	});
 
-	colorConvert = convert;
-	return colorConvert;
+	colorConvert$2 = convert;
+	return colorConvert$2;
 }
 
-ansiStyles$3.exports;
+ansiStyles$5.exports;
 
 (function (module) {
 
@@ -37808,7 +37813,7 @@ ansiStyles$3.exports;
 	let colorConvert;
 	const makeDynamicStyles = (wrap, targetSpace, identity, isBackground) => {
 		if (colorConvert === undefined) {
-			colorConvert = requireColorConvert();
+			colorConvert = requireColorConvert$2();
 		}
 
 		const offset = isBackground ? 10 : 0;
@@ -37929,13 +37934,13 @@ ansiStyles$3.exports;
 		enumerable: true,
 		get: assembleStyles
 	}); 
-} (ansiStyles$3));
+} (ansiStyles$5));
 
-var ansiStylesExports = ansiStyles$3.exports;
+var ansiStylesExports$2 = ansiStyles$5.exports;
 
 const stringWidth = stringWidthExports;
 const stripAnsi$1 = stripAnsi$3;
-const ansiStyles$2 = ansiStylesExports;
+const ansiStyles$4 = ansiStylesExports$2;
 
 const ESCAPES = new Set([
 	'\u001B',
@@ -38095,7 +38100,7 @@ const exec = (string, columns, options = {}) => {
 			escapeCode = code === END_CODE ? null : code;
 		}
 
-		const code = ansiStyles$2.codes.get(Number(escapeCode));
+		const code = ansiStyles$4.codes.get(Number(escapeCode));
 
 		if (escapeCode && code) {
 			if (pre[index + 1] === '\n') {
@@ -38122,6 +38127,1381 @@ var wrapAnsi_1 = (string, columns, options) => {
 var wrapAnsi$1 = /*@__PURE__*/getDefaultExportFromCjs(wrapAnsi_1);
 
 var ora$1 = {exports: {}};
+
+var ansiStyles$3 = {exports: {}};
+
+var colorName$1;
+var hasRequiredColorName$1;
+
+function requireColorName$1 () {
+	if (hasRequiredColorName$1) return colorName$1;
+	hasRequiredColorName$1 = 1;
+
+	colorName$1 = {
+		"aliceblue": [240, 248, 255],
+		"antiquewhite": [250, 235, 215],
+		"aqua": [0, 255, 255],
+		"aquamarine": [127, 255, 212],
+		"azure": [240, 255, 255],
+		"beige": [245, 245, 220],
+		"bisque": [255, 228, 196],
+		"black": [0, 0, 0],
+		"blanchedalmond": [255, 235, 205],
+		"blue": [0, 0, 255],
+		"blueviolet": [138, 43, 226],
+		"brown": [165, 42, 42],
+		"burlywood": [222, 184, 135],
+		"cadetblue": [95, 158, 160],
+		"chartreuse": [127, 255, 0],
+		"chocolate": [210, 105, 30],
+		"coral": [255, 127, 80],
+		"cornflowerblue": [100, 149, 237],
+		"cornsilk": [255, 248, 220],
+		"crimson": [220, 20, 60],
+		"cyan": [0, 255, 255],
+		"darkblue": [0, 0, 139],
+		"darkcyan": [0, 139, 139],
+		"darkgoldenrod": [184, 134, 11],
+		"darkgray": [169, 169, 169],
+		"darkgreen": [0, 100, 0],
+		"darkgrey": [169, 169, 169],
+		"darkkhaki": [189, 183, 107],
+		"darkmagenta": [139, 0, 139],
+		"darkolivegreen": [85, 107, 47],
+		"darkorange": [255, 140, 0],
+		"darkorchid": [153, 50, 204],
+		"darkred": [139, 0, 0],
+		"darksalmon": [233, 150, 122],
+		"darkseagreen": [143, 188, 143],
+		"darkslateblue": [72, 61, 139],
+		"darkslategray": [47, 79, 79],
+		"darkslategrey": [47, 79, 79],
+		"darkturquoise": [0, 206, 209],
+		"darkviolet": [148, 0, 211],
+		"deeppink": [255, 20, 147],
+		"deepskyblue": [0, 191, 255],
+		"dimgray": [105, 105, 105],
+		"dimgrey": [105, 105, 105],
+		"dodgerblue": [30, 144, 255],
+		"firebrick": [178, 34, 34],
+		"floralwhite": [255, 250, 240],
+		"forestgreen": [34, 139, 34],
+		"fuchsia": [255, 0, 255],
+		"gainsboro": [220, 220, 220],
+		"ghostwhite": [248, 248, 255],
+		"gold": [255, 215, 0],
+		"goldenrod": [218, 165, 32],
+		"gray": [128, 128, 128],
+		"green": [0, 128, 0],
+		"greenyellow": [173, 255, 47],
+		"grey": [128, 128, 128],
+		"honeydew": [240, 255, 240],
+		"hotpink": [255, 105, 180],
+		"indianred": [205, 92, 92],
+		"indigo": [75, 0, 130],
+		"ivory": [255, 255, 240],
+		"khaki": [240, 230, 140],
+		"lavender": [230, 230, 250],
+		"lavenderblush": [255, 240, 245],
+		"lawngreen": [124, 252, 0],
+		"lemonchiffon": [255, 250, 205],
+		"lightblue": [173, 216, 230],
+		"lightcoral": [240, 128, 128],
+		"lightcyan": [224, 255, 255],
+		"lightgoldenrodyellow": [250, 250, 210],
+		"lightgray": [211, 211, 211],
+		"lightgreen": [144, 238, 144],
+		"lightgrey": [211, 211, 211],
+		"lightpink": [255, 182, 193],
+		"lightsalmon": [255, 160, 122],
+		"lightseagreen": [32, 178, 170],
+		"lightskyblue": [135, 206, 250],
+		"lightslategray": [119, 136, 153],
+		"lightslategrey": [119, 136, 153],
+		"lightsteelblue": [176, 196, 222],
+		"lightyellow": [255, 255, 224],
+		"lime": [0, 255, 0],
+		"limegreen": [50, 205, 50],
+		"linen": [250, 240, 230],
+		"magenta": [255, 0, 255],
+		"maroon": [128, 0, 0],
+		"mediumaquamarine": [102, 205, 170],
+		"mediumblue": [0, 0, 205],
+		"mediumorchid": [186, 85, 211],
+		"mediumpurple": [147, 112, 219],
+		"mediumseagreen": [60, 179, 113],
+		"mediumslateblue": [123, 104, 238],
+		"mediumspringgreen": [0, 250, 154],
+		"mediumturquoise": [72, 209, 204],
+		"mediumvioletred": [199, 21, 133],
+		"midnightblue": [25, 25, 112],
+		"mintcream": [245, 255, 250],
+		"mistyrose": [255, 228, 225],
+		"moccasin": [255, 228, 181],
+		"navajowhite": [255, 222, 173],
+		"navy": [0, 0, 128],
+		"oldlace": [253, 245, 230],
+		"olive": [128, 128, 0],
+		"olivedrab": [107, 142, 35],
+		"orange": [255, 165, 0],
+		"orangered": [255, 69, 0],
+		"orchid": [218, 112, 214],
+		"palegoldenrod": [238, 232, 170],
+		"palegreen": [152, 251, 152],
+		"paleturquoise": [175, 238, 238],
+		"palevioletred": [219, 112, 147],
+		"papayawhip": [255, 239, 213],
+		"peachpuff": [255, 218, 185],
+		"peru": [205, 133, 63],
+		"pink": [255, 192, 203],
+		"plum": [221, 160, 221],
+		"powderblue": [176, 224, 230],
+		"purple": [128, 0, 128],
+		"rebeccapurple": [102, 51, 153],
+		"red": [255, 0, 0],
+		"rosybrown": [188, 143, 143],
+		"royalblue": [65, 105, 225],
+		"saddlebrown": [139, 69, 19],
+		"salmon": [250, 128, 114],
+		"sandybrown": [244, 164, 96],
+		"seagreen": [46, 139, 87],
+		"seashell": [255, 245, 238],
+		"sienna": [160, 82, 45],
+		"silver": [192, 192, 192],
+		"skyblue": [135, 206, 235],
+		"slateblue": [106, 90, 205],
+		"slategray": [112, 128, 144],
+		"slategrey": [112, 128, 144],
+		"snow": [255, 250, 250],
+		"springgreen": [0, 255, 127],
+		"steelblue": [70, 130, 180],
+		"tan": [210, 180, 140],
+		"teal": [0, 128, 128],
+		"thistle": [216, 191, 216],
+		"tomato": [255, 99, 71],
+		"turquoise": [64, 224, 208],
+		"violet": [238, 130, 238],
+		"wheat": [245, 222, 179],
+		"white": [255, 255, 255],
+		"whitesmoke": [245, 245, 245],
+		"yellow": [255, 255, 0],
+		"yellowgreen": [154, 205, 50]
+	};
+	return colorName$1;
+}
+
+/* MIT license */
+
+var conversions$1;
+var hasRequiredConversions$1;
+
+function requireConversions$1 () {
+	if (hasRequiredConversions$1) return conversions$1;
+	hasRequiredConversions$1 = 1;
+	/* eslint-disable no-mixed-operators */
+	const cssKeywords = requireColorName$1();
+
+	// NOTE: conversions should only return primitive values (i.e. arrays, or
+	//       values that give correct `typeof` results).
+	//       do not use box values types (i.e. Number(), String(), etc.)
+
+	const reverseKeywords = {};
+	for (const key of Object.keys(cssKeywords)) {
+		reverseKeywords[cssKeywords[key]] = key;
+	}
+
+	const convert = {
+		rgb: {channels: 3, labels: 'rgb'},
+		hsl: {channels: 3, labels: 'hsl'},
+		hsv: {channels: 3, labels: 'hsv'},
+		hwb: {channels: 3, labels: 'hwb'},
+		cmyk: {channels: 4, labels: 'cmyk'},
+		xyz: {channels: 3, labels: 'xyz'},
+		lab: {channels: 3, labels: 'lab'},
+		lch: {channels: 3, labels: 'lch'},
+		hex: {channels: 1, labels: ['hex']},
+		keyword: {channels: 1, labels: ['keyword']},
+		ansi16: {channels: 1, labels: ['ansi16']},
+		ansi256: {channels: 1, labels: ['ansi256']},
+		hcg: {channels: 3, labels: ['h', 'c', 'g']},
+		apple: {channels: 3, labels: ['r16', 'g16', 'b16']},
+		gray: {channels: 1, labels: ['gray']}
+	};
+
+	conversions$1 = convert;
+
+	// Hide .channels and .labels properties
+	for (const model of Object.keys(convert)) {
+		if (!('channels' in convert[model])) {
+			throw new Error('missing channels property: ' + model);
+		}
+
+		if (!('labels' in convert[model])) {
+			throw new Error('missing channel labels property: ' + model);
+		}
+
+		if (convert[model].labels.length !== convert[model].channels) {
+			throw new Error('channel and label counts mismatch: ' + model);
+		}
+
+		const {channels, labels} = convert[model];
+		delete convert[model].channels;
+		delete convert[model].labels;
+		Object.defineProperty(convert[model], 'channels', {value: channels});
+		Object.defineProperty(convert[model], 'labels', {value: labels});
+	}
+
+	convert.rgb.hsl = function (rgb) {
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+		const min = Math.min(r, g, b);
+		const max = Math.max(r, g, b);
+		const delta = max - min;
+		let h;
+		let s;
+
+		if (max === min) {
+			h = 0;
+		} else if (r === max) {
+			h = (g - b) / delta;
+		} else if (g === max) {
+			h = 2 + (b - r) / delta;
+		} else if (b === max) {
+			h = 4 + (r - g) / delta;
+		}
+
+		h = Math.min(h * 60, 360);
+
+		if (h < 0) {
+			h += 360;
+		}
+
+		const l = (min + max) / 2;
+
+		if (max === min) {
+			s = 0;
+		} else if (l <= 0.5) {
+			s = delta / (max + min);
+		} else {
+			s = delta / (2 - max - min);
+		}
+
+		return [h, s * 100, l * 100];
+	};
+
+	convert.rgb.hsv = function (rgb) {
+		let rdif;
+		let gdif;
+		let bdif;
+		let h;
+		let s;
+
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+		const v = Math.max(r, g, b);
+		const diff = v - Math.min(r, g, b);
+		const diffc = function (c) {
+			return (v - c) / 6 / diff + 1 / 2;
+		};
+
+		if (diff === 0) {
+			h = 0;
+			s = 0;
+		} else {
+			s = diff / v;
+			rdif = diffc(r);
+			gdif = diffc(g);
+			bdif = diffc(b);
+
+			if (r === v) {
+				h = bdif - gdif;
+			} else if (g === v) {
+				h = (1 / 3) + rdif - bdif;
+			} else if (b === v) {
+				h = (2 / 3) + gdif - rdif;
+			}
+
+			if (h < 0) {
+				h += 1;
+			} else if (h > 1) {
+				h -= 1;
+			}
+		}
+
+		return [
+			h * 360,
+			s * 100,
+			v * 100
+		];
+	};
+
+	convert.rgb.hwb = function (rgb) {
+		const r = rgb[0];
+		const g = rgb[1];
+		let b = rgb[2];
+		const h = convert.rgb.hsl(rgb)[0];
+		const w = 1 / 255 * Math.min(r, Math.min(g, b));
+
+		b = 1 - 1 / 255 * Math.max(r, Math.max(g, b));
+
+		return [h, w * 100, b * 100];
+	};
+
+	convert.rgb.cmyk = function (rgb) {
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+
+		const k = Math.min(1 - r, 1 - g, 1 - b);
+		const c = (1 - r - k) / (1 - k) || 0;
+		const m = (1 - g - k) / (1 - k) || 0;
+		const y = (1 - b - k) / (1 - k) || 0;
+
+		return [c * 100, m * 100, y * 100, k * 100];
+	};
+
+	function comparativeDistance(x, y) {
+		/*
+			See https://en.m.wikipedia.org/wiki/Euclidean_distance#Squared_Euclidean_distance
+		*/
+		return (
+			((x[0] - y[0]) ** 2) +
+			((x[1] - y[1]) ** 2) +
+			((x[2] - y[2]) ** 2)
+		);
+	}
+
+	convert.rgb.keyword = function (rgb) {
+		const reversed = reverseKeywords[rgb];
+		if (reversed) {
+			return reversed;
+		}
+
+		let currentClosestDistance = Infinity;
+		let currentClosestKeyword;
+
+		for (const keyword of Object.keys(cssKeywords)) {
+			const value = cssKeywords[keyword];
+
+			// Compute comparative distance
+			const distance = comparativeDistance(rgb, value);
+
+			// Check if its less, if so set as closest
+			if (distance < currentClosestDistance) {
+				currentClosestDistance = distance;
+				currentClosestKeyword = keyword;
+			}
+		}
+
+		return currentClosestKeyword;
+	};
+
+	convert.keyword.rgb = function (keyword) {
+		return cssKeywords[keyword];
+	};
+
+	convert.rgb.xyz = function (rgb) {
+		let r = rgb[0] / 255;
+		let g = rgb[1] / 255;
+		let b = rgb[2] / 255;
+
+		// Assume sRGB
+		r = r > 0.04045 ? (((r + 0.055) / 1.055) ** 2.4) : (r / 12.92);
+		g = g > 0.04045 ? (((g + 0.055) / 1.055) ** 2.4) : (g / 12.92);
+		b = b > 0.04045 ? (((b + 0.055) / 1.055) ** 2.4) : (b / 12.92);
+
+		const x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
+		const y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+		const z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
+
+		return [x * 100, y * 100, z * 100];
+	};
+
+	convert.rgb.lab = function (rgb) {
+		const xyz = convert.rgb.xyz(rgb);
+		let x = xyz[0];
+		let y = xyz[1];
+		let z = xyz[2];
+
+		x /= 95.047;
+		y /= 100;
+		z /= 108.883;
+
+		x = x > 0.008856 ? (x ** (1 / 3)) : (7.787 * x) + (16 / 116);
+		y = y > 0.008856 ? (y ** (1 / 3)) : (7.787 * y) + (16 / 116);
+		z = z > 0.008856 ? (z ** (1 / 3)) : (7.787 * z) + (16 / 116);
+
+		const l = (116 * y) - 16;
+		const a = 500 * (x - y);
+		const b = 200 * (y - z);
+
+		return [l, a, b];
+	};
+
+	convert.hsl.rgb = function (hsl) {
+		const h = hsl[0] / 360;
+		const s = hsl[1] / 100;
+		const l = hsl[2] / 100;
+		let t2;
+		let t3;
+		let val;
+
+		if (s === 0) {
+			val = l * 255;
+			return [val, val, val];
+		}
+
+		if (l < 0.5) {
+			t2 = l * (1 + s);
+		} else {
+			t2 = l + s - l * s;
+		}
+
+		const t1 = 2 * l - t2;
+
+		const rgb = [0, 0, 0];
+		for (let i = 0; i < 3; i++) {
+			t3 = h + 1 / 3 * -(i - 1);
+			if (t3 < 0) {
+				t3++;
+			}
+
+			if (t3 > 1) {
+				t3--;
+			}
+
+			if (6 * t3 < 1) {
+				val = t1 + (t2 - t1) * 6 * t3;
+			} else if (2 * t3 < 1) {
+				val = t2;
+			} else if (3 * t3 < 2) {
+				val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
+			} else {
+				val = t1;
+			}
+
+			rgb[i] = val * 255;
+		}
+
+		return rgb;
+	};
+
+	convert.hsl.hsv = function (hsl) {
+		const h = hsl[0];
+		let s = hsl[1] / 100;
+		let l = hsl[2] / 100;
+		let smin = s;
+		const lmin = Math.max(l, 0.01);
+
+		l *= 2;
+		s *= (l <= 1) ? l : 2 - l;
+		smin *= lmin <= 1 ? lmin : 2 - lmin;
+		const v = (l + s) / 2;
+		const sv = l === 0 ? (2 * smin) / (lmin + smin) : (2 * s) / (l + s);
+
+		return [h, sv * 100, v * 100];
+	};
+
+	convert.hsv.rgb = function (hsv) {
+		const h = hsv[0] / 60;
+		const s = hsv[1] / 100;
+		let v = hsv[2] / 100;
+		const hi = Math.floor(h) % 6;
+
+		const f = h - Math.floor(h);
+		const p = 255 * v * (1 - s);
+		const q = 255 * v * (1 - (s * f));
+		const t = 255 * v * (1 - (s * (1 - f)));
+		v *= 255;
+
+		switch (hi) {
+			case 0:
+				return [v, t, p];
+			case 1:
+				return [q, v, p];
+			case 2:
+				return [p, v, t];
+			case 3:
+				return [p, q, v];
+			case 4:
+				return [t, p, v];
+			case 5:
+				return [v, p, q];
+		}
+	};
+
+	convert.hsv.hsl = function (hsv) {
+		const h = hsv[0];
+		const s = hsv[1] / 100;
+		const v = hsv[2] / 100;
+		const vmin = Math.max(v, 0.01);
+		let sl;
+		let l;
+
+		l = (2 - s) * v;
+		const lmin = (2 - s) * vmin;
+		sl = s * vmin;
+		sl /= (lmin <= 1) ? lmin : 2 - lmin;
+		sl = sl || 0;
+		l /= 2;
+
+		return [h, sl * 100, l * 100];
+	};
+
+	// http://dev.w3.org/csswg/css-color/#hwb-to-rgb
+	convert.hwb.rgb = function (hwb) {
+		const h = hwb[0] / 360;
+		let wh = hwb[1] / 100;
+		let bl = hwb[2] / 100;
+		const ratio = wh + bl;
+		let f;
+
+		// Wh + bl cant be > 1
+		if (ratio > 1) {
+			wh /= ratio;
+			bl /= ratio;
+		}
+
+		const i = Math.floor(6 * h);
+		const v = 1 - bl;
+		f = 6 * h - i;
+
+		if ((i & 0x01) !== 0) {
+			f = 1 - f;
+		}
+
+		const n = wh + f * (v - wh); // Linear interpolation
+
+		let r;
+		let g;
+		let b;
+		/* eslint-disable max-statements-per-line,no-multi-spaces */
+		switch (i) {
+			default:
+			case 6:
+			case 0: r = v;  g = n;  b = wh; break;
+			case 1: r = n;  g = v;  b = wh; break;
+			case 2: r = wh; g = v;  b = n; break;
+			case 3: r = wh; g = n;  b = v; break;
+			case 4: r = n;  g = wh; b = v; break;
+			case 5: r = v;  g = wh; b = n; break;
+		}
+		/* eslint-enable max-statements-per-line,no-multi-spaces */
+
+		return [r * 255, g * 255, b * 255];
+	};
+
+	convert.cmyk.rgb = function (cmyk) {
+		const c = cmyk[0] / 100;
+		const m = cmyk[1] / 100;
+		const y = cmyk[2] / 100;
+		const k = cmyk[3] / 100;
+
+		const r = 1 - Math.min(1, c * (1 - k) + k);
+		const g = 1 - Math.min(1, m * (1 - k) + k);
+		const b = 1 - Math.min(1, y * (1 - k) + k);
+
+		return [r * 255, g * 255, b * 255];
+	};
+
+	convert.xyz.rgb = function (xyz) {
+		const x = xyz[0] / 100;
+		const y = xyz[1] / 100;
+		const z = xyz[2] / 100;
+		let r;
+		let g;
+		let b;
+
+		r = (x * 3.2406) + (y * -1.5372) + (z * -0.4986);
+		g = (x * -0.9689) + (y * 1.8758) + (z * 0.0415);
+		b = (x * 0.0557) + (y * -0.2040) + (z * 1.0570);
+
+		// Assume sRGB
+		r = r > 0.0031308
+			? ((1.055 * (r ** (1.0 / 2.4))) - 0.055)
+			: r * 12.92;
+
+		g = g > 0.0031308
+			? ((1.055 * (g ** (1.0 / 2.4))) - 0.055)
+			: g * 12.92;
+
+		b = b > 0.0031308
+			? ((1.055 * (b ** (1.0 / 2.4))) - 0.055)
+			: b * 12.92;
+
+		r = Math.min(Math.max(0, r), 1);
+		g = Math.min(Math.max(0, g), 1);
+		b = Math.min(Math.max(0, b), 1);
+
+		return [r * 255, g * 255, b * 255];
+	};
+
+	convert.xyz.lab = function (xyz) {
+		let x = xyz[0];
+		let y = xyz[1];
+		let z = xyz[2];
+
+		x /= 95.047;
+		y /= 100;
+		z /= 108.883;
+
+		x = x > 0.008856 ? (x ** (1 / 3)) : (7.787 * x) + (16 / 116);
+		y = y > 0.008856 ? (y ** (1 / 3)) : (7.787 * y) + (16 / 116);
+		z = z > 0.008856 ? (z ** (1 / 3)) : (7.787 * z) + (16 / 116);
+
+		const l = (116 * y) - 16;
+		const a = 500 * (x - y);
+		const b = 200 * (y - z);
+
+		return [l, a, b];
+	};
+
+	convert.lab.xyz = function (lab) {
+		const l = lab[0];
+		const a = lab[1];
+		const b = lab[2];
+		let x;
+		let y;
+		let z;
+
+		y = (l + 16) / 116;
+		x = a / 500 + y;
+		z = y - b / 200;
+
+		const y2 = y ** 3;
+		const x2 = x ** 3;
+		const z2 = z ** 3;
+		y = y2 > 0.008856 ? y2 : (y - 16 / 116) / 7.787;
+		x = x2 > 0.008856 ? x2 : (x - 16 / 116) / 7.787;
+		z = z2 > 0.008856 ? z2 : (z - 16 / 116) / 7.787;
+
+		x *= 95.047;
+		y *= 100;
+		z *= 108.883;
+
+		return [x, y, z];
+	};
+
+	convert.lab.lch = function (lab) {
+		const l = lab[0];
+		const a = lab[1];
+		const b = lab[2];
+		let h;
+
+		const hr = Math.atan2(b, a);
+		h = hr * 360 / 2 / Math.PI;
+
+		if (h < 0) {
+			h += 360;
+		}
+
+		const c = Math.sqrt(a * a + b * b);
+
+		return [l, c, h];
+	};
+
+	convert.lch.lab = function (lch) {
+		const l = lch[0];
+		const c = lch[1];
+		const h = lch[2];
+
+		const hr = h / 360 * 2 * Math.PI;
+		const a = c * Math.cos(hr);
+		const b = c * Math.sin(hr);
+
+		return [l, a, b];
+	};
+
+	convert.rgb.ansi16 = function (args, saturation = null) {
+		const [r, g, b] = args;
+		let value = saturation === null ? convert.rgb.hsv(args)[2] : saturation; // Hsv -> ansi16 optimization
+
+		value = Math.round(value / 50);
+
+		if (value === 0) {
+			return 30;
+		}
+
+		let ansi = 30
+			+ ((Math.round(b / 255) << 2)
+			| (Math.round(g / 255) << 1)
+			| Math.round(r / 255));
+
+		if (value === 2) {
+			ansi += 60;
+		}
+
+		return ansi;
+	};
+
+	convert.hsv.ansi16 = function (args) {
+		// Optimization here; we already know the value and don't need to get
+		// it converted for us.
+		return convert.rgb.ansi16(convert.hsv.rgb(args), args[2]);
+	};
+
+	convert.rgb.ansi256 = function (args) {
+		const r = args[0];
+		const g = args[1];
+		const b = args[2];
+
+		// We use the extended greyscale palette here, with the exception of
+		// black and white. normal palette only has 4 greyscale shades.
+		if (r === g && g === b) {
+			if (r < 8) {
+				return 16;
+			}
+
+			if (r > 248) {
+				return 231;
+			}
+
+			return Math.round(((r - 8) / 247) * 24) + 232;
+		}
+
+		const ansi = 16
+			+ (36 * Math.round(r / 255 * 5))
+			+ (6 * Math.round(g / 255 * 5))
+			+ Math.round(b / 255 * 5);
+
+		return ansi;
+	};
+
+	convert.ansi16.rgb = function (args) {
+		let color = args % 10;
+
+		// Handle greyscale
+		if (color === 0 || color === 7) {
+			if (args > 50) {
+				color += 3.5;
+			}
+
+			color = color / 10.5 * 255;
+
+			return [color, color, color];
+		}
+
+		const mult = (~~(args > 50) + 1) * 0.5;
+		const r = ((color & 1) * mult) * 255;
+		const g = (((color >> 1) & 1) * mult) * 255;
+		const b = (((color >> 2) & 1) * mult) * 255;
+
+		return [r, g, b];
+	};
+
+	convert.ansi256.rgb = function (args) {
+		// Handle greyscale
+		if (args >= 232) {
+			const c = (args - 232) * 10 + 8;
+			return [c, c, c];
+		}
+
+		args -= 16;
+
+		let rem;
+		const r = Math.floor(args / 36) / 5 * 255;
+		const g = Math.floor((rem = args % 36) / 6) / 5 * 255;
+		const b = (rem % 6) / 5 * 255;
+
+		return [r, g, b];
+	};
+
+	convert.rgb.hex = function (args) {
+		const integer = ((Math.round(args[0]) & 0xFF) << 16)
+			+ ((Math.round(args[1]) & 0xFF) << 8)
+			+ (Math.round(args[2]) & 0xFF);
+
+		const string = integer.toString(16).toUpperCase();
+		return '000000'.substring(string.length) + string;
+	};
+
+	convert.hex.rgb = function (args) {
+		const match = args.toString(16).match(/[a-f0-9]{6}|[a-f0-9]{3}/i);
+		if (!match) {
+			return [0, 0, 0];
+		}
+
+		let colorString = match[0];
+
+		if (match[0].length === 3) {
+			colorString = colorString.split('').map(char => {
+				return char + char;
+			}).join('');
+		}
+
+		const integer = parseInt(colorString, 16);
+		const r = (integer >> 16) & 0xFF;
+		const g = (integer >> 8) & 0xFF;
+		const b = integer & 0xFF;
+
+		return [r, g, b];
+	};
+
+	convert.rgb.hcg = function (rgb) {
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+		const max = Math.max(Math.max(r, g), b);
+		const min = Math.min(Math.min(r, g), b);
+		const chroma = (max - min);
+		let grayscale;
+		let hue;
+
+		if (chroma < 1) {
+			grayscale = min / (1 - chroma);
+		} else {
+			grayscale = 0;
+		}
+
+		if (chroma <= 0) {
+			hue = 0;
+		} else
+		if (max === r) {
+			hue = ((g - b) / chroma) % 6;
+		} else
+		if (max === g) {
+			hue = 2 + (b - r) / chroma;
+		} else {
+			hue = 4 + (r - g) / chroma;
+		}
+
+		hue /= 6;
+		hue %= 1;
+
+		return [hue * 360, chroma * 100, grayscale * 100];
+	};
+
+	convert.hsl.hcg = function (hsl) {
+		const s = hsl[1] / 100;
+		const l = hsl[2] / 100;
+
+		const c = l < 0.5 ? (2.0 * s * l) : (2.0 * s * (1.0 - l));
+
+		let f = 0;
+		if (c < 1.0) {
+			f = (l - 0.5 * c) / (1.0 - c);
+		}
+
+		return [hsl[0], c * 100, f * 100];
+	};
+
+	convert.hsv.hcg = function (hsv) {
+		const s = hsv[1] / 100;
+		const v = hsv[2] / 100;
+
+		const c = s * v;
+		let f = 0;
+
+		if (c < 1.0) {
+			f = (v - c) / (1 - c);
+		}
+
+		return [hsv[0], c * 100, f * 100];
+	};
+
+	convert.hcg.rgb = function (hcg) {
+		const h = hcg[0] / 360;
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+
+		if (c === 0.0) {
+			return [g * 255, g * 255, g * 255];
+		}
+
+		const pure = [0, 0, 0];
+		const hi = (h % 1) * 6;
+		const v = hi % 1;
+		const w = 1 - v;
+		let mg = 0;
+
+		/* eslint-disable max-statements-per-line */
+		switch (Math.floor(hi)) {
+			case 0:
+				pure[0] = 1; pure[1] = v; pure[2] = 0; break;
+			case 1:
+				pure[0] = w; pure[1] = 1; pure[2] = 0; break;
+			case 2:
+				pure[0] = 0; pure[1] = 1; pure[2] = v; break;
+			case 3:
+				pure[0] = 0; pure[1] = w; pure[2] = 1; break;
+			case 4:
+				pure[0] = v; pure[1] = 0; pure[2] = 1; break;
+			default:
+				pure[0] = 1; pure[1] = 0; pure[2] = w;
+		}
+		/* eslint-enable max-statements-per-line */
+
+		mg = (1.0 - c) * g;
+
+		return [
+			(c * pure[0] + mg) * 255,
+			(c * pure[1] + mg) * 255,
+			(c * pure[2] + mg) * 255
+		];
+	};
+
+	convert.hcg.hsv = function (hcg) {
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+
+		const v = c + g * (1.0 - c);
+		let f = 0;
+
+		if (v > 0.0) {
+			f = c / v;
+		}
+
+		return [hcg[0], f * 100, v * 100];
+	};
+
+	convert.hcg.hsl = function (hcg) {
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+
+		const l = g * (1.0 - c) + 0.5 * c;
+		let s = 0;
+
+		if (l > 0.0 && l < 0.5) {
+			s = c / (2 * l);
+		} else
+		if (l >= 0.5 && l < 1.0) {
+			s = c / (2 * (1 - l));
+		}
+
+		return [hcg[0], s * 100, l * 100];
+	};
+
+	convert.hcg.hwb = function (hcg) {
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+		const v = c + g * (1.0 - c);
+		return [hcg[0], (v - c) * 100, (1 - v) * 100];
+	};
+
+	convert.hwb.hcg = function (hwb) {
+		const w = hwb[1] / 100;
+		const b = hwb[2] / 100;
+		const v = 1 - b;
+		const c = v - w;
+		let g = 0;
+
+		if (c < 1) {
+			g = (v - c) / (1 - c);
+		}
+
+		return [hwb[0], c * 100, g * 100];
+	};
+
+	convert.apple.rgb = function (apple) {
+		return [(apple[0] / 65535) * 255, (apple[1] / 65535) * 255, (apple[2] / 65535) * 255];
+	};
+
+	convert.rgb.apple = function (rgb) {
+		return [(rgb[0] / 255) * 65535, (rgb[1] / 255) * 65535, (rgb[2] / 255) * 65535];
+	};
+
+	convert.gray.rgb = function (args) {
+		return [args[0] / 100 * 255, args[0] / 100 * 255, args[0] / 100 * 255];
+	};
+
+	convert.gray.hsl = function (args) {
+		return [0, 0, args[0]];
+	};
+
+	convert.gray.hsv = convert.gray.hsl;
+
+	convert.gray.hwb = function (gray) {
+		return [0, 100, gray[0]];
+	};
+
+	convert.gray.cmyk = function (gray) {
+		return [0, 0, 0, gray[0]];
+	};
+
+	convert.gray.lab = function (gray) {
+		return [gray[0], 0, 0];
+	};
+
+	convert.gray.hex = function (gray) {
+		const val = Math.round(gray[0] / 100 * 255) & 0xFF;
+		const integer = (val << 16) + (val << 8) + val;
+
+		const string = integer.toString(16).toUpperCase();
+		return '000000'.substring(string.length) + string;
+	};
+
+	convert.rgb.gray = function (rgb) {
+		const val = (rgb[0] + rgb[1] + rgb[2]) / 3;
+		return [val / 255 * 100];
+	};
+	return conversions$1;
+}
+
+var route$1;
+var hasRequiredRoute$1;
+
+function requireRoute$1 () {
+	if (hasRequiredRoute$1) return route$1;
+	hasRequiredRoute$1 = 1;
+	const conversions = requireConversions$1();
+
+	/*
+		This function routes a model to all other models.
+
+		all functions that are routed have a property `.conversion` attached
+		to the returned synthetic function. This property is an array
+		of strings, each with the steps in between the 'from' and 'to'
+		color models (inclusive).
+
+		conversions that are not possible simply are not included.
+	*/
+
+	function buildGraph() {
+		const graph = {};
+		// https://jsperf.com/object-keys-vs-for-in-with-closure/3
+		const models = Object.keys(conversions);
+
+		for (let len = models.length, i = 0; i < len; i++) {
+			graph[models[i]] = {
+				// http://jsperf.com/1-vs-infinity
+				// micro-opt, but this is simple.
+				distance: -1,
+				parent: null
+			};
+		}
+
+		return graph;
+	}
+
+	// https://en.wikipedia.org/wiki/Breadth-first_search
+	function deriveBFS(fromModel) {
+		const graph = buildGraph();
+		const queue = [fromModel]; // Unshift -> queue -> pop
+
+		graph[fromModel].distance = 0;
+
+		while (queue.length) {
+			const current = queue.pop();
+			const adjacents = Object.keys(conversions[current]);
+
+			for (let len = adjacents.length, i = 0; i < len; i++) {
+				const adjacent = adjacents[i];
+				const node = graph[adjacent];
+
+				if (node.distance === -1) {
+					node.distance = graph[current].distance + 1;
+					node.parent = current;
+					queue.unshift(adjacent);
+				}
+			}
+		}
+
+		return graph;
+	}
+
+	function link(from, to) {
+		return function (args) {
+			return to(from(args));
+		};
+	}
+
+	function wrapConversion(toModel, graph) {
+		const path = [graph[toModel].parent, toModel];
+		let fn = conversions[graph[toModel].parent][toModel];
+
+		let cur = graph[toModel].parent;
+		while (graph[cur].parent) {
+			path.unshift(graph[cur].parent);
+			fn = link(conversions[graph[cur].parent][cur], fn);
+			cur = graph[cur].parent;
+		}
+
+		fn.conversion = path;
+		return fn;
+	}
+
+	route$1 = function (fromModel) {
+		const graph = deriveBFS(fromModel);
+		const conversion = {};
+
+		const models = Object.keys(graph);
+		for (let len = models.length, i = 0; i < len; i++) {
+			const toModel = models[i];
+			const node = graph[toModel];
+
+			if (node.parent === null) {
+				// No possible conversion, or this node is the source model.
+				continue;
+			}
+
+			conversion[toModel] = wrapConversion(toModel, graph);
+		}
+
+		return conversion;
+	};
+	return route$1;
+}
+
+var colorConvert$1;
+var hasRequiredColorConvert$1;
+
+function requireColorConvert$1 () {
+	if (hasRequiredColorConvert$1) return colorConvert$1;
+	hasRequiredColorConvert$1 = 1;
+	const conversions = requireConversions$1();
+	const route = requireRoute$1();
+
+	const convert = {};
+
+	const models = Object.keys(conversions);
+
+	function wrapRaw(fn) {
+		const wrappedFn = function (...args) {
+			const arg0 = args[0];
+			if (arg0 === undefined || arg0 === null) {
+				return arg0;
+			}
+
+			if (arg0.length > 1) {
+				args = arg0;
+			}
+
+			return fn(args);
+		};
+
+		// Preserve .conversion property if there is one
+		if ('conversion' in fn) {
+			wrappedFn.conversion = fn.conversion;
+		}
+
+		return wrappedFn;
+	}
+
+	function wrapRounded(fn) {
+		const wrappedFn = function (...args) {
+			const arg0 = args[0];
+
+			if (arg0 === undefined || arg0 === null) {
+				return arg0;
+			}
+
+			if (arg0.length > 1) {
+				args = arg0;
+			}
+
+			const result = fn(args);
+
+			// We're assuming the result is an array here.
+			// see notice in conversions.js; don't use box types
+			// in conversion functions.
+			if (typeof result === 'object') {
+				for (let len = result.length, i = 0; i < len; i++) {
+					result[i] = Math.round(result[i]);
+				}
+			}
+
+			return result;
+		};
+
+		// Preserve .conversion property if there is one
+		if ('conversion' in fn) {
+			wrappedFn.conversion = fn.conversion;
+		}
+
+		return wrappedFn;
+	}
+
+	models.forEach(fromModel => {
+		convert[fromModel] = {};
+
+		Object.defineProperty(convert[fromModel], 'channels', {value: conversions[fromModel].channels});
+		Object.defineProperty(convert[fromModel], 'labels', {value: conversions[fromModel].labels});
+
+		const routes = route(fromModel);
+		const routeModels = Object.keys(routes);
+
+		routeModels.forEach(toModel => {
+			const fn = routes[toModel];
+
+			convert[fromModel][toModel] = wrapRounded(fn);
+			convert[fromModel][toModel].raw = wrapRaw(fn);
+		});
+	});
+
+	colorConvert$1 = convert;
+	return colorConvert$1;
+}
+
+ansiStyles$3.exports;
+
+(function (module) {
+
+	const wrapAnsi16 = (fn, offset) => (...args) => {
+		const code = fn(...args);
+		return `\u001B[${code + offset}m`;
+	};
+
+	const wrapAnsi256 = (fn, offset) => (...args) => {
+		const code = fn(...args);
+		return `\u001B[${38 + offset};5;${code}m`;
+	};
+
+	const wrapAnsi16m = (fn, offset) => (...args) => {
+		const rgb = fn(...args);
+		return `\u001B[${38 + offset};2;${rgb[0]};${rgb[1]};${rgb[2]}m`;
+	};
+
+	const ansi2ansi = n => n;
+	const rgb2rgb = (r, g, b) => [r, g, b];
+
+	const setLazyProperty = (object, property, get) => {
+		Object.defineProperty(object, property, {
+			get: () => {
+				const value = get();
+
+				Object.defineProperty(object, property, {
+					value,
+					enumerable: true,
+					configurable: true
+				});
+
+				return value;
+			},
+			enumerable: true,
+			configurable: true
+		});
+	};
+
+	/** @type {typeof import('color-convert')} */
+	let colorConvert;
+	const makeDynamicStyles = (wrap, targetSpace, identity, isBackground) => {
+		if (colorConvert === undefined) {
+			colorConvert = requireColorConvert$1();
+		}
+
+		const offset = isBackground ? 10 : 0;
+		const styles = {};
+
+		for (const [sourceSpace, suite] of Object.entries(colorConvert)) {
+			const name = sourceSpace === 'ansi16' ? 'ansi' : sourceSpace;
+			if (sourceSpace === targetSpace) {
+				styles[name] = wrap(identity, offset);
+			} else if (typeof suite === 'object') {
+				styles[name] = wrap(suite[targetSpace], offset);
+			}
+		}
+
+		return styles;
+	};
+
+	function assembleStyles() {
+		const codes = new Map();
+		const styles = {
+			modifier: {
+				reset: [0, 0],
+				// 21 isn't widely supported and 22 does the same thing
+				bold: [1, 22],
+				dim: [2, 22],
+				italic: [3, 23],
+				underline: [4, 24],
+				inverse: [7, 27],
+				hidden: [8, 28],
+				strikethrough: [9, 29]
+			},
+			color: {
+				black: [30, 39],
+				red: [31, 39],
+				green: [32, 39],
+				yellow: [33, 39],
+				blue: [34, 39],
+				magenta: [35, 39],
+				cyan: [36, 39],
+				white: [37, 39],
+
+				// Bright color
+				blackBright: [90, 39],
+				redBright: [91, 39],
+				greenBright: [92, 39],
+				yellowBright: [93, 39],
+				blueBright: [94, 39],
+				magentaBright: [95, 39],
+				cyanBright: [96, 39],
+				whiteBright: [97, 39]
+			},
+			bgColor: {
+				bgBlack: [40, 49],
+				bgRed: [41, 49],
+				bgGreen: [42, 49],
+				bgYellow: [43, 49],
+				bgBlue: [44, 49],
+				bgMagenta: [45, 49],
+				bgCyan: [46, 49],
+				bgWhite: [47, 49],
+
+				// Bright color
+				bgBlackBright: [100, 49],
+				bgRedBright: [101, 49],
+				bgGreenBright: [102, 49],
+				bgYellowBright: [103, 49],
+				bgBlueBright: [104, 49],
+				bgMagentaBright: [105, 49],
+				bgCyanBright: [106, 49],
+				bgWhiteBright: [107, 49]
+			}
+		};
+
+		// Alias bright black as gray (and grey)
+		styles.color.gray = styles.color.blackBright;
+		styles.bgColor.bgGray = styles.bgColor.bgBlackBright;
+		styles.color.grey = styles.color.blackBright;
+		styles.bgColor.bgGrey = styles.bgColor.bgBlackBright;
+
+		for (const [groupName, group] of Object.entries(styles)) {
+			for (const [styleName, style] of Object.entries(group)) {
+				styles[styleName] = {
+					open: `\u001B[${style[0]}m`,
+					close: `\u001B[${style[1]}m`
+				};
+
+				group[styleName] = styles[styleName];
+
+				codes.set(style[0], style[1]);
+			}
+
+			Object.defineProperty(styles, groupName, {
+				value: group,
+				enumerable: false
+			});
+		}
+
+		Object.defineProperty(styles, 'codes', {
+			value: codes,
+			enumerable: false
+		});
+
+		styles.color.close = '\u001B[39m';
+		styles.bgColor.close = '\u001B[49m';
+
+		setLazyProperty(styles.color, 'ansi', () => makeDynamicStyles(wrapAnsi16, 'ansi16', ansi2ansi, false));
+		setLazyProperty(styles.color, 'ansi256', () => makeDynamicStyles(wrapAnsi256, 'ansi256', ansi2ansi, false));
+		setLazyProperty(styles.color, 'ansi16m', () => makeDynamicStyles(wrapAnsi16m, 'rgb', rgb2rgb, false));
+		setLazyProperty(styles.bgColor, 'ansi', () => makeDynamicStyles(wrapAnsi16, 'ansi16', ansi2ansi, true));
+		setLazyProperty(styles.bgColor, 'ansi256', () => makeDynamicStyles(wrapAnsi256, 'ansi256', ansi2ansi, true));
+		setLazyProperty(styles.bgColor, 'ansi16m', () => makeDynamicStyles(wrapAnsi16m, 'rgb', rgb2rgb, true));
+
+		return styles;
+	}
+
+	// Make the export immutable
+	Object.defineProperty(module, 'exports', {
+		enumerable: true,
+		get: assembleStyles
+	}); 
+} (ansiStyles$3));
+
+var ansiStylesExports$1 = ansiStyles$3.exports;
 
 var hasFlag$1 = (flag, argv = process.argv) => {
 	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
@@ -38445,7 +39825,7 @@ function requireTemplates$1 () {
 	return templates$1;
 }
 
-const ansiStyles$1 = ansiStylesExports;
+const ansiStyles$2 = ansiStylesExports$1;
 const {stdout: stdoutColor$1, stderr: stderrColor$1} = supportsColor_1;
 const {
 	stringReplaceAll: stringReplaceAll$2,
@@ -38503,7 +39883,7 @@ function Chalk$1(options) {
 	return chalkFactory$1(options);
 }
 
-for (const [styleName, style] of Object.entries(ansiStyles$1)) {
+for (const [styleName, style] of Object.entries(ansiStyles$2)) {
 	styles$1[styleName] = {
 		get() {
 			const builder = createBuilder$1(this, createStyler$1(style.open, style.close, this._styler), this._isEmpty);
@@ -38528,7 +39908,7 @@ for (const model of usedModels$1) {
 		get() {
 			const {level} = this;
 			return function (...arguments_) {
-				const styler = createStyler$1(ansiStyles$1.color[levelMapping$1[level]][model](...arguments_), ansiStyles$1.color.close, this._styler);
+				const styler = createStyler$1(ansiStyles$2.color[levelMapping$1[level]][model](...arguments_), ansiStyles$2.color.close, this._styler);
 				return createBuilder$1(this, styler, this._isEmpty);
 			};
 		}
@@ -38541,7 +39921,7 @@ for (const model of usedModels$1) {
 		get() {
 			const {level} = this;
 			return function (...arguments_) {
-				const styler = createStyler$1(ansiStyles$1.bgColor[levelMapping$1[level]][model](...arguments_), ansiStyles$1.bgColor.close, this._styler);
+				const styler = createStyler$1(ansiStyles$2.bgColor[levelMapping$1[level]][model](...arguments_), ansiStyles$2.bgColor.close, this._styler);
 				return createBuilder$1(this, styler, this._isEmpty);
 			};
 		}
@@ -40396,6 +41776,1381 @@ Object.defineProperty(spinners, 'random', {
 
 var cliSpinners$1 = spinners;
 
+var ansiStyles$1 = {exports: {}};
+
+var colorName;
+var hasRequiredColorName;
+
+function requireColorName () {
+	if (hasRequiredColorName) return colorName;
+	hasRequiredColorName = 1;
+
+	colorName = {
+		"aliceblue": [240, 248, 255],
+		"antiquewhite": [250, 235, 215],
+		"aqua": [0, 255, 255],
+		"aquamarine": [127, 255, 212],
+		"azure": [240, 255, 255],
+		"beige": [245, 245, 220],
+		"bisque": [255, 228, 196],
+		"black": [0, 0, 0],
+		"blanchedalmond": [255, 235, 205],
+		"blue": [0, 0, 255],
+		"blueviolet": [138, 43, 226],
+		"brown": [165, 42, 42],
+		"burlywood": [222, 184, 135],
+		"cadetblue": [95, 158, 160],
+		"chartreuse": [127, 255, 0],
+		"chocolate": [210, 105, 30],
+		"coral": [255, 127, 80],
+		"cornflowerblue": [100, 149, 237],
+		"cornsilk": [255, 248, 220],
+		"crimson": [220, 20, 60],
+		"cyan": [0, 255, 255],
+		"darkblue": [0, 0, 139],
+		"darkcyan": [0, 139, 139],
+		"darkgoldenrod": [184, 134, 11],
+		"darkgray": [169, 169, 169],
+		"darkgreen": [0, 100, 0],
+		"darkgrey": [169, 169, 169],
+		"darkkhaki": [189, 183, 107],
+		"darkmagenta": [139, 0, 139],
+		"darkolivegreen": [85, 107, 47],
+		"darkorange": [255, 140, 0],
+		"darkorchid": [153, 50, 204],
+		"darkred": [139, 0, 0],
+		"darksalmon": [233, 150, 122],
+		"darkseagreen": [143, 188, 143],
+		"darkslateblue": [72, 61, 139],
+		"darkslategray": [47, 79, 79],
+		"darkslategrey": [47, 79, 79],
+		"darkturquoise": [0, 206, 209],
+		"darkviolet": [148, 0, 211],
+		"deeppink": [255, 20, 147],
+		"deepskyblue": [0, 191, 255],
+		"dimgray": [105, 105, 105],
+		"dimgrey": [105, 105, 105],
+		"dodgerblue": [30, 144, 255],
+		"firebrick": [178, 34, 34],
+		"floralwhite": [255, 250, 240],
+		"forestgreen": [34, 139, 34],
+		"fuchsia": [255, 0, 255],
+		"gainsboro": [220, 220, 220],
+		"ghostwhite": [248, 248, 255],
+		"gold": [255, 215, 0],
+		"goldenrod": [218, 165, 32],
+		"gray": [128, 128, 128],
+		"green": [0, 128, 0],
+		"greenyellow": [173, 255, 47],
+		"grey": [128, 128, 128],
+		"honeydew": [240, 255, 240],
+		"hotpink": [255, 105, 180],
+		"indianred": [205, 92, 92],
+		"indigo": [75, 0, 130],
+		"ivory": [255, 255, 240],
+		"khaki": [240, 230, 140],
+		"lavender": [230, 230, 250],
+		"lavenderblush": [255, 240, 245],
+		"lawngreen": [124, 252, 0],
+		"lemonchiffon": [255, 250, 205],
+		"lightblue": [173, 216, 230],
+		"lightcoral": [240, 128, 128],
+		"lightcyan": [224, 255, 255],
+		"lightgoldenrodyellow": [250, 250, 210],
+		"lightgray": [211, 211, 211],
+		"lightgreen": [144, 238, 144],
+		"lightgrey": [211, 211, 211],
+		"lightpink": [255, 182, 193],
+		"lightsalmon": [255, 160, 122],
+		"lightseagreen": [32, 178, 170],
+		"lightskyblue": [135, 206, 250],
+		"lightslategray": [119, 136, 153],
+		"lightslategrey": [119, 136, 153],
+		"lightsteelblue": [176, 196, 222],
+		"lightyellow": [255, 255, 224],
+		"lime": [0, 255, 0],
+		"limegreen": [50, 205, 50],
+		"linen": [250, 240, 230],
+		"magenta": [255, 0, 255],
+		"maroon": [128, 0, 0],
+		"mediumaquamarine": [102, 205, 170],
+		"mediumblue": [0, 0, 205],
+		"mediumorchid": [186, 85, 211],
+		"mediumpurple": [147, 112, 219],
+		"mediumseagreen": [60, 179, 113],
+		"mediumslateblue": [123, 104, 238],
+		"mediumspringgreen": [0, 250, 154],
+		"mediumturquoise": [72, 209, 204],
+		"mediumvioletred": [199, 21, 133],
+		"midnightblue": [25, 25, 112],
+		"mintcream": [245, 255, 250],
+		"mistyrose": [255, 228, 225],
+		"moccasin": [255, 228, 181],
+		"navajowhite": [255, 222, 173],
+		"navy": [0, 0, 128],
+		"oldlace": [253, 245, 230],
+		"olive": [128, 128, 0],
+		"olivedrab": [107, 142, 35],
+		"orange": [255, 165, 0],
+		"orangered": [255, 69, 0],
+		"orchid": [218, 112, 214],
+		"palegoldenrod": [238, 232, 170],
+		"palegreen": [152, 251, 152],
+		"paleturquoise": [175, 238, 238],
+		"palevioletred": [219, 112, 147],
+		"papayawhip": [255, 239, 213],
+		"peachpuff": [255, 218, 185],
+		"peru": [205, 133, 63],
+		"pink": [255, 192, 203],
+		"plum": [221, 160, 221],
+		"powderblue": [176, 224, 230],
+		"purple": [128, 0, 128],
+		"rebeccapurple": [102, 51, 153],
+		"red": [255, 0, 0],
+		"rosybrown": [188, 143, 143],
+		"royalblue": [65, 105, 225],
+		"saddlebrown": [139, 69, 19],
+		"salmon": [250, 128, 114],
+		"sandybrown": [244, 164, 96],
+		"seagreen": [46, 139, 87],
+		"seashell": [255, 245, 238],
+		"sienna": [160, 82, 45],
+		"silver": [192, 192, 192],
+		"skyblue": [135, 206, 235],
+		"slateblue": [106, 90, 205],
+		"slategray": [112, 128, 144],
+		"slategrey": [112, 128, 144],
+		"snow": [255, 250, 250],
+		"springgreen": [0, 255, 127],
+		"steelblue": [70, 130, 180],
+		"tan": [210, 180, 140],
+		"teal": [0, 128, 128],
+		"thistle": [216, 191, 216],
+		"tomato": [255, 99, 71],
+		"turquoise": [64, 224, 208],
+		"violet": [238, 130, 238],
+		"wheat": [245, 222, 179],
+		"white": [255, 255, 255],
+		"whitesmoke": [245, 245, 245],
+		"yellow": [255, 255, 0],
+		"yellowgreen": [154, 205, 50]
+	};
+	return colorName;
+}
+
+/* MIT license */
+
+var conversions;
+var hasRequiredConversions;
+
+function requireConversions () {
+	if (hasRequiredConversions) return conversions;
+	hasRequiredConversions = 1;
+	/* eslint-disable no-mixed-operators */
+	const cssKeywords = requireColorName();
+
+	// NOTE: conversions should only return primitive values (i.e. arrays, or
+	//       values that give correct `typeof` results).
+	//       do not use box values types (i.e. Number(), String(), etc.)
+
+	const reverseKeywords = {};
+	for (const key of Object.keys(cssKeywords)) {
+		reverseKeywords[cssKeywords[key]] = key;
+	}
+
+	const convert = {
+		rgb: {channels: 3, labels: 'rgb'},
+		hsl: {channels: 3, labels: 'hsl'},
+		hsv: {channels: 3, labels: 'hsv'},
+		hwb: {channels: 3, labels: 'hwb'},
+		cmyk: {channels: 4, labels: 'cmyk'},
+		xyz: {channels: 3, labels: 'xyz'},
+		lab: {channels: 3, labels: 'lab'},
+		lch: {channels: 3, labels: 'lch'},
+		hex: {channels: 1, labels: ['hex']},
+		keyword: {channels: 1, labels: ['keyword']},
+		ansi16: {channels: 1, labels: ['ansi16']},
+		ansi256: {channels: 1, labels: ['ansi256']},
+		hcg: {channels: 3, labels: ['h', 'c', 'g']},
+		apple: {channels: 3, labels: ['r16', 'g16', 'b16']},
+		gray: {channels: 1, labels: ['gray']}
+	};
+
+	conversions = convert;
+
+	// Hide .channels and .labels properties
+	for (const model of Object.keys(convert)) {
+		if (!('channels' in convert[model])) {
+			throw new Error('missing channels property: ' + model);
+		}
+
+		if (!('labels' in convert[model])) {
+			throw new Error('missing channel labels property: ' + model);
+		}
+
+		if (convert[model].labels.length !== convert[model].channels) {
+			throw new Error('channel and label counts mismatch: ' + model);
+		}
+
+		const {channels, labels} = convert[model];
+		delete convert[model].channels;
+		delete convert[model].labels;
+		Object.defineProperty(convert[model], 'channels', {value: channels});
+		Object.defineProperty(convert[model], 'labels', {value: labels});
+	}
+
+	convert.rgb.hsl = function (rgb) {
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+		const min = Math.min(r, g, b);
+		const max = Math.max(r, g, b);
+		const delta = max - min;
+		let h;
+		let s;
+
+		if (max === min) {
+			h = 0;
+		} else if (r === max) {
+			h = (g - b) / delta;
+		} else if (g === max) {
+			h = 2 + (b - r) / delta;
+		} else if (b === max) {
+			h = 4 + (r - g) / delta;
+		}
+
+		h = Math.min(h * 60, 360);
+
+		if (h < 0) {
+			h += 360;
+		}
+
+		const l = (min + max) / 2;
+
+		if (max === min) {
+			s = 0;
+		} else if (l <= 0.5) {
+			s = delta / (max + min);
+		} else {
+			s = delta / (2 - max - min);
+		}
+
+		return [h, s * 100, l * 100];
+	};
+
+	convert.rgb.hsv = function (rgb) {
+		let rdif;
+		let gdif;
+		let bdif;
+		let h;
+		let s;
+
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+		const v = Math.max(r, g, b);
+		const diff = v - Math.min(r, g, b);
+		const diffc = function (c) {
+			return (v - c) / 6 / diff + 1 / 2;
+		};
+
+		if (diff === 0) {
+			h = 0;
+			s = 0;
+		} else {
+			s = diff / v;
+			rdif = diffc(r);
+			gdif = diffc(g);
+			bdif = diffc(b);
+
+			if (r === v) {
+				h = bdif - gdif;
+			} else if (g === v) {
+				h = (1 / 3) + rdif - bdif;
+			} else if (b === v) {
+				h = (2 / 3) + gdif - rdif;
+			}
+
+			if (h < 0) {
+				h += 1;
+			} else if (h > 1) {
+				h -= 1;
+			}
+		}
+
+		return [
+			h * 360,
+			s * 100,
+			v * 100
+		];
+	};
+
+	convert.rgb.hwb = function (rgb) {
+		const r = rgb[0];
+		const g = rgb[1];
+		let b = rgb[2];
+		const h = convert.rgb.hsl(rgb)[0];
+		const w = 1 / 255 * Math.min(r, Math.min(g, b));
+
+		b = 1 - 1 / 255 * Math.max(r, Math.max(g, b));
+
+		return [h, w * 100, b * 100];
+	};
+
+	convert.rgb.cmyk = function (rgb) {
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+
+		const k = Math.min(1 - r, 1 - g, 1 - b);
+		const c = (1 - r - k) / (1 - k) || 0;
+		const m = (1 - g - k) / (1 - k) || 0;
+		const y = (1 - b - k) / (1 - k) || 0;
+
+		return [c * 100, m * 100, y * 100, k * 100];
+	};
+
+	function comparativeDistance(x, y) {
+		/*
+			See https://en.m.wikipedia.org/wiki/Euclidean_distance#Squared_Euclidean_distance
+		*/
+		return (
+			((x[0] - y[0]) ** 2) +
+			((x[1] - y[1]) ** 2) +
+			((x[2] - y[2]) ** 2)
+		);
+	}
+
+	convert.rgb.keyword = function (rgb) {
+		const reversed = reverseKeywords[rgb];
+		if (reversed) {
+			return reversed;
+		}
+
+		let currentClosestDistance = Infinity;
+		let currentClosestKeyword;
+
+		for (const keyword of Object.keys(cssKeywords)) {
+			const value = cssKeywords[keyword];
+
+			// Compute comparative distance
+			const distance = comparativeDistance(rgb, value);
+
+			// Check if its less, if so set as closest
+			if (distance < currentClosestDistance) {
+				currentClosestDistance = distance;
+				currentClosestKeyword = keyword;
+			}
+		}
+
+		return currentClosestKeyword;
+	};
+
+	convert.keyword.rgb = function (keyword) {
+		return cssKeywords[keyword];
+	};
+
+	convert.rgb.xyz = function (rgb) {
+		let r = rgb[0] / 255;
+		let g = rgb[1] / 255;
+		let b = rgb[2] / 255;
+
+		// Assume sRGB
+		r = r > 0.04045 ? (((r + 0.055) / 1.055) ** 2.4) : (r / 12.92);
+		g = g > 0.04045 ? (((g + 0.055) / 1.055) ** 2.4) : (g / 12.92);
+		b = b > 0.04045 ? (((b + 0.055) / 1.055) ** 2.4) : (b / 12.92);
+
+		const x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
+		const y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+		const z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
+
+		return [x * 100, y * 100, z * 100];
+	};
+
+	convert.rgb.lab = function (rgb) {
+		const xyz = convert.rgb.xyz(rgb);
+		let x = xyz[0];
+		let y = xyz[1];
+		let z = xyz[2];
+
+		x /= 95.047;
+		y /= 100;
+		z /= 108.883;
+
+		x = x > 0.008856 ? (x ** (1 / 3)) : (7.787 * x) + (16 / 116);
+		y = y > 0.008856 ? (y ** (1 / 3)) : (7.787 * y) + (16 / 116);
+		z = z > 0.008856 ? (z ** (1 / 3)) : (7.787 * z) + (16 / 116);
+
+		const l = (116 * y) - 16;
+		const a = 500 * (x - y);
+		const b = 200 * (y - z);
+
+		return [l, a, b];
+	};
+
+	convert.hsl.rgb = function (hsl) {
+		const h = hsl[0] / 360;
+		const s = hsl[1] / 100;
+		const l = hsl[2] / 100;
+		let t2;
+		let t3;
+		let val;
+
+		if (s === 0) {
+			val = l * 255;
+			return [val, val, val];
+		}
+
+		if (l < 0.5) {
+			t2 = l * (1 + s);
+		} else {
+			t2 = l + s - l * s;
+		}
+
+		const t1 = 2 * l - t2;
+
+		const rgb = [0, 0, 0];
+		for (let i = 0; i < 3; i++) {
+			t3 = h + 1 / 3 * -(i - 1);
+			if (t3 < 0) {
+				t3++;
+			}
+
+			if (t3 > 1) {
+				t3--;
+			}
+
+			if (6 * t3 < 1) {
+				val = t1 + (t2 - t1) * 6 * t3;
+			} else if (2 * t3 < 1) {
+				val = t2;
+			} else if (3 * t3 < 2) {
+				val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
+			} else {
+				val = t1;
+			}
+
+			rgb[i] = val * 255;
+		}
+
+		return rgb;
+	};
+
+	convert.hsl.hsv = function (hsl) {
+		const h = hsl[0];
+		let s = hsl[1] / 100;
+		let l = hsl[2] / 100;
+		let smin = s;
+		const lmin = Math.max(l, 0.01);
+
+		l *= 2;
+		s *= (l <= 1) ? l : 2 - l;
+		smin *= lmin <= 1 ? lmin : 2 - lmin;
+		const v = (l + s) / 2;
+		const sv = l === 0 ? (2 * smin) / (lmin + smin) : (2 * s) / (l + s);
+
+		return [h, sv * 100, v * 100];
+	};
+
+	convert.hsv.rgb = function (hsv) {
+		const h = hsv[0] / 60;
+		const s = hsv[1] / 100;
+		let v = hsv[2] / 100;
+		const hi = Math.floor(h) % 6;
+
+		const f = h - Math.floor(h);
+		const p = 255 * v * (1 - s);
+		const q = 255 * v * (1 - (s * f));
+		const t = 255 * v * (1 - (s * (1 - f)));
+		v *= 255;
+
+		switch (hi) {
+			case 0:
+				return [v, t, p];
+			case 1:
+				return [q, v, p];
+			case 2:
+				return [p, v, t];
+			case 3:
+				return [p, q, v];
+			case 4:
+				return [t, p, v];
+			case 5:
+				return [v, p, q];
+		}
+	};
+
+	convert.hsv.hsl = function (hsv) {
+		const h = hsv[0];
+		const s = hsv[1] / 100;
+		const v = hsv[2] / 100;
+		const vmin = Math.max(v, 0.01);
+		let sl;
+		let l;
+
+		l = (2 - s) * v;
+		const lmin = (2 - s) * vmin;
+		sl = s * vmin;
+		sl /= (lmin <= 1) ? lmin : 2 - lmin;
+		sl = sl || 0;
+		l /= 2;
+
+		return [h, sl * 100, l * 100];
+	};
+
+	// http://dev.w3.org/csswg/css-color/#hwb-to-rgb
+	convert.hwb.rgb = function (hwb) {
+		const h = hwb[0] / 360;
+		let wh = hwb[1] / 100;
+		let bl = hwb[2] / 100;
+		const ratio = wh + bl;
+		let f;
+
+		// Wh + bl cant be > 1
+		if (ratio > 1) {
+			wh /= ratio;
+			bl /= ratio;
+		}
+
+		const i = Math.floor(6 * h);
+		const v = 1 - bl;
+		f = 6 * h - i;
+
+		if ((i & 0x01) !== 0) {
+			f = 1 - f;
+		}
+
+		const n = wh + f * (v - wh); // Linear interpolation
+
+		let r;
+		let g;
+		let b;
+		/* eslint-disable max-statements-per-line,no-multi-spaces */
+		switch (i) {
+			default:
+			case 6:
+			case 0: r = v;  g = n;  b = wh; break;
+			case 1: r = n;  g = v;  b = wh; break;
+			case 2: r = wh; g = v;  b = n; break;
+			case 3: r = wh; g = n;  b = v; break;
+			case 4: r = n;  g = wh; b = v; break;
+			case 5: r = v;  g = wh; b = n; break;
+		}
+		/* eslint-enable max-statements-per-line,no-multi-spaces */
+
+		return [r * 255, g * 255, b * 255];
+	};
+
+	convert.cmyk.rgb = function (cmyk) {
+		const c = cmyk[0] / 100;
+		const m = cmyk[1] / 100;
+		const y = cmyk[2] / 100;
+		const k = cmyk[3] / 100;
+
+		const r = 1 - Math.min(1, c * (1 - k) + k);
+		const g = 1 - Math.min(1, m * (1 - k) + k);
+		const b = 1 - Math.min(1, y * (1 - k) + k);
+
+		return [r * 255, g * 255, b * 255];
+	};
+
+	convert.xyz.rgb = function (xyz) {
+		const x = xyz[0] / 100;
+		const y = xyz[1] / 100;
+		const z = xyz[2] / 100;
+		let r;
+		let g;
+		let b;
+
+		r = (x * 3.2406) + (y * -1.5372) + (z * -0.4986);
+		g = (x * -0.9689) + (y * 1.8758) + (z * 0.0415);
+		b = (x * 0.0557) + (y * -0.2040) + (z * 1.0570);
+
+		// Assume sRGB
+		r = r > 0.0031308
+			? ((1.055 * (r ** (1.0 / 2.4))) - 0.055)
+			: r * 12.92;
+
+		g = g > 0.0031308
+			? ((1.055 * (g ** (1.0 / 2.4))) - 0.055)
+			: g * 12.92;
+
+		b = b > 0.0031308
+			? ((1.055 * (b ** (1.0 / 2.4))) - 0.055)
+			: b * 12.92;
+
+		r = Math.min(Math.max(0, r), 1);
+		g = Math.min(Math.max(0, g), 1);
+		b = Math.min(Math.max(0, b), 1);
+
+		return [r * 255, g * 255, b * 255];
+	};
+
+	convert.xyz.lab = function (xyz) {
+		let x = xyz[0];
+		let y = xyz[1];
+		let z = xyz[2];
+
+		x /= 95.047;
+		y /= 100;
+		z /= 108.883;
+
+		x = x > 0.008856 ? (x ** (1 / 3)) : (7.787 * x) + (16 / 116);
+		y = y > 0.008856 ? (y ** (1 / 3)) : (7.787 * y) + (16 / 116);
+		z = z > 0.008856 ? (z ** (1 / 3)) : (7.787 * z) + (16 / 116);
+
+		const l = (116 * y) - 16;
+		const a = 500 * (x - y);
+		const b = 200 * (y - z);
+
+		return [l, a, b];
+	};
+
+	convert.lab.xyz = function (lab) {
+		const l = lab[0];
+		const a = lab[1];
+		const b = lab[2];
+		let x;
+		let y;
+		let z;
+
+		y = (l + 16) / 116;
+		x = a / 500 + y;
+		z = y - b / 200;
+
+		const y2 = y ** 3;
+		const x2 = x ** 3;
+		const z2 = z ** 3;
+		y = y2 > 0.008856 ? y2 : (y - 16 / 116) / 7.787;
+		x = x2 > 0.008856 ? x2 : (x - 16 / 116) / 7.787;
+		z = z2 > 0.008856 ? z2 : (z - 16 / 116) / 7.787;
+
+		x *= 95.047;
+		y *= 100;
+		z *= 108.883;
+
+		return [x, y, z];
+	};
+
+	convert.lab.lch = function (lab) {
+		const l = lab[0];
+		const a = lab[1];
+		const b = lab[2];
+		let h;
+
+		const hr = Math.atan2(b, a);
+		h = hr * 360 / 2 / Math.PI;
+
+		if (h < 0) {
+			h += 360;
+		}
+
+		const c = Math.sqrt(a * a + b * b);
+
+		return [l, c, h];
+	};
+
+	convert.lch.lab = function (lch) {
+		const l = lch[0];
+		const c = lch[1];
+		const h = lch[2];
+
+		const hr = h / 360 * 2 * Math.PI;
+		const a = c * Math.cos(hr);
+		const b = c * Math.sin(hr);
+
+		return [l, a, b];
+	};
+
+	convert.rgb.ansi16 = function (args, saturation = null) {
+		const [r, g, b] = args;
+		let value = saturation === null ? convert.rgb.hsv(args)[2] : saturation; // Hsv -> ansi16 optimization
+
+		value = Math.round(value / 50);
+
+		if (value === 0) {
+			return 30;
+		}
+
+		let ansi = 30
+			+ ((Math.round(b / 255) << 2)
+			| (Math.round(g / 255) << 1)
+			| Math.round(r / 255));
+
+		if (value === 2) {
+			ansi += 60;
+		}
+
+		return ansi;
+	};
+
+	convert.hsv.ansi16 = function (args) {
+		// Optimization here; we already know the value and don't need to get
+		// it converted for us.
+		return convert.rgb.ansi16(convert.hsv.rgb(args), args[2]);
+	};
+
+	convert.rgb.ansi256 = function (args) {
+		const r = args[0];
+		const g = args[1];
+		const b = args[2];
+
+		// We use the extended greyscale palette here, with the exception of
+		// black and white. normal palette only has 4 greyscale shades.
+		if (r === g && g === b) {
+			if (r < 8) {
+				return 16;
+			}
+
+			if (r > 248) {
+				return 231;
+			}
+
+			return Math.round(((r - 8) / 247) * 24) + 232;
+		}
+
+		const ansi = 16
+			+ (36 * Math.round(r / 255 * 5))
+			+ (6 * Math.round(g / 255 * 5))
+			+ Math.round(b / 255 * 5);
+
+		return ansi;
+	};
+
+	convert.ansi16.rgb = function (args) {
+		let color = args % 10;
+
+		// Handle greyscale
+		if (color === 0 || color === 7) {
+			if (args > 50) {
+				color += 3.5;
+			}
+
+			color = color / 10.5 * 255;
+
+			return [color, color, color];
+		}
+
+		const mult = (~~(args > 50) + 1) * 0.5;
+		const r = ((color & 1) * mult) * 255;
+		const g = (((color >> 1) & 1) * mult) * 255;
+		const b = (((color >> 2) & 1) * mult) * 255;
+
+		return [r, g, b];
+	};
+
+	convert.ansi256.rgb = function (args) {
+		// Handle greyscale
+		if (args >= 232) {
+			const c = (args - 232) * 10 + 8;
+			return [c, c, c];
+		}
+
+		args -= 16;
+
+		let rem;
+		const r = Math.floor(args / 36) / 5 * 255;
+		const g = Math.floor((rem = args % 36) / 6) / 5 * 255;
+		const b = (rem % 6) / 5 * 255;
+
+		return [r, g, b];
+	};
+
+	convert.rgb.hex = function (args) {
+		const integer = ((Math.round(args[0]) & 0xFF) << 16)
+			+ ((Math.round(args[1]) & 0xFF) << 8)
+			+ (Math.round(args[2]) & 0xFF);
+
+		const string = integer.toString(16).toUpperCase();
+		return '000000'.substring(string.length) + string;
+	};
+
+	convert.hex.rgb = function (args) {
+		const match = args.toString(16).match(/[a-f0-9]{6}|[a-f0-9]{3}/i);
+		if (!match) {
+			return [0, 0, 0];
+		}
+
+		let colorString = match[0];
+
+		if (match[0].length === 3) {
+			colorString = colorString.split('').map(char => {
+				return char + char;
+			}).join('');
+		}
+
+		const integer = parseInt(colorString, 16);
+		const r = (integer >> 16) & 0xFF;
+		const g = (integer >> 8) & 0xFF;
+		const b = integer & 0xFF;
+
+		return [r, g, b];
+	};
+
+	convert.rgb.hcg = function (rgb) {
+		const r = rgb[0] / 255;
+		const g = rgb[1] / 255;
+		const b = rgb[2] / 255;
+		const max = Math.max(Math.max(r, g), b);
+		const min = Math.min(Math.min(r, g), b);
+		const chroma = (max - min);
+		let grayscale;
+		let hue;
+
+		if (chroma < 1) {
+			grayscale = min / (1 - chroma);
+		} else {
+			grayscale = 0;
+		}
+
+		if (chroma <= 0) {
+			hue = 0;
+		} else
+		if (max === r) {
+			hue = ((g - b) / chroma) % 6;
+		} else
+		if (max === g) {
+			hue = 2 + (b - r) / chroma;
+		} else {
+			hue = 4 + (r - g) / chroma;
+		}
+
+		hue /= 6;
+		hue %= 1;
+
+		return [hue * 360, chroma * 100, grayscale * 100];
+	};
+
+	convert.hsl.hcg = function (hsl) {
+		const s = hsl[1] / 100;
+		const l = hsl[2] / 100;
+
+		const c = l < 0.5 ? (2.0 * s * l) : (2.0 * s * (1.0 - l));
+
+		let f = 0;
+		if (c < 1.0) {
+			f = (l - 0.5 * c) / (1.0 - c);
+		}
+
+		return [hsl[0], c * 100, f * 100];
+	};
+
+	convert.hsv.hcg = function (hsv) {
+		const s = hsv[1] / 100;
+		const v = hsv[2] / 100;
+
+		const c = s * v;
+		let f = 0;
+
+		if (c < 1.0) {
+			f = (v - c) / (1 - c);
+		}
+
+		return [hsv[0], c * 100, f * 100];
+	};
+
+	convert.hcg.rgb = function (hcg) {
+		const h = hcg[0] / 360;
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+
+		if (c === 0.0) {
+			return [g * 255, g * 255, g * 255];
+		}
+
+		const pure = [0, 0, 0];
+		const hi = (h % 1) * 6;
+		const v = hi % 1;
+		const w = 1 - v;
+		let mg = 0;
+
+		/* eslint-disable max-statements-per-line */
+		switch (Math.floor(hi)) {
+			case 0:
+				pure[0] = 1; pure[1] = v; pure[2] = 0; break;
+			case 1:
+				pure[0] = w; pure[1] = 1; pure[2] = 0; break;
+			case 2:
+				pure[0] = 0; pure[1] = 1; pure[2] = v; break;
+			case 3:
+				pure[0] = 0; pure[1] = w; pure[2] = 1; break;
+			case 4:
+				pure[0] = v; pure[1] = 0; pure[2] = 1; break;
+			default:
+				pure[0] = 1; pure[1] = 0; pure[2] = w;
+		}
+		/* eslint-enable max-statements-per-line */
+
+		mg = (1.0 - c) * g;
+
+		return [
+			(c * pure[0] + mg) * 255,
+			(c * pure[1] + mg) * 255,
+			(c * pure[2] + mg) * 255
+		];
+	};
+
+	convert.hcg.hsv = function (hcg) {
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+
+		const v = c + g * (1.0 - c);
+		let f = 0;
+
+		if (v > 0.0) {
+			f = c / v;
+		}
+
+		return [hcg[0], f * 100, v * 100];
+	};
+
+	convert.hcg.hsl = function (hcg) {
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+
+		const l = g * (1.0 - c) + 0.5 * c;
+		let s = 0;
+
+		if (l > 0.0 && l < 0.5) {
+			s = c / (2 * l);
+		} else
+		if (l >= 0.5 && l < 1.0) {
+			s = c / (2 * (1 - l));
+		}
+
+		return [hcg[0], s * 100, l * 100];
+	};
+
+	convert.hcg.hwb = function (hcg) {
+		const c = hcg[1] / 100;
+		const g = hcg[2] / 100;
+		const v = c + g * (1.0 - c);
+		return [hcg[0], (v - c) * 100, (1 - v) * 100];
+	};
+
+	convert.hwb.hcg = function (hwb) {
+		const w = hwb[1] / 100;
+		const b = hwb[2] / 100;
+		const v = 1 - b;
+		const c = v - w;
+		let g = 0;
+
+		if (c < 1) {
+			g = (v - c) / (1 - c);
+		}
+
+		return [hwb[0], c * 100, g * 100];
+	};
+
+	convert.apple.rgb = function (apple) {
+		return [(apple[0] / 65535) * 255, (apple[1] / 65535) * 255, (apple[2] / 65535) * 255];
+	};
+
+	convert.rgb.apple = function (rgb) {
+		return [(rgb[0] / 255) * 65535, (rgb[1] / 255) * 65535, (rgb[2] / 255) * 65535];
+	};
+
+	convert.gray.rgb = function (args) {
+		return [args[0] / 100 * 255, args[0] / 100 * 255, args[0] / 100 * 255];
+	};
+
+	convert.gray.hsl = function (args) {
+		return [0, 0, args[0]];
+	};
+
+	convert.gray.hsv = convert.gray.hsl;
+
+	convert.gray.hwb = function (gray) {
+		return [0, 100, gray[0]];
+	};
+
+	convert.gray.cmyk = function (gray) {
+		return [0, 0, 0, gray[0]];
+	};
+
+	convert.gray.lab = function (gray) {
+		return [gray[0], 0, 0];
+	};
+
+	convert.gray.hex = function (gray) {
+		const val = Math.round(gray[0] / 100 * 255) & 0xFF;
+		const integer = (val << 16) + (val << 8) + val;
+
+		const string = integer.toString(16).toUpperCase();
+		return '000000'.substring(string.length) + string;
+	};
+
+	convert.rgb.gray = function (rgb) {
+		const val = (rgb[0] + rgb[1] + rgb[2]) / 3;
+		return [val / 255 * 100];
+	};
+	return conversions;
+}
+
+var route;
+var hasRequiredRoute;
+
+function requireRoute () {
+	if (hasRequiredRoute) return route;
+	hasRequiredRoute = 1;
+	const conversions = requireConversions();
+
+	/*
+		This function routes a model to all other models.
+
+		all functions that are routed have a property `.conversion` attached
+		to the returned synthetic function. This property is an array
+		of strings, each with the steps in between the 'from' and 'to'
+		color models (inclusive).
+
+		conversions that are not possible simply are not included.
+	*/
+
+	function buildGraph() {
+		const graph = {};
+		// https://jsperf.com/object-keys-vs-for-in-with-closure/3
+		const models = Object.keys(conversions);
+
+		for (let len = models.length, i = 0; i < len; i++) {
+			graph[models[i]] = {
+				// http://jsperf.com/1-vs-infinity
+				// micro-opt, but this is simple.
+				distance: -1,
+				parent: null
+			};
+		}
+
+		return graph;
+	}
+
+	// https://en.wikipedia.org/wiki/Breadth-first_search
+	function deriveBFS(fromModel) {
+		const graph = buildGraph();
+		const queue = [fromModel]; // Unshift -> queue -> pop
+
+		graph[fromModel].distance = 0;
+
+		while (queue.length) {
+			const current = queue.pop();
+			const adjacents = Object.keys(conversions[current]);
+
+			for (let len = adjacents.length, i = 0; i < len; i++) {
+				const adjacent = adjacents[i];
+				const node = graph[adjacent];
+
+				if (node.distance === -1) {
+					node.distance = graph[current].distance + 1;
+					node.parent = current;
+					queue.unshift(adjacent);
+				}
+			}
+		}
+
+		return graph;
+	}
+
+	function link(from, to) {
+		return function (args) {
+			return to(from(args));
+		};
+	}
+
+	function wrapConversion(toModel, graph) {
+		const path = [graph[toModel].parent, toModel];
+		let fn = conversions[graph[toModel].parent][toModel];
+
+		let cur = graph[toModel].parent;
+		while (graph[cur].parent) {
+			path.unshift(graph[cur].parent);
+			fn = link(conversions[graph[cur].parent][cur], fn);
+			cur = graph[cur].parent;
+		}
+
+		fn.conversion = path;
+		return fn;
+	}
+
+	route = function (fromModel) {
+		const graph = deriveBFS(fromModel);
+		const conversion = {};
+
+		const models = Object.keys(graph);
+		for (let len = models.length, i = 0; i < len; i++) {
+			const toModel = models[i];
+			const node = graph[toModel];
+
+			if (node.parent === null) {
+				// No possible conversion, or this node is the source model.
+				continue;
+			}
+
+			conversion[toModel] = wrapConversion(toModel, graph);
+		}
+
+		return conversion;
+	};
+	return route;
+}
+
+var colorConvert;
+var hasRequiredColorConvert;
+
+function requireColorConvert () {
+	if (hasRequiredColorConvert) return colorConvert;
+	hasRequiredColorConvert = 1;
+	const conversions = requireConversions();
+	const route = requireRoute();
+
+	const convert = {};
+
+	const models = Object.keys(conversions);
+
+	function wrapRaw(fn) {
+		const wrappedFn = function (...args) {
+			const arg0 = args[0];
+			if (arg0 === undefined || arg0 === null) {
+				return arg0;
+			}
+
+			if (arg0.length > 1) {
+				args = arg0;
+			}
+
+			return fn(args);
+		};
+
+		// Preserve .conversion property if there is one
+		if ('conversion' in fn) {
+			wrappedFn.conversion = fn.conversion;
+		}
+
+		return wrappedFn;
+	}
+
+	function wrapRounded(fn) {
+		const wrappedFn = function (...args) {
+			const arg0 = args[0];
+
+			if (arg0 === undefined || arg0 === null) {
+				return arg0;
+			}
+
+			if (arg0.length > 1) {
+				args = arg0;
+			}
+
+			const result = fn(args);
+
+			// We're assuming the result is an array here.
+			// see notice in conversions.js; don't use box types
+			// in conversion functions.
+			if (typeof result === 'object') {
+				for (let len = result.length, i = 0; i < len; i++) {
+					result[i] = Math.round(result[i]);
+				}
+			}
+
+			return result;
+		};
+
+		// Preserve .conversion property if there is one
+		if ('conversion' in fn) {
+			wrappedFn.conversion = fn.conversion;
+		}
+
+		return wrappedFn;
+	}
+
+	models.forEach(fromModel => {
+		convert[fromModel] = {};
+
+		Object.defineProperty(convert[fromModel], 'channels', {value: conversions[fromModel].channels});
+		Object.defineProperty(convert[fromModel], 'labels', {value: conversions[fromModel].labels});
+
+		const routes = route(fromModel);
+		const routeModels = Object.keys(routes);
+
+		routeModels.forEach(toModel => {
+			const fn = routes[toModel];
+
+			convert[fromModel][toModel] = wrapRounded(fn);
+			convert[fromModel][toModel].raw = wrapRaw(fn);
+		});
+	});
+
+	colorConvert = convert;
+	return colorConvert;
+}
+
+ansiStyles$1.exports;
+
+(function (module) {
+
+	const wrapAnsi16 = (fn, offset) => (...args) => {
+		const code = fn(...args);
+		return `\u001B[${code + offset}m`;
+	};
+
+	const wrapAnsi256 = (fn, offset) => (...args) => {
+		const code = fn(...args);
+		return `\u001B[${38 + offset};5;${code}m`;
+	};
+
+	const wrapAnsi16m = (fn, offset) => (...args) => {
+		const rgb = fn(...args);
+		return `\u001B[${38 + offset};2;${rgb[0]};${rgb[1]};${rgb[2]}m`;
+	};
+
+	const ansi2ansi = n => n;
+	const rgb2rgb = (r, g, b) => [r, g, b];
+
+	const setLazyProperty = (object, property, get) => {
+		Object.defineProperty(object, property, {
+			get: () => {
+				const value = get();
+
+				Object.defineProperty(object, property, {
+					value,
+					enumerable: true,
+					configurable: true
+				});
+
+				return value;
+			},
+			enumerable: true,
+			configurable: true
+		});
+	};
+
+	/** @type {typeof import('color-convert')} */
+	let colorConvert;
+	const makeDynamicStyles = (wrap, targetSpace, identity, isBackground) => {
+		if (colorConvert === undefined) {
+			colorConvert = requireColorConvert();
+		}
+
+		const offset = isBackground ? 10 : 0;
+		const styles = {};
+
+		for (const [sourceSpace, suite] of Object.entries(colorConvert)) {
+			const name = sourceSpace === 'ansi16' ? 'ansi' : sourceSpace;
+			if (sourceSpace === targetSpace) {
+				styles[name] = wrap(identity, offset);
+			} else if (typeof suite === 'object') {
+				styles[name] = wrap(suite[targetSpace], offset);
+			}
+		}
+
+		return styles;
+	};
+
+	function assembleStyles() {
+		const codes = new Map();
+		const styles = {
+			modifier: {
+				reset: [0, 0],
+				// 21 isn't widely supported and 22 does the same thing
+				bold: [1, 22],
+				dim: [2, 22],
+				italic: [3, 23],
+				underline: [4, 24],
+				inverse: [7, 27],
+				hidden: [8, 28],
+				strikethrough: [9, 29]
+			},
+			color: {
+				black: [30, 39],
+				red: [31, 39],
+				green: [32, 39],
+				yellow: [33, 39],
+				blue: [34, 39],
+				magenta: [35, 39],
+				cyan: [36, 39],
+				white: [37, 39],
+
+				// Bright color
+				blackBright: [90, 39],
+				redBright: [91, 39],
+				greenBright: [92, 39],
+				yellowBright: [93, 39],
+				blueBright: [94, 39],
+				magentaBright: [95, 39],
+				cyanBright: [96, 39],
+				whiteBright: [97, 39]
+			},
+			bgColor: {
+				bgBlack: [40, 49],
+				bgRed: [41, 49],
+				bgGreen: [42, 49],
+				bgYellow: [43, 49],
+				bgBlue: [44, 49],
+				bgMagenta: [45, 49],
+				bgCyan: [46, 49],
+				bgWhite: [47, 49],
+
+				// Bright color
+				bgBlackBright: [100, 49],
+				bgRedBright: [101, 49],
+				bgGreenBright: [102, 49],
+				bgYellowBright: [103, 49],
+				bgBlueBright: [104, 49],
+				bgMagentaBright: [105, 49],
+				bgCyanBright: [106, 49],
+				bgWhiteBright: [107, 49]
+			}
+		};
+
+		// Alias bright black as gray (and grey)
+		styles.color.gray = styles.color.blackBright;
+		styles.bgColor.bgGray = styles.bgColor.bgBlackBright;
+		styles.color.grey = styles.color.blackBright;
+		styles.bgColor.bgGrey = styles.bgColor.bgBlackBright;
+
+		for (const [groupName, group] of Object.entries(styles)) {
+			for (const [styleName, style] of Object.entries(group)) {
+				styles[styleName] = {
+					open: `\u001B[${style[0]}m`,
+					close: `\u001B[${style[1]}m`
+				};
+
+				group[styleName] = styles[styleName];
+
+				codes.set(style[0], style[1]);
+			}
+
+			Object.defineProperty(styles, groupName, {
+				value: group,
+				enumerable: false
+			});
+		}
+
+		Object.defineProperty(styles, 'codes', {
+			value: codes,
+			enumerable: false
+		});
+
+		styles.color.close = '\u001B[39m';
+		styles.bgColor.close = '\u001B[49m';
+
+		setLazyProperty(styles.color, 'ansi', () => makeDynamicStyles(wrapAnsi16, 'ansi16', ansi2ansi, false));
+		setLazyProperty(styles.color, 'ansi256', () => makeDynamicStyles(wrapAnsi256, 'ansi256', ansi2ansi, false));
+		setLazyProperty(styles.color, 'ansi16m', () => makeDynamicStyles(wrapAnsi16m, 'rgb', rgb2rgb, false));
+		setLazyProperty(styles.bgColor, 'ansi', () => makeDynamicStyles(wrapAnsi16, 'ansi16', ansi2ansi, true));
+		setLazyProperty(styles.bgColor, 'ansi256', () => makeDynamicStyles(wrapAnsi256, 'ansi256', ansi2ansi, true));
+		setLazyProperty(styles.bgColor, 'ansi16m', () => makeDynamicStyles(wrapAnsi16m, 'rgb', rgb2rgb, true));
+
+		return styles;
+	}
+
+	// Make the export immutable
+	Object.defineProperty(module, 'exports', {
+		enumerable: true,
+		get: assembleStyles
+	}); 
+} (ansiStyles$1));
+
+var ansiStylesExports = ansiStyles$1.exports;
+
 const stringReplaceAll$1 = (string, substring, replacer) => {
 	let index = string.indexOf(substring);
 	if (index === -1) {
@@ -40820,7 +43575,7 @@ var isUnicodeSupported$3 = () => {
 const chalk$1 = source;
 const isUnicodeSupported$2 = isUnicodeSupported$3;
 
-const main$2 = {
+const main$1 = {
 	info: chalk$1.blue('ℹ'),
 	success: chalk$1.green('✔'),
 	warning: chalk$1.yellow('⚠'),
@@ -40834,7 +43589,7 @@ const fallback = {
 	error: chalk$1.red('×')
 };
 
-var logSymbols$1 = isUnicodeSupported$2() ? main$2 : fallback;
+var logSymbols$1 = isUnicodeSupported$2() ? main$1 : fallback;
 
 var wcwidth$2 = {exports: {}};
 
@@ -47093,7 +49848,7 @@ class PasswordPrompt extends Prompt {
   }
 }
 
-var main$1 = {};
+var main = {};
 
 var chardet = {};
 
@@ -60908,20 +63663,20 @@ RemoveFileError$1.RemoveFileError = RemoveFileError;
  * Kevin Gravier <kevin@mrkmg.com>
  * MIT 2019
  */
-Object.defineProperty(main$1, "__esModule", { value: true });
+Object.defineProperty(main, "__esModule", { value: true });
 var chardet_1 = chardet;
 var child_process_1 = require$$1$1;
 var fs_1 = require$$0$3;
 var iconv_lite_1 = libExports;
 var tmp_1 = tmp;
 var CreateFileError_1 = CreateFileError$1;
-main$1.CreateFileError = CreateFileError_1.CreateFileError;
+main.CreateFileError = CreateFileError_1.CreateFileError;
 var LaunchEditorError_1 = LaunchEditorError$1;
-main$1.LaunchEditorError = LaunchEditorError_1.LaunchEditorError;
+main.LaunchEditorError = LaunchEditorError_1.LaunchEditorError;
 var ReadFileError_1 = ReadFileError$1;
-main$1.ReadFileError = ReadFileError_1.ReadFileError;
+main.ReadFileError = ReadFileError_1.ReadFileError;
 var RemoveFileError_1 = RemoveFileError$1;
-main$1.RemoveFileError = RemoveFileError_1.RemoveFileError;
+main.RemoveFileError = RemoveFileError_1.RemoveFileError;
 function edit(text, fileOptions) {
     if (text === void 0) { text = ""; }
     var editor = new ExternalEditor(text, fileOptions);
@@ -60929,7 +63684,7 @@ function edit(text, fileOptions) {
     editor.cleanup();
     return editor.text;
 }
-main$1.edit = edit;
+main.edit = edit;
 function editAsync(text, callback, fileOptions) {
     if (text === void 0) { text = ""; }
     var editor = new ExternalEditor(text, fileOptions);
@@ -60948,7 +63703,7 @@ function editAsync(text, callback, fileOptions) {
         }
     });
 }
-var editAsync_1 = main$1.editAsync = editAsync;
+var editAsync_1 = main.editAsync = editAsync;
 var ExternalEditor = /** @class */ (function () {
     function ExternalEditor(text, fileOptions) {
         if (text === void 0) { text = ""; }
@@ -61093,7 +63848,7 @@ var ExternalEditor = /** @class */ (function () {
     };
     return ExternalEditor;
 }());
-main$1.ExternalEditor = ExternalEditor;
+main.ExternalEditor = ExternalEditor;
 
 /**
  * `editor` type prompt
@@ -62450,14 +65205,20 @@ function selectRepoQuestion(repos) {
 }
 
 function checkInitPrerequisite(context, next) {
-    const repoPath = context.cwd;
+    const repoPath = context.command.arguments.directory;
     if (checkIsGitDir(repoPath)) {
         throw new Error(`Cannot execute commands inside a ".git" folder`);
     }
+    console.info(`repoPath:`, repoPath);
     const [projectConfig, worktreeConfig] = getConfigs(repoPath);
+    console.info(`:`, 123);
+    console.info(`[projectConfig, worktreeConfig]:`, projectConfig, worktreeConfig);
     if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
         throw new Error(`The directory: "${repoPath}" has already been initialized`);
     }
+    console.info(`:`, 456);
+    console.info(`context:`, context);
+    context.projectConfigPath = path__namespace.resolve(repoPath, EPROJECT_FILES.CONFIGURATION);
     context.projectPath = repoPath;
     context.projectType = EPROJECT_TYPE.SINGLE;
     next();
@@ -62828,109 +65589,118 @@ var CheckProcessor = {
  *   wt init <directory>
  * =======================
  */
-var initCommand = new Command()
-    .command("init")
-    .summary("Create a worktree project and init a Git repository.\n\n")
-    .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init\n\n".`)
-    .option("--branch [branch-name]", "[OPTIONAL] The specified name for the initial branch in the newly created git repository.\n\n")
-    .helpOption("-h, --help", "Display help for command")
-    .argument("[directory]", "[OPTIONAL] Specify a directory that the command is run inside it.")
-    .action(function () {
-    const context = {
-        command: {
-            options: this.opts(),
-            arguments: {
-                directory: path__namespace.resolve(this.processedArgs[0] || process.cwd()),
+function initAction(done) {
+    return function () {
+        const context = {
+            command: {
+                options: this.opts(),
+                arguments: {
+                    directory: path__namespace.resolve(this.processedArgs[0] || process.cwd()),
+                },
             },
-        },
-        cwd: path__namespace.resolve(this.processedArgs[0] || process.cwd()),
+            cwd: process.cwd(),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkInitPrerequisite,
+            GitProcessor.initRepository,
+            FileProcessor.initDirectory,
+            GitProcessor.repairWorktree,
+            FileProcessor.writeProjectConfiguration,
+            FileProcessor.writeProjectCodeWorkspace,
+            GitProcessor.configWorktree,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkInitPrerequisite,
-        GitProcessor.initRepository,
-        FileProcessor.initDirectory,
-        GitProcessor.repairWorktree,
-        FileProcessor.writeProjectConfiguration,
-        FileProcessor.writeProjectCodeWorkspace,
-        GitProcessor.configWorktree,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function initCommand(action) {
+    return new Command()
+        .command("init")
+        .summary("Create a worktree project and init a Git repository.\n\n")
+        .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init".\n\n`)
+        .option("--branch [branch-name]", "(optional) The specified name for the initial branch in the newly created git repository.\n\n")
+        .helpOption("-h, --help", "Display help for command")
+        .argument("[directory]", "(optional) Specify a directory that the command is run inside it.")
+        .action(action);
+}
 
 /**
  * =============================================
  *   wt add --base <commit-hash> <branch-name>
  * =============================================
  */
-var addCommand = new Command()
-    .command("add")
-    .summary("Create a linked worktree.\n\n")
-    .description(`Create a linked worktree which used the <branch-name> as the worktree directory name, and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
-    .option("--repo <repo-name>", "When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n")
-    .option("--base <commit-hash>", ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
-    .helpOption("-h, --help", "Display help for command")
-    .argument("[branch-name]", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
-    .action(function () {
-    const context = {
-        command: {
-            options: this.opts(),
-            arguments: {
-                branchName: this.processedArgs[0],
+function addAction(done) {
+    return function () {
+        const context = {
+            command: {
+                options: this.opts(),
+                arguments: {
+                    branchName: this.processedArgs[0],
+                },
             },
-        },
-        cwd: process.cwd(),
+            cwd: process.cwd(),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkAddPrerequisite,
+            GitProcessor.addWorktree,
+            FileProcessor.writeProjectCodeWorkspace,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkAddPrerequisite,
-        GitProcessor.addWorktree,
-        FileProcessor.writeProjectCodeWorkspace,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function addCommand(action) {
+    return new Command()
+        .command("add")
+        .summary("Create a linked worktree.\n\n")
+        .description(`Create a linked worktree which used the <branch-name> as the worktree directory name, and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
+        .option("--repo <repo-name>", "When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n")
+        .option("--base <commit-hash>", ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
+        .helpOption("-h, --help", "Display help for command")
+        .argument("[branch-name]", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
+        .action(action);
+}
 
 /**
  * ===============================
  *   wt remove -f <branch-name>
  * ===============================
  */
-var removeCommand = new Command()
-    .command("rmove")
-    .aliases(["rm"])
-    .summary("Remove a linked worktree.\n\n")
-    .description(`To remove a linked worktree from the worktree project`)
-    .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
-    .option("--repo <repo-name>", "When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n")
-    .helpOption("-h, --help", "Display help for command")
-    .argument("[branch-name]", ":: If the branch name is not specified, then it will prompt the options")
-    .action(function () {
-    const context = {
-        command: {
-            options: this.opts(),
-            arguments: {
-                branchName: this.processedArgs[0],
+function removeAction(done) {
+    return function () {
+        const context = {
+            command: {
+                options: this.opts(),
+                arguments: {
+                    branchName: this.processedArgs[0],
+                },
             },
-        },
-        cwd: process.cwd(),
+            cwd: process.cwd(),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkRemovePrerequisite,
+            GitProcessor.removeWorktree,
+            FileProcessor.writeProjectCodeWorkspace,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkRemovePrerequisite,
-        GitProcessor.removeWorktree,
-        FileProcessor.writeProjectCodeWorkspace,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function removeCommand(action) {
+    return new Command()
+        .command("rmove")
+        .aliases(["rm"])
+        .summary("Remove a linked worktree.\n\n")
+        .description(`To remove a linked worktree from the worktree project`)
+        .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
+        .option("--repo <repo-name>", "When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n")
+        .helpOption("-h, --help", "Display help for command")
+        .argument("[branch-name]", ":: If the branch name is not specified, then it will prompt the options")
+        .action(action);
+}
 
 /**
  * Handle "git worktree repair"
@@ -62940,185 +65710,225 @@ var removeCommand = new Command()
  *   wt update
  * ===============
  */
-var updateCommand = new Command()
-    .command("update")
-    .alias("ud")
-    .summary("Update the project configuration.\n\n")
-    .description(`Update the project configuration`)
-    .helpOption("-h, --help", "Display help for command")
-    .action(function () {
-    const context = {
-        command: {
-            options: {},
-            arguments: {},
-        },
-        cwd: process.cwd(),
+function updateAction(done) {
+    return function () {
+        const context = {
+            command: {
+                options: {},
+                arguments: {},
+            },
+            cwd: process.cwd(),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkUpdatePrerequisite,
+            CheckProcessor.inspectPotentialWorktrees,
+            FileProcessor.updateDirectory,
+            GitProcessor.repairWorktree,
+            FileProcessor.writeProjectCodeWorkspace,
+            FileProcessor.writeProjectConfiguration,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkUpdatePrerequisite,
-        CheckProcessor.inspectPotentialWorktrees,
-        FileProcessor.updateDirectory,
-        GitProcessor.repairWorktree,
-        FileProcessor.writeProjectCodeWorkspace,
-        FileProcessor.writeProjectConfiguration,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function updateCommand(action) {
+    return new Command()
+        .command("update")
+        .alias("ud")
+        .summary("Update the project configuration.\n\n")
+        .description(`Update the project configuration`)
+        .helpOption("-h, --help", "Display help for command")
+        .action(action);
+}
 
 /**
  * =====================================
  *   wt clone <repository> <directory>
  * =====================================
  */
-var cloneCommand = new Command()
-    .command("clone")
-    .summary(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
-    .description(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
-    .argument("<repo-url>", "The url of a git repository.")
-    .argument("[directory]", "Specify a directory that the command is run inside it.")
-    .action(function () {
-    const context = {
-        command: {
-            arguments: {
-                repoURL: this.processedArgs[0],
-                directory: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
+function cloneAction(done) {
+    return function () {
+        const context = {
+            command: {
+                arguments: {
+                    repoURL: this.processedArgs[0],
+                    directory: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
+                },
             },
-        },
-        cwd: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
+            cwd: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkClonePrerequisite,
+            GitProcessor.cloneRepository,
+            FileProcessor.initDirectory,
+            FileProcessor.writeProjectConfiguration,
+            FileProcessor.writeProjectCodeWorkspace,
+            GitProcessor.configWorktree,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkClonePrerequisite,
-        GitProcessor.cloneRepository,
-        FileProcessor.initDirectory,
-        FileProcessor.writeProjectConfiguration,
-        FileProcessor.writeProjectCodeWorkspace,
-        GitProcessor.configWorktree,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function cloneCommand(action) {
+    return new Command()
+        .command("clone")
+        .summary(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
+        .description(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
+        .argument("<repo-url>", "The url of a git repository.")
+        .argument("[directory]", "Specify a directory that the command is run inside it.")
+        .action(action);
+}
 
 /**
  * =============================
  *   wt create <directory>
  * =============================
  */
-var createCommand = new Command()
-    .name("create")
-    .alias('c')
-    .summary("Create an empty worktree project")
-    .description("To create an empty worktree project that used for multiple git repositories")
-    .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
-    .action(function () {
-    const context = {
-        command: {
-            arguments: {
-                directory: path__namespace.resolve(this.processedArgs[0]),
+function createAction(done) {
+    return function () {
+        const context = {
+            command: {
+                arguments: {
+                    directory: path__namespace.resolve(this.processedArgs[0]),
+                },
             },
-        },
-        cwd: path__namespace.resolve(this.processedArgs[0]),
+            cwd: path__namespace.resolve(this.processedArgs[0]),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkCreatePrerequisite,
+            FileProcessor.writeProjectCodeWorkspace,
+            FileProcessor.writeProjectConfiguration,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkCreatePrerequisite,
-        FileProcessor.writeProjectCodeWorkspace,
-        FileProcessor.writeProjectConfiguration,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function createCommand(action) {
+    return new Command()
+        .name("create")
+        .alias("c")
+        .summary("Create an empty worktree project.\n\n")
+        .description("To create an empty worktree project that used for multiple git repositories.\n\n")
+        .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
+        .action(action);
+}
 
 /**
  * ==================================
  *   wt link <repo-url> <repo-name>
  * ==================================
  */
-var linkCommand = new Command()
-    .name("link")
-    .alias("ln")
-    .summary("Link a Git repo into current project\n\n")
-    .description("To link a Git repo into current project, <repo-url> can be a remote url or the local path\n\n")
-    .argument("<repo-url>", "The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n")
-    .argument("<repo-name>", `Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`)
-    .action(function () {
-    const context = {
-        command: {
-            arguments: {
-                repoURL: this.processedArgs[0],
-                repoName: this.processedArgs[1],
+function linkAction(done) {
+    return function () {
+        const context = {
+            command: {
+                arguments: {
+                    repoURL: this.processedArgs[0],
+                    repoName: this.processedArgs[1],
+                },
             },
-        },
-        cwd: process.cwd(),
+            cwd: process.cwd(),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkLinkPrerequisite,
+            GitProcessor.linkRepository,
+            FileProcessor.linkDirectory,
+            FileProcessor.writeProjectCodeWorkspace,
+            FileProcessor.writeProjectConfiguration,
+            GitProcessor.configWorktree,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkLinkPrerequisite,
-        GitProcessor.linkRepository,
-        FileProcessor.linkDirectory,
-        FileProcessor.writeProjectCodeWorkspace,
-        FileProcessor.writeProjectConfiguration,
-        GitProcessor.configWorktree,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function linkCommand(action) {
+    return new Command()
+        .name("link")
+        .alias("ln")
+        .summary("Link a Git repo into current project.\n\n")
+        .description("To link a Git repo into current project, <repo-url> can be a remote url or the local path.\n\n")
+        .argument("<repo-url>", "The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n")
+        .argument("<repo-name>", `Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`)
+        .action(action);
+}
 
 /**
  * =========================
  *   wt unlink <repo-name>
  * =========================
  */
-var unlinkCommand = new Command()
-    .name("unlink")
-    .alias("ul")
-    .summary("Remove a Git repository from current project\n\n")
-    .description("To remove a Git repository from current project\n\n")
-    .argument("[repo-name]")
-    .action(function () {
-    const context = {
-        command: {
-            arguments: {
-                repoName: this.processedArgs[0],
+function unlinkAction(done) {
+    return function () {
+        const context = {
+            command: {
+                arguments: {
+                    repoName: this.processedArgs[0],
+                },
             },
-        },
-        cwd: process.cwd(),
+            cwd: process.cwd(),
+        };
+        const processes = [
+            ErrorProcessor.captureError,
+            CheckProcessor.checkUnlinkPrerequisite,
+            FileProcessor.unlinkDirectory,
+            FileProcessor.writeProjectCodeWorkspace,
+            FileProcessor.writeProjectConfiguration,
+        ];
+        const executer = new Executer(processes);
+        executer.run(context, done);
     };
-    const processes = [
-        ErrorProcessor.captureError,
-        CheckProcessor.checkUnlinkPrerequisite,
-        FileProcessor.unlinkDirectory,
-        FileProcessor.writeProjectCodeWorkspace,
-        FileProcessor.writeProjectConfiguration,
-    ];
-    const executer = new Executer(processes);
-    executer.run(context, () => {
-        process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
-    });
-});
+}
+function unlinkCommand(action) {
+    return new Command()
+        .name("unlink")
+        .alias("ul")
+        .summary("Remove a Git repository from current project\n\n")
+        .description("To remove a Git repository from current project\n\n")
+        .argument("[repo-name]")
+        .action(action);
+}
+
+const CommandCreator = {
+    add: addCommand,
+    clone: cloneCommand,
+    create: createCommand,
+    init: initCommand,
+    link: linkCommand,
+    unlink: unlinkCommand,
+    remove: removeCommand,
+    update: updateCommand,
+};
+const ActionCreator = {
+    add: addAction,
+    clone: cloneAction,
+    create: createAction,
+    init: initAction,
+    link: linkAction,
+    unlink: unlinkAction,
+    remove: removeAction,
+    update: updateAction,
+};
+
+function done() {
+    process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
+}
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
-const main = new Command();
-main
+const program = new Command();
+program
     .name(`wt`)
     .version("0.1.0")
     .addHelpCommand("help [command]", "Show command details.\n\n")
-    .addCommand(createCommand)
-    .addCommand(initCommand)
-    .addCommand(linkCommand)
-    .addCommand(unlinkCommand)
-    .addCommand(cloneCommand)
-    .addCommand(addCommand)
-    .addCommand(removeCommand)
-    .addCommand(updateCommand);
-main.parse(process.argv);
+    .addCommand(CommandCreator.create(ActionCreator.create(done)))
+    .addCommand(CommandCreator.link(ActionCreator.link(done)))
+    .addCommand(CommandCreator.unlink(ActionCreator.unlink(done)))
+    .addCommand(CommandCreator.init(ActionCreator.init(done)))
+    .addCommand(CommandCreator.clone(ActionCreator.clone(done)))
+    .addCommand(CommandCreator.remove(ActionCreator.remove(done)))
+    .addCommand(CommandCreator.add(ActionCreator.add(done)))
+    .addCommand(CommandCreator.update(ActionCreator.update(done)));
+program.parse(process.argv);
