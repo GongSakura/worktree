@@ -9,7 +9,7 @@
   "homepage": "https://github.com/GongSakura/worktree",
   "license": "MIT",
   "scripts": {
-    "test": "jest",
+    "test": "rollup -c && jest",
     "build": "rollup -c",
     "dev": "rollup -c --watch",
     "prepare": "node scripts/prepare.js",
