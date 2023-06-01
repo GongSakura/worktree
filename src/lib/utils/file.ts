@@ -61,9 +61,9 @@ export function checkIsPathCaseSensitive() {
  */
 export function normalizePath(rawPath: string) {
   if ((global as any).isPathCaseSensitive) {
-    // return path.normalize(rawPath);
-    return rawPath;
+    return path.normalize(rawPath);
+  
   }
-  // return path.normalize(rawPath.toLowerCase());
-  return rawPath.toLowerCase();
+  return path.normalize(rawPath.toLowerCase());
+
 }
