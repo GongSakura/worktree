@@ -69,7 +69,10 @@ function initRepository(context: IContext, next: CallableFunction) {
   next();
 }
 function linkRepository(context: IContext, next: CallableFunction) {
-  if (context.command.arguments.repoURL[0] === "/") {
+  if (
+    path.isAbsolute(context.command.arguments.repoURL) ||
+    context.command.arguments.repoURL[0] === "."
+  ) {
     next();
   } else {
     const repoURL = context.command.arguments.repoURL;

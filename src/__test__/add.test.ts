@@ -204,6 +204,7 @@ describe("add from multi-repos project", () => {
   it("setup", async () => {
     // ======= check branches =======
     const branches = getAllBranches(repoPath);
+    console.info(`branches:`,branches)
     expect(new Set(branches)).toEqual(
       new Set(["mock", "feature-1", "feature-2"])
     );
