@@ -113,7 +113,7 @@ describe("link", () => {
 
     const remoteRepoName = remoteGitRepoPath
       .replace(/\.git/, "")
-      .split(path.sep)
+      .split("/")
       .pop()!;
 
     const repoPath = path.resolve(projectPath, `${remoteRepoName}#master`);

@@ -175,7 +175,7 @@ describe("update from multi-repos project", () => {
     "https://github.com/GongSakura/worktree.git";
   const remoteRepoName = remoteGitRepoPath
     .replace(/\.git/, "")
-    .split(path.sep)
+    .split("/")
     .pop()!;
 
   const repoInfo: any[] = [

@@ -35,7 +35,7 @@ describe("unlink", () => {
     "https://github.com/GongSakura/worktree.git";
   const remoteRepoName = remoteGitRepoPath
     .replace(/\.git/, "")
-    .split(path.sep)
+    .split("/")
     .pop()!;
   const remoteRepoPath = path.resolve(projectPath, `${remoteRepoName}#master`);
   const repoDirname: string[] = [
