@@ -1,7 +1,11 @@
 {
     "include": [
-        "src/**/*" ],
-        "exclude": ["src/__test__/**/*"],
+        "src/lib/**/*",
+        "src/index.ts"
+    ],
+    "exclude": [
+        "src/__test__/**/*"
+    ],
     "compilerOptions": {
         "lib": [
             "ESNext",

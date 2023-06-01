@@ -30,10 +30,10 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
+    "@inquirer/select": "^1.1.7",
     "chalk": "^5.2.0",
     "commander": "^10.0.1",
-    "fs-extra": "^11.1.1",
-    "inquirer": "^9.2.6"
+    "fs-extra": "^11.1.1"
   },
   "bin": {
     "wt": "./build/index.js"
