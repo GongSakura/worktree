@@ -3583,6 +3583,8 @@ function getUncheckoutBranches(cwdPath) {
     }
 }
 
+const DEFAULT_BRANCH = "master";
+
 /**
  *
  * By default, the last element of the worktree list is the main worktree
@@ -3640,10 +3642,16 @@ function linkRepository(context, next) {
     else {
         const repoURL = context.command.arguments.repoURL;
         const repoName = context.command.arguments.repoName;
-        const repoPath = path__namespace.resolve(context.projectPath, `${repoName}#master`);
+        let repoPath = path__namespace.resolve(context.projectPath, `${repoName}#${DEFAULT_BRANCH}`);
         node_child_process.execSync(`git clone ${repoURL} ${repoPath}`, {
             stdio: "inherit",
         });
+        const currentBranch = getCurrentBranch(repoPath);
+        if (currentBranch !== DEFAULT_BRANCH) {
+            const realRepoPath = path__namespace.resolve(context.projectPath, `${repoName}#${currentBranch}`);
+            node_fs.renameSync(repoPath, realRepoPath);
+            repoPath = realRepoPath;
+        }
         const repo = {
             name: repoName,
             path: repoPath,
@@ -3666,7 +3674,7 @@ function configWorktree(context, next) {
             cwd: repo.path,
             stdio: "pipe",
         });
-        node_child_process.execSync("git config --local wt.config.repoName " + repo.name, {
+        node_child_process.execSync("git config --local wt.config.reponame " + repo.name, {
             cwd: repo.path,
             stdio: "pipe",
         });
@@ -3792,11 +3800,19 @@ function checkIsPathCaseSensitive() {
         node_fs.rmdirSync(path);
     }
 }
+/**
+ * normalize path by checking if it's caseSensitive
+ * // TODO: don't know if need to unify Windows and unix
+ * @param rawPath
+ * @returns
+ */
 function normalizePath(rawPath) {
     if (global.isPathCaseSensitive) {
-        return path__namespace.normalize(rawPath);
+        // return path.normalize(rawPath);
+        return rawPath;
     }
-    return path__namespace.normalize(rawPath.toLowerCase());
+    // return path.normalize(rawPath.toLowerCase());
+    return rawPath.toLowerCase();
 }
 
 var fs$j = {};
@@ -6454,15 +6470,20 @@ function linkDirectory(context, next) {
         let linkPath = path__namespace.resolve(context.command.arguments.repoURL);
         if (checkIsWorktree(linkPath)) {
             const worktree = getWorktrees(linkPath)[0];
+            // link path should be the main worktree of a repository
             linkPath = worktree[0];
         }
+        else {
+            throw new Error("Cannot link to a non-git repository");
+        }
+        const currentBranch = getCurrentBranch(linkPath);
         const repo = {
             name: context.command.arguments.repoName,
-            path: path__namespace.resolve(context.projectPath, `${context.command.arguments.repoName}#master`),
+            path: path__namespace.resolve(context.projectPath, `${context.command.arguments.repoName}#${currentBranch}`),
         };
         lib$2.ensureDirSync(repo.path);
         lib$2.copySync(linkPath, repo.path);
-        repo.worktrees = [[repo.path, "", "master"]];
+        repo.worktrees = [[repo.path, "", currentBranch]];
         if (Array.isArray(context.repos)) {
             context.repos.push(repo);
         }
@@ -7173,7 +7194,7 @@ function captureError$1(context, next) {
     }
     catch (error) {
         //TODO: To come up with a natty solution to show the error message
-        console.log(`
+        process.stderr.write(`
   ${chalk$4.redBright.bold("✘ ERROR:")}
 
     ${chalk$4.bold("::")} ${error.message}
@@ -65427,7 +65448,7 @@ function checkUpdatePrerequisite(context, next) {
     next();
 }
 function checkCreatePrerequisite(context, next) {
-    const repoPath = context.cwd;
+    const repoPath = context.command.arguments.directory;
     if (checkIsGitDir(repoPath)) {
         throw new Error(`Cannot create inside the ".git" folder`);
     }
@@ -65580,7 +65601,7 @@ function initAction(done) {
             command: {
                 options: this.opts(),
                 arguments: {
-                    directory: path__namespace.resolve(this.processedArgs[0] || process.cwd()),
+                    directory: path__namespace.resolve(this.processedArgs[0] || ""),
                 },
             },
             cwd: process.cwd(),
@@ -65606,7 +65627,7 @@ function initCommand(action) {
         .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init".\n\n`)
         .option("--branch [branch-name]", "(optional) The specified name for the initial branch in the newly created git repository.\n\n")
         .helpOption("-h, --help", "Display help for command")
-        .argument("[directory]", "(optional) Specify a directory that the command is run inside it.")
+        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n")
         .action(action);
 }
 
@@ -65641,10 +65662,10 @@ function addCommand(action) {
         .command("add")
         .summary("Create a linked worktree.\n\n")
         .description(`Create a linked worktree which used the <branch-name> as the worktree directory name, and checkout [commit-hash] into it. The command "git worktree add --checkout -b <new-branch> <path> <commit-hash>" is executed inside, and <path> has already been taken care.\n\nFor more details see https://git-scm.com/docs/git-worktree.`)
-        .option("--repo <repo-name>", "When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n")
-        .option("--base <commit-hash>", ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
+        .option("--repo <repo-name>", "(required) When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n")
+        .option("--base <commit-hash>", "(required) A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n")
         .helpOption("-h, --help", "Display help for command")
-        .argument("[branch-name]", ":: If the branch doesn't existed, then create a new branch based on HEAD.")
+        .argument("[branch-name]", "(optional) If the branch doesn't existed, then create a new branch based on HEAD.")
         .action(action);
 }
 
@@ -65676,14 +65697,14 @@ function removeAction(done) {
 }
 function removeCommand(action) {
     return new Command()
-        .command("rmove")
+        .command("remove")
         .aliases(["rm"])
         .summary("Remove a linked worktree.\n\n")
-        .description(`To remove a linked worktree from the worktree project`)
-        .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`)
-        .option("--repo <repo-name>", "When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n")
+        .description(`To remove a linked worktree from the worktree project.\n\n`)
+        .option("-f, --force", `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>". \n\n`)
+        .option("--repo <repo-name>", "(required) When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias.\n\n")
         .helpOption("-h, --help", "Display help for command")
-        .argument("[branch-name]", ":: If the branch name is not specified, then it will prompt the options")
+        .argument("[branch-name]", "(optional) If the branch name is not specified, then it will prompt the options.")
         .action(action);
 }
 
@@ -65722,8 +65743,8 @@ function updateCommand(action) {
         .command("update")
         .alias("ud")
         .summary("Update the project configuration.\n\n")
-        .description(`Update the project configuration`)
-        .helpOption("-h, --help", "Display help for command")
+        .description(`Update the project configuration.\n\n`)
+        .helpOption("-h, --help", "Display help for command.")
         .action(action);
 }
 
@@ -65738,10 +65759,10 @@ function cloneAction(done) {
             command: {
                 arguments: {
                     repoURL: this.processedArgs[0],
-                    directory: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
+                    directory: path__namespace.resolve(this.processedArgs[1] || ""),
                 },
             },
-            cwd: path__namespace.resolve(this.processedArgs[1] || process.cwd()),
+            cwd: process.cwd(),
         };
         const processes = [
             ErrorProcessor.captureError,
@@ -65776,10 +65797,10 @@ function createAction(done) {
         const context = {
             command: {
                 arguments: {
-                    directory: path__namespace.resolve(this.processedArgs[0]),
+                    directory: path__namespace.resolve(this.processedArgs[0] || ""),
                 },
             },
-            cwd: path__namespace.resolve(this.processedArgs[0]),
+            cwd: process.cwd(),
         };
         const processes = [
             ErrorProcessor.captureError,
@@ -65797,7 +65818,7 @@ function createCommand(action) {
         .alias("c")
         .summary("Create an empty worktree project.\n\n")
         .description("To create an empty worktree project that used for multiple git repositories.\n\n")
-        .argument("[directory]", "Specify a directory that the command is run inside it.", process.cwd())
+        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n")
         .action(action);
 }
 
@@ -65836,8 +65857,8 @@ function linkCommand(action) {
         .alias("ln")
         .summary("Link a Git repo into current project.\n\n")
         .description("To link a Git repo into current project, <repo-url> can be a remote url or the local path.\n\n")
-        .argument("<repo-url>", "The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n")
-        .argument("<repo-name>", `Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`)
+        .argument("<repo-url>", "(required) The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n")
+        .argument("<repo-name>", `(required) Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`)
         .action(action);
 }
 
@@ -65871,9 +65892,9 @@ function unlinkCommand(action) {
     return new Command()
         .name("unlink")
         .alias("ul")
-        .summary("Remove a Git repository from current project\n\n")
-        .description("To remove a Git repository from current project\n\n")
-        .argument("[repo-name]")
+        .summary("Remove a Git repository from current project.\n\n")
+        .description("To remove a Git repository from current project.\n\n")
+        .argument("[repo-name]", "(optional) The repository to be remove from current project.\n\n")
         .action(action);
 }
 

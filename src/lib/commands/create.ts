@@ -18,10 +18,10 @@ export function createAction(done: CallableFunction) {
     const context = {
       command: {
         arguments: {
-          directory: path.resolve(this.processedArgs[0]),
+          directory: path.resolve(this.processedArgs[0]||""),
         },
       },
-      cwd: path.resolve(this.processedArgs[0]),
+      cwd: process.cwd(),
     };
 
     const processes = [
@@ -45,8 +45,7 @@ export function createCommand(action: (...args: any[]) => void) {
     )
     .argument(
       "[directory]",
-      "Specify a directory that the command is run inside it.",
-      process.cwd()
+      "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n"
     )
     .action(action);
 }

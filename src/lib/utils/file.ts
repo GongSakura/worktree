@@ -1,14 +1,7 @@
-import {
-  mkdtempSync,
-  readFileSync,
-  rmdirSync,
-  statSync,
-
-} from "node:fs";
+import { mkdtempSync, readFileSync, rmdirSync, statSync } from "node:fs";
 import * as path from "node:path";
 import { EPROJECT_FILES, IProjectConfig, IGitConfig } from "./types";
 import { getGitConfiguration } from "./git";
-
 
 export function getProjectFile(cwdPath: string, name: EPROJECT_FILES) {
   try {
@@ -60,11 +53,17 @@ export function checkIsPathCaseSensitive() {
   }
 }
 
+/**
+ * normalize path by checking if it's caseSensitive
+ * // TODO: don't know if need to unify Windows and unix
+ * @param rawPath
+ * @returns
+ */
 export function normalizePath(rawPath: string) {
   if ((global as any).isPathCaseSensitive) {
-    return path.normalize(rawPath);
+    // return path.normalize(rawPath);
+    return rawPath;
   }
-  return path.normalize(rawPath.toLowerCase());
+  // return path.normalize(rawPath.toLowerCase());
+  return rawPath.toLowerCase();
 }
-
-

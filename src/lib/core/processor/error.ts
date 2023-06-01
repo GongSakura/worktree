@@ -7,7 +7,7 @@ function captureError(context: IContext, next: CallableFunction) {
     next();
   } catch (error: any) {
     //TODO: To come up with a natty solution to show the error message
-    console.log(`
+    process.stderr.write(`
   ${chalk.redBright.bold("✘ ERROR:")}
 
     ${chalk.bold("::")} ${error.message}

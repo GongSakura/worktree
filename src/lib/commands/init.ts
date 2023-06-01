@@ -20,7 +20,7 @@ export function initAction(done: CallableFunction) {
       command: {
         options: this.opts(),
         arguments: {
-          directory: path.resolve(this.processedArgs[0] || process.cwd()),
+          directory: path.resolve(this.processedArgs[0]||""),
         },
       },
       cwd: process.cwd(),
@@ -55,7 +55,7 @@ export function initCommand(action: (...args: any[]) => void) {
     .helpOption("-h, --help", "Display help for command")
     .argument(
       "[directory]",
-      "(optional) Specify a directory that the command is run inside it."
+      "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n"
     )
     .action(action);
 }

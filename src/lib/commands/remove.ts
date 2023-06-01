@@ -12,7 +12,6 @@ import {
   CheckProcessor,
 } from "../core";
 
-
 export function removeAction(done: CallableFunction) {
   return function () {
     const context = {
@@ -35,24 +34,24 @@ export function removeAction(done: CallableFunction) {
     executer.run(context, done);
   };
 }
-export function removeCommand (action: (...args: any[]) => void){
+export function removeCommand(action: (...args: any[]) => void) {
   return new Command()
-    .command("rmove")
+    .command("remove")
     .aliases(["rm"])
     .summary("Remove a linked worktree.\n\n")
-    .description(`To remove a linked worktree from the worktree project`)
+    .description(`To remove a linked worktree from the worktree project.\n\n`)
     .option(
       "-f, --force",
-      `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>" \n\n`
+      `:: Remove both the branch and the linked worktree, if the branch isn't linked to any worktree, it will just remove the branch by "git branch -D <branch-name>". \n\n`
     )
     .option(
       "--repo <repo-name>",
-      "When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias\n\n"
+      "(required) When remove a linked worktree in a multi-repos worktree project, it should be specified. The <repo-name> can be an alias.\n\n"
     )
     .helpOption("-h, --help", "Display help for command")
     .argument(
       "[branch-name]",
-      ":: If the branch name is not specified, then it will prompt the options"
+      "(optional) If the branch name is not specified, then it will prompt the options."
     )
     .action(action);
-};
+}

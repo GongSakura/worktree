@@ -326,7 +326,7 @@ function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
 }
 
 function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
-  const repoPath = context.cwd;
+  const repoPath = context.command.arguments.directory;
   if (checkIsGitDir(repoPath)) {
     throw new Error(`Cannot create inside the ".git" folder`);
   }

@@ -25,7 +25,11 @@ import {
   checkIsDirectChildPath,
   normalizePath,
 } from "../../utils/file";
-import { checkIsWorktree, getWorktrees } from "../../utils/git";
+import {
+  checkIsWorktree,
+  getCurrentBranch,
+  getWorktrees,
+} from "../../utils/git";
 import { copySync, ensureDirSync } from "fs-extra";
 
 const IGNORE_FILES = new Set([".git", ".code-workpace"]);
@@ -141,7 +145,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
         repo.path = newPath;
       }
     }
-   
+
     repo.worktrees = newWorktrees;
   });
 
@@ -192,22 +196,28 @@ function linkDirectory(context: IContext, next: CallableFunction) {
     next();
   } else {
     let linkPath = path.resolve(context.command.arguments.repoURL);
+
     if (checkIsWorktree(linkPath)) {
       const worktree = getWorktrees(linkPath)[0];
-      linkPath = worktree[0];
-    }
 
+      // link path should be the main worktree of a repository
+      linkPath = worktree[0];
+    } else {
+      throw new Error("Cannot link to a non-git repository");
+    }
+    const currentBranch = getCurrentBranch(linkPath);
     const repo: IRepo = {
       name: context.command.arguments.repoName,
       path: path.resolve(
         context.projectPath!,
-        `${context.command.arguments.repoName}#master`
+        `${context.command.arguments.repoName}#${currentBranch}`
       ),
     };
 
     ensureDirSync(repo.path!);
     copySync(linkPath, repo.path!);
-    repo.worktrees = [[repo.path!, "", "master"]];
+    repo.worktrees = [[repo.path!, "", currentBranch]];
+
     if (Array.isArray(context.repos)) {
       context.repos.push(repo);
     } else {
@@ -231,11 +241,11 @@ function unlinkDirectory(context: IContext, next: CallableFunction) {
     });
   });
   context.repos = repos;
-  context.repos!.forEach((repo:IRepo)=>{
-    if(repo.path){
-      repo.worktrees = getWorktrees(repo.path).reverse()
+  context.repos!.forEach((repo: IRepo) => {
+    if (repo.path) {
+      repo.worktrees = getWorktrees(repo.path).reverse();
     }
-  })
+  });
   next();
 }
 

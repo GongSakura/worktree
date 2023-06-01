@@ -1,9 +1,8 @@
 import {
   exec,
   execSync,
-  ExecOptions,
-  ExecException,
   ExecSyncOptions,
+  ExecSyncOptionsWithBufferEncoding,
 } from "node:child_process";
 
 export async function execSyncSequences(
@@ -89,20 +88,14 @@ export async function mockGitRepository(cwdPath: string) {
 export async function run(
   executablePath: string,
   command: string,
-  options: ExecOptions
+  options: ExecSyncOptionsWithBufferEncoding = {}
 ) {
   return new Promise((resolve, reject) => {
-    exec(
-      `node ${executablePath} ${command}`,
-      options,
-      (error: ExecException | null, stdout: string, stderr: string) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(stdout || stderr);
-        }
-      }
-    );
+    try {
+      const stdout = execSync(`node ${executablePath} ${command}`, options);
+      resolve(stdout);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
-

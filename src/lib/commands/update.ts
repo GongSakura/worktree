@@ -46,7 +46,7 @@ export function updateCommand(action: (...args: any[]) => void) {
     .command("update")
     .alias("ud")
     .summary("Update the project configuration.\n\n")
-    .description(`Update the project configuration`)
-    .helpOption("-h, --help", "Display help for command")
+    .description(`Update the project configuration.\n\n`)
+    .helpOption("-h, --help", "Display help for command.")
     .action(action);
 }

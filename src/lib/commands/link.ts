@@ -50,11 +50,11 @@ export function linkCommand (action: (...args: any[]) => void){
     )
     .argument(
       "<repo-url>",
-      "The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n"
+      "(required) The location of the git repository, it repo-url is the local directory, then it will create a symbolic link\n\n"
     )
     .argument(
       "<repo-name>",
-      `Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`
+      `(required) Specify an alias name for the git repository, and it will be used as the option --repo in "wt remove" or "wt add" commands.\n\n`
     )
     .action(action);
 };
