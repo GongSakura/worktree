@@ -42,7 +42,6 @@ export function updateAction(done: CallableFunction) {
   };
 }
 
-
 export function updateCommand(action: (...args: any[]) => void) {
   return new Command()
     .command("update")
