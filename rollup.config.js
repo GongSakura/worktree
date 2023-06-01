@@ -5,9 +5,9 @@ const json = require("@rollup/plugin-json");
 const { chmodSync } = require("fs");
 
 module.exports = {
-  input: "packages/index.ts",
+  input: "src/index.ts",
   output: {
-    dir: "bin",
+    dir: "build",
     format: "cjs",
   },
   plugins: [
@@ -25,7 +25,7 @@ module.exports = {
           "#!/usr/bin/env node\n" + bundle["index.js"].code;
       },
       writeBundle() {
-        chmodSync("./bin/index.js", 0o777);
+        chmodSync("./build/index.js", 0o777);
       },
     },
   ],

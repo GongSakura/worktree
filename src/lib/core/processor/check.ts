@@ -8,7 +8,7 @@ import {
   getUncheckoutBranches,
   getWorktrees,
 } from "../../utils/git";
-import { getConfigs, getProjectFile } from "../../utils/file";
+import { getConfigs, getProjectFile, normalizePath } from "../../utils/file";
 import {
   IMultiRepoWorktreePaths,
   EPROJECT_FILES,
@@ -28,30 +28,24 @@ import {
 import { ErrorProcessor } from "../index";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
-
-  const repoPath = context.command.arguments.directory;
+  const repoPath = normalizePath(context.command.arguments.directory);
   if (checkIsGitDir(repoPath)) {
     throw new Error(`Cannot execute commands inside a ".git" folder`);
   }
-  console.info(`repoPath:`,repoPath)
-  const [projectConfig, worktreeConfig] = getConfigs(repoPath);
-  console.info(`:`,123)
 
-  console.info(`[projectConfig, worktreeConfig]:`,projectConfig, worktreeConfig)
+  const [projectConfig, worktreeConfig] = getConfigs(repoPath);
+
   if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
     throw new Error(
       `The directory: "${repoPath}" has already been initialized`
     );
   }
- console.info(`:`,456)
-  console.info(`context:`,context)
-  context.projectConfigPath = path.resolve(
-    repoPath,
-    EPROJECT_FILES.CONFIGURATION
+  context.projectConfigPath = normalizePath(
+    path.resolve(repoPath, EPROJECT_FILES.CONFIGURATION)
   );
   context.projectPath = repoPath;
   context.projectType = EPROJECT_TYPE.SINGLE;
- 
+
   next();
 }
 
@@ -67,12 +61,14 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
     throw new Error("The project hasn't linked to any repository.");
   }
   context.projectConfig = projectConfig;
-  context.projectConfigPath = gitConfig?.path
-    ? gitConfig.path
-    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
-  context.projectPath = gitConfig?.path
-    ? path.dirname(gitConfig.path)
-    : context.cwd;
+  context.projectConfigPath = normalizePath(
+    gitConfig?.path
+      ? gitConfig.path
+      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+  );
+  context.projectPath = normalizePath(
+    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
+  );
   context.repos = projectConfig.repos;
   context.projectType = projectConfig.type;
 
@@ -172,13 +168,15 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
   }
 
   context.projectConfig = projectConfig;
-  context.projectConfigPath = gitConfig?.path
-    ? gitConfig.path
-    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
+  context.projectConfigPath = normalizePath(
+    gitConfig?.path
+      ? gitConfig.path
+      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+  );
 
-  context.projectPath = gitConfig?.path
-    ? path.dirname(gitConfig!.path)
-    : context.cwd;
+  context.projectPath = normalizePath(
+    gitConfig?.path ? path.dirname(gitConfig!.path) : context.cwd
+  );
   context.repos = projectConfig.repos;
   context.projectType = projectConfig.type;
 
@@ -313,12 +311,14 @@ function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
     throw new Error("The project hasn't linked to any repository.");
   }
 
-  context.projectConfigPath = gitConfig?.path
-    ? gitConfig.path
-    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
-  context.projectPath = gitConfig?.path
-    ? path.dirname(gitConfig.path)
-    : context.cwd;
+  context.projectConfigPath = normalizePath(
+    gitConfig?.path
+      ? gitConfig.path
+      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+  );
+  context.projectPath = normalizePath(
+    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
+  );
 
   context.projectType = projectConfig.type;
 
@@ -347,7 +347,7 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
   } catch {
     mkdirSync(repoPath);
   }
-  context.projectPath = repoPath;
+  context.projectPath = normalizePath(repoPath);
   context.projectType = EPROJECT_TYPE.MULTIPLE;
   context.repos = [];
   next();
@@ -360,12 +360,14 @@ function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
     throw new Error('Cannot use "wt link" inside a "single-repo" project.');
   }
 
-  context.projectConfigPath = gitConfig?.path
-    ? gitConfig.path
-    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
-  context.projectPath = gitConfig?.path
-    ? path.dirname(gitConfig.path)
-    : context.cwd;
+  context.projectConfigPath = normalizePath(
+    gitConfig?.path
+      ? gitConfig.path
+      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+  );
+  context.projectPath = normalizePath(
+    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
+  );
 
   context.projectType = projectConfig.type;
   context.repos = projectConfig.repos;
@@ -379,18 +381,21 @@ function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
   });
   next();
 }
+
 function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
   const [projectConfig, gitConfig] = getConfigs(context.cwd);
   checkIsInsideProject([projectConfig, gitConfig]);
   if (projectConfig?.type !== EPROJECT_TYPE.MULTIPLE) {
     throw new Error('Cannot use "wt unlink" inside a "single-repo" project.');
   }
-  context.projectConfigPath = gitConfig?.path
-    ? gitConfig.path
-    : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION);
-  context.projectPath = gitConfig?.path
-    ? path.dirname(gitConfig.path)
-    : context.cwd;
+  context.projectConfigPath = normalizePath(
+    gitConfig?.path
+      ? gitConfig.path
+      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+  );
+  context.projectPath = normalizePath(
+    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
+  );
   context.projectType = projectConfig.type;
   context.repos = projectConfig.repos;
   if (!context.repos.length) {
@@ -445,7 +450,7 @@ function inspectPotentialWorktrees(context: IContext, next: CallableFunction) {
     const gitConfiguration = getGitConfiguration(key);
     repos.push({
       name: gitConfiguration.reponame || "",
-      path: key,
+      path: normalizePath(key),
       worktrees: [...value, [key, "", getCurrentBranch(key)]],
     });
   }

@@ -37,7 +37,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
     // Noted: following operation must be in the main worktree
 
-    // check if dirname of "git dir" is the mainWorktreePath,
+    // check if dirname of ".git" is the mainWorktreePath,
     // if so, then to get the real main worktree path
     const gitDirPath = normalizePath(repo.gitDir!);
     const gitDirDirname = normalizePath(path.dirname(repo.gitDir!));

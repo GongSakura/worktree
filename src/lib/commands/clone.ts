@@ -50,10 +50,10 @@ export function cloneCommand(action: (...args: any[]) => void) {
     .description(
       `Create a "single-repo" worktree project and clone a git repository.  \n\n`
     )
-    .argument("<repo-url>", "The url of a git repository.")
+    .argument("<repo-url>", "(required) The url of a git repository.\n\n")
     .argument(
       "[directory]",
-      "Specify a directory that the command is run inside it."
+      "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n"
     )
     .action(action);
 }
