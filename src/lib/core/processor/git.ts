@@ -136,7 +136,6 @@ function addWorktree(context: IContext, next: CallableFunction) {
       : branchName
   );
   const allBranches = new Set(getAllBranches(mainWorktreePath));
-
   const command =
     "git worktree add " +
     (allBranches.has(branchName)

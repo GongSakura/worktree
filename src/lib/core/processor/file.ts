@@ -192,7 +192,8 @@ function updateDirectory(context: IContext, next: CallableFunction) {
   next();
 }
 function linkDirectory(context: IContext, next: CallableFunction) {
-  if (context.command.arguments.repoURL[0] !== "/") {
+  if (!path.isAbsolute(context.command.arguments.repoURL) &&
+  context.command.arguments.repoURL[0] !== ".") {
     next();
   } else {
     let linkPath = path.resolve(context.command.arguments.repoURL);
