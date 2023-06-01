@@ -1,10 +1,4 @@
 node_modules/
 
-
-
-.temp_test/
-
-tsconfig.json
-rollup.config.js
 pnpm-lock.yaml
 .DS_Store
