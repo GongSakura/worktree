@@ -1,7 +1,7 @@
 {
     "include": [
-        "packages/**/*"
-, "packages/__test__", "packages/__test__"    ],
+        "src/**/*" ],
+        "exclude": ["src/__test__/**/*"],
     "compilerOptions": {
         "lib": [
             "ESNext",

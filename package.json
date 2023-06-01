@@ -1,22 +1,18 @@
 {
   "name": "@kanamara/worktree",
   "version": "0.1.0",
-  "main": "./bin/index.js",
   "keywords": [
     "git",
     "worktree",
     "workspace"
   ],
   "homepage": "https://github.com/GongSakura/worktree",
-  "license": {
-    "type": "MIT",
-    "url": "https://www.opensource.org/licenses/mit-license.php"
-  },
+  "license": "MIT",
   "scripts": {
     "test": "jest",
     "build": "rollup -c",
-    "prepare": "node scripts/prepare.js",
-    "dev": "rollup -c --watch"
+    "dev": "rollup -c --watch",
+    "prepare": "node scripts/prepare.js"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.0",
@@ -40,7 +36,7 @@
     "inquirer": "^9.2.6"
   },
   "bin": {
-    "wt": "./bin/index.js"
+    "wt": "./build/index.js"
   },
   "engines": {
     "node": ">=v14.18.0"
