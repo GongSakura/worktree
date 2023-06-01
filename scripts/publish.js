@@ -23,10 +23,16 @@ async function run() {
     })
   );
   config.bin.wt = "./index.js";
+  config.scripts = undefined;
   await fs.writeFile(
     path.resolve(buildDir, "package.json"),
     JSON.stringify(config, null, 2)
   );
+
+  //publish
+  execSync("npm publish --access public --dry-run", {
+    cwd: buildDir,
+  });
 }
 
 run().then((code) => {

@@ -19,7 +19,7 @@ import {
   IRepo,
 } from "../../utils/types";
 import { mkdirSync, readdirSync, statSync } from "node:fs";
-import inquirer from "inquirer";
+import select from "@inquirer/select";
 import {
   selectBranchQuestion,
   selectRepoQuestion,
@@ -86,16 +86,13 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
       !context.command.options.repo &&
       !context.command.arguments.branchName
     ) {
-      inquirer
-        .prompt(selectRepoQuestion(context.repos.map((repo) => repo.name)))
+      select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
         .then((answer) => {
-          const repo = context.repos?.find(
-            (repo) => repo.name === answer.repoName
-          );
+          const repo = context.repos?.find((repo) => repo.name === answer);
 
           if (!repo || !repo.path) {
             throw new Error(
-              `Cannot find the repository "${answer.repoName}" in the project`
+              `Cannot find the repository "${answer}" in the project`
             );
           }
 
@@ -108,10 +105,10 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
               `No available branches can be checkout.\n       You should use "wt add --repo [repo-name] [branch-name]" to add a linked worktree. `
             );
           }
-          return inquirer.prompt(selectBranchQuestion(uncheckoutBranches));
+          return select<string>(selectBranchQuestion(uncheckoutBranches));
         })
         .then((answer) => {
-          context.command.arguments.branchName = answer.branchName;
+          context.command.arguments.branchName = answer;
           next();
         })
         .catch((error) => {
@@ -139,14 +136,14 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
       const uncheckoutBranches = getUncheckoutBranches(
         context.selectedRepo.path!
       );
+
       if (!uncheckoutBranches.length) {
         throw new Error('The arugument "branch-name" is missing');
       }
 
-      inquirer
-        .prompt(selectBranchQuestion(uncheckoutBranches))
+      select<string>(selectBranchQuestion(uncheckoutBranches))
         .then((answer) => {
-          context.command.arguments.branchName = answer.branchName;
+          context.command.arguments.branchName = answer;
           next();
         })
         .catch((err) => {
@@ -194,16 +191,13 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
       !context.command.options.repo &&
       !context.command.arguments.branchName
     ) {
-      inquirer
-        .prompt(selectRepoQuestion(context.repos.map((repo) => repo.name)))
+      select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
         .then((answer) => {
-          const repo = context.repos?.find(
-            (repo) => repo.name === answer.repoName
-          );
+          const repo = context.repos?.find((repo) => repo.name === answer);
 
           if (!repo || !repo.path) {
             throw new Error(
-              `Cannot find the repository: "${answer.repoName}" in the project`
+              `Cannot find the repository: "${answer}" in the project`
             );
           }
 
@@ -218,12 +212,12 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
             throw new Error("No available worktrees can be removed");
           }
 
-          return inquirer.prompt(
+          return select<string>(
             selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`))
           );
         })
         .then((answer) => {
-          const [removeWorktreePath, branchName] = answer.worktree.split(" ");
+          const [removeWorktreePath, branchName] = answer.split(" ");
           context.removeWorktrees = [
             [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
           ];
@@ -271,12 +265,11 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
         throw new Error("No available worktrees can be removed");
       }
 
-      inquirer
-        .prompt(
-          selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`))
-        )
+      select<string>(
+        selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`))
+      )
         .then((answer) => {
-          const [removeWorktreePath, branchName] = answer.worktree.split(" ");
+          const [removeWorktreePath, branchName] = answer.split(" ");
           context.removeWorktrees = [
             [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
           ];
@@ -404,10 +397,9 @@ function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
   if (context.command.arguments.repoName) {
     next();
   } else {
-    inquirer
-      .prompt(selectRepoQuestion(context.repos.map((repo) => repo.name)))
+    select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
       .then((answer) => {
-        context.command.arguments.repoName = answer.repoName;
+        context.command.arguments.repoName = answer;
         next();
       })
       .catch((error) => {

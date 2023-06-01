@@ -1,28 +1,35 @@
-import type { ListQuestion } from "inquirer";
-
-export function selectBranchQuestion(branches: string[]): ListQuestion {
+export function selectBranchQuestion(branches: string[]): any {
   return {
-    type: "list",
-    name: "branchName",
     message: "Select an available branch:",
-    choices: branches,
+    choices: branches.map((e: string) => {
+      return {
+        name: e,
+        value: e,
+      };
+    }),
   };
 }
 
-export function selectWorktreeQuestion(worktrees: string[]): ListQuestion {
+export function selectWorktreeQuestion(worktrees: string[]): any {
   return {
-    type: "list",
-    name: "worktree",
     message: "Select a worktree:",
-    choices: worktrees,
+    choices: worktrees.map((e: string) => {
+      return {
+        name: e,
+        value: e,
+      };
+    }),
   };
 }
 
-export function selectRepoQuestion(repos: string[]): ListQuestion {
+export function selectRepoQuestion(repos: string[]): any {
   return {
-    type: "list",
-    name: "repoName",
     message: "Select a repository:",
-    choices: repos,
+    choices: repos.map((e: string) => {
+      return {
+        name: e,
+        value: e,
+      };
+    }),
   };
 }
