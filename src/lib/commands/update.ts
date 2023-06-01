@@ -31,6 +31,8 @@ export function updateAction(done: CallableFunction) {
       CheckProcessor.checkUpdatePrerequisite,
       CheckProcessor.inspectPotentialWorktrees,
       FileProcessor.updateDirectory,
+      CheckProcessor.inspectPotentialWorktrees,
+      FileProcessor.updateDirectory,
       GitProcessor.repairWorktree,
       FileProcessor.writeProjectCodeWorkspace,
       FileProcessor.writeProjectConfiguration,

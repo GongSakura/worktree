@@ -31,117 +31,109 @@ describe("init", () => {
   });
 
   it("init from a non-git-repository directory", async () => {
-    try {
-      const projectPath = normalizePath(
-        path.resolve(testPath, randomUUID().split("-")[0])
-      );
+    const projectPath = normalizePath(
+      path.resolve(testPath, randomUUID().split("-")[0])
+    );
 
-      const repoPath = path.resolve(projectPath, "master");
-      const projectConfigPath = normalizePath(
-        path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
-      );
+    const repoPath = path.resolve(projectPath, "master");
+    const projectConfigPath = normalizePath(
+      path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+    );
 
-      await mkdir(projectPath);
-      await run(program, `init ${projectPath}`, {
-        cwd: process.cwd(),
-      });
+    await mkdir(projectPath);
+    await run(program, `init ${projectPath}`, {
+      cwd: process.cwd(),
+    });
 
-      // ======= check git configuration =======
-      const gitConfig = getGitConfiguration(repoPath);
-      expect(gitConfig).toEqual({
-        path: projectConfigPath,
-        reponame: projectPath.split("/").pop(),
-      });
+    // ======= check git configuration =======
+    const gitConfig = getGitConfiguration(repoPath);
+    expect(gitConfig).toEqual({
+      path: projectConfigPath,
+      reponame: projectPath.split("/").pop(),
+    });
 
-      // ======= check project configuration =======
-      const projectConfig = getProjectFile(
-        projectPath,
-        EPROJECT_FILES.CONFIGURATION
-      );
-      expect(projectConfig).toEqual({
-        repos: [
-          {
-            name: gitConfig.reponame,
-            path: repoPath,
-          },
-        ],
-        type: EPROJECT_TYPE.SINGLE,
-      });
+    // ======= check project configuration =======
+    const projectConfig = getProjectFile(
+      projectPath,
+      EPROJECT_FILES.CONFIGURATION
+    );
+    expect(projectConfig).toEqual({
+      repos: [
+        {
+          name: gitConfig.reponame,
+          path: repoPath,
+        },
+      ],
+      type: EPROJECT_TYPE.SINGLE,
+    });
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(branches).toEqual(["master"]);
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(branches).toEqual(["master"]);
 
-      // ======= check files =======
-      const files = readdirSync(projectPath);
-      expect(new Set(files)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          "master",
-        ])
-      );
-    } catch (error) {
-      throw error;
-    }
+    // ======= check files =======
+    const files = readdirSync(projectPath);
+    expect(new Set(files)).toEqual(
+      new Set([
+        EPROJECT_FILES.CODE_WORKSPACE,
+        EPROJECT_FILES.CONFIGURATION,
+        "master",
+      ])
+    );
   });
 
   it("init from a git-repository directory", async () => {
-    try {
-      const projectPath = normalizePath(
-        path.resolve(testPath, randomUUID().split("-")[0])
-      );
-      await mockGitRepository(projectPath);
+    const projectPath = normalizePath(
+      path.resolve(testPath, randomUUID().split("-")[0])
+    );
+    await mockGitRepository(projectPath);
 
-      const repoPath = path.resolve(projectPath, "mock");
+    const repoPath = path.resolve(projectPath, "mock");
 
-      const projectConfigPath = normalizePath(
-        path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
-      );
+    const projectConfigPath = normalizePath(
+      path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+    );
 
-      await run(program, `init ${projectPath} `, {
-        cwd: process.cwd(),
-      });
+    await run(program, `init ${projectPath} `, {
+      cwd: process.cwd(),
+    });
 
-      // ======= check git configuration =======
-      const gitConfig = getGitConfiguration(repoPath);
-      expect(gitConfig).toEqual({
-        path: projectConfigPath,
-        reponame: projectPath.split("/").pop(),
-      });
+    // ======= check git configuration =======
+    const gitConfig = getGitConfiguration(repoPath);
+    expect(gitConfig).toEqual({
+      path: projectConfigPath,
+      reponame: projectPath.split("/").pop(),
+    });
 
-      // ======= check project configuration =======
-      const projectConfig = getProjectFile(
-        projectPath,
-        EPROJECT_FILES.CONFIGURATION
-      );
-      expect(projectConfig).toEqual({
-        repos: [
-          {
-            name: gitConfig.reponame,
-            path: repoPath,
-          },
-        ],
-        type: EPROJECT_TYPE.SINGLE,
-      });
+    // ======= check project configuration =======
+    const projectConfig = getProjectFile(
+      projectPath,
+      EPROJECT_FILES.CONFIGURATION
+    );
+    expect(projectConfig).toEqual({
+      repos: [
+        {
+          name: gitConfig.reponame,
+          path: repoPath,
+        },
+      ],
+      type: EPROJECT_TYPE.SINGLE,
+    });
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(new Set(branches)).toEqual(
-        new Set(["mock", "feature-1", "feature-2"])
-      );
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set(["mock", "feature-1", "feature-2"])
+    );
 
-      // ======= check files =======
-      const files = readdirSync(projectPath);
-      expect(new Set(files)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          "mock",
-        ])
-      );
-    } catch (error) {
-      throw error;
-    }
+    // ======= check files =======
+    const files = readdirSync(projectPath);
+    expect(new Set(files)).toEqual(
+      new Set([
+        EPROJECT_FILES.CODE_WORKSPACE,
+        EPROJECT_FILES.CONFIGURATION,
+        "mock",
+      ])
+    );
   });
 });

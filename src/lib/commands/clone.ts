@@ -53,7 +53,7 @@ export function cloneCommand(action: (...args: any[]) => void) {
     .argument("<repo-url>", "(required) The url of a git repository.\n\n")
     .argument(
       "[directory]",
-      "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n"
+      "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n"
     )
     .action(action);
 }

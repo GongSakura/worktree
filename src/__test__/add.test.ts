@@ -179,15 +179,20 @@ describe("add from multi-repos project", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-
-  const projectPath: string = mockGitRepoPath;
-  const repoPath: string = path.resolve(projectPath, "mock");
+  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split("/").pop()!;
+  const projectPath: string = normalizePath(
+    path.resolve(testPath, randomUUID().split("-")[0])
+  );
+  const repoPath: string = path.resolve(projectPath, mockRepoName + "#mock");
   const worktrees: string[] = [];
 
   beforeAll(async () => {
     await mkdir(testPath);
     await mockGitRepository(mockGitRepoPath);
-    await run(program, `init ${mockGitRepoPath}`);
+    await run(program, `create ${projectPath}`);
+    await run(program, `link ${mockGitRepoPath} ${mockRepoName}`, {
+      cwd: projectPath,
+    });
   });
 
   afterAll(async () => {
@@ -209,7 +214,7 @@ describe("add from multi-repos project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        "mock",
+        mockRepoName + "#mock",
       ])
     );
   });
@@ -218,9 +223,11 @@ describe("add from multi-repos project", () => {
     try {
       const mockBranch = randomUUID().split("-")[0];
       worktrees.push(mockBranch);
-      const branchPath = normalizePath(path.resolve(projectPath, mockBranch));
+      const branchPath = normalizePath(
+        path.resolve(projectPath, mockRepoName + "#" + mockBranch)
+      );
 
-      await run(program, `add ${mockBranch}`, {
+      await run(program, `add --repo ${mockRepoName} ${mockBranch}`, {
         cwd: projectPath,
       });
 
@@ -236,8 +243,8 @@ describe("add from multi-repos project", () => {
         new Set([
           EPROJECT_FILES.CODE_WORKSPACE,
           EPROJECT_FILES.CONFIGURATION,
-          ...worktrees,
-          "mock",
+          ...worktrees.map((e) => mockRepoName + "#" + e),
+          mockRepoName + "#mock",
         ])
       );
 
@@ -254,10 +261,10 @@ describe("add from multi-repos project", () => {
       const existedBranch = "feature-1";
       worktrees.push(existedBranch);
       const branchPath = normalizePath(
-        path.resolve(projectPath, existedBranch)
+        path.resolve(projectPath, mockRepoName + "#" + existedBranch)
       );
 
-      await run(program, `add ${existedBranch}`, {
+      await run(program, `add --repo ${mockRepoName} ${existedBranch}`, {
         cwd: projectPath,
       });
 
@@ -273,8 +280,8 @@ describe("add from multi-repos project", () => {
         new Set([
           EPROJECT_FILES.CODE_WORKSPACE,
           EPROJECT_FILES.CONFIGURATION,
-          ...worktrees,
-          "mock",
+          ...worktrees.map((e) => mockRepoName + "#" + e),
+          mockRepoName + "#mock",
         ])
       );
 
@@ -292,11 +299,17 @@ describe("add from multi-repos project", () => {
     try {
       const mockBranch = randomUUID().split("-")[0];
       worktrees.push(mockBranch);
-      const branchPath = normalizePath(path.resolve(projectPath, mockBranch));
 
-      await run(program, `add --base feature-2 ${mockBranch}`, {
-        cwd: projectPath,
-      });
+      const branchPath = normalizePath(
+        path.resolve(projectPath, mockRepoName + "#" + mockBranch)
+      );
+      await run(
+        program,
+        `add --base feature-2 --repo ${mockRepoName} ${mockBranch}`,
+        {
+          cwd: projectPath,
+        }
+      );
 
       // ======= check branches =======
       const branches = getAllBranches(repoPath);
@@ -310,8 +323,8 @@ describe("add from multi-repos project", () => {
         new Set([
           EPROJECT_FILES.CODE_WORKSPACE,
           EPROJECT_FILES.CONFIGURATION,
-          ...worktrees,
-          "mock",
+          ...worktrees.map((e) => mockRepoName + "#" + e),
+          mockRepoName + "#mock",
         ])
       );
 

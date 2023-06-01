@@ -8,14 +8,14 @@ var require$$0$3 = require('fs');
 var require$$4$1 = require('process');
 var path$e = require('node:path');
 var node_child_process = require('node:child_process');
+var process$4 = require('node:process');
+var os$1 = require('node:os');
+var tty$1 = require('node:tty');
 var node_fs = require('node:fs');
 var require$$0$4 = require('constants');
 var require$$0$5 = require('stream');
 var require$$0$6 = require('util');
 var require$$5$1 = require('assert');
-var process$4 = require('node:process');
-var os$1 = require('node:os');
-var tty$1 = require('node:tty');
 var assert$1 = require('node:assert');
 var require$$0$7 = require('tty');
 var require$$0$a = require('readline');
@@ -3583,7 +3583,632 @@ function getUncheckoutBranches(cwdPath) {
     }
 }
 
+const ANSI_BACKGROUND_OFFSET = 10;
+
+const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
+
+const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
+
+const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
+
+const styles$3 = {
+	modifier: {
+		reset: [0, 0],
+		// 21 isn't widely supported and 22 does the same thing
+		bold: [1, 22],
+		dim: [2, 22],
+		italic: [3, 23],
+		underline: [4, 24],
+		overline: [53, 55],
+		inverse: [7, 27],
+		hidden: [8, 28],
+		strikethrough: [9, 29],
+	},
+	color: {
+		black: [30, 39],
+		red: [31, 39],
+		green: [32, 39],
+		yellow: [33, 39],
+		blue: [34, 39],
+		magenta: [35, 39],
+		cyan: [36, 39],
+		white: [37, 39],
+
+		// Bright color
+		blackBright: [90, 39],
+		gray: [90, 39], // Alias of `blackBright`
+		grey: [90, 39], // Alias of `blackBright`
+		redBright: [91, 39],
+		greenBright: [92, 39],
+		yellowBright: [93, 39],
+		blueBright: [94, 39],
+		magentaBright: [95, 39],
+		cyanBright: [96, 39],
+		whiteBright: [97, 39],
+	},
+	bgColor: {
+		bgBlack: [40, 49],
+		bgRed: [41, 49],
+		bgGreen: [42, 49],
+		bgYellow: [43, 49],
+		bgBlue: [44, 49],
+		bgMagenta: [45, 49],
+		bgCyan: [46, 49],
+		bgWhite: [47, 49],
+
+		// Bright color
+		bgBlackBright: [100, 49],
+		bgGray: [100, 49], // Alias of `bgBlackBright`
+		bgGrey: [100, 49], // Alias of `bgBlackBright`
+		bgRedBright: [101, 49],
+		bgGreenBright: [102, 49],
+		bgYellowBright: [103, 49],
+		bgBlueBright: [104, 49],
+		bgMagentaBright: [105, 49],
+		bgCyanBright: [106, 49],
+		bgWhiteBright: [107, 49],
+	},
+};
+
+Object.keys(styles$3.modifier);
+const foregroundColorNames = Object.keys(styles$3.color);
+const backgroundColorNames = Object.keys(styles$3.bgColor);
+[...foregroundColorNames, ...backgroundColorNames];
+
+function assembleStyles() {
+	const codes = new Map();
+
+	for (const [groupName, group] of Object.entries(styles$3)) {
+		for (const [styleName, style] of Object.entries(group)) {
+			styles$3[styleName] = {
+				open: `\u001B[${style[0]}m`,
+				close: `\u001B[${style[1]}m`,
+			};
+
+			group[styleName] = styles$3[styleName];
+
+			codes.set(style[0], style[1]);
+		}
+
+		Object.defineProperty(styles$3, groupName, {
+			value: group,
+			enumerable: false,
+		});
+	}
+
+	Object.defineProperty(styles$3, 'codes', {
+		value: codes,
+		enumerable: false,
+	});
+
+	styles$3.color.close = '\u001B[39m';
+	styles$3.bgColor.close = '\u001B[49m';
+
+	styles$3.color.ansi = wrapAnsi16();
+	styles$3.color.ansi256 = wrapAnsi256();
+	styles$3.color.ansi16m = wrapAnsi16m();
+	styles$3.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
+	styles$3.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
+	styles$3.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
+
+	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
+	Object.defineProperties(styles$3, {
+		rgbToAnsi256: {
+			value(red, green, blue) {
+				// We use the extended greyscale palette here, with the exception of
+				// black and white. normal palette only has 4 greyscale shades.
+				if (red === green && green === blue) {
+					if (red < 8) {
+						return 16;
+					}
+
+					if (red > 248) {
+						return 231;
+					}
+
+					return Math.round(((red - 8) / 247) * 24) + 232;
+				}
+
+				return 16
+					+ (36 * Math.round(red / 255 * 5))
+					+ (6 * Math.round(green / 255 * 5))
+					+ Math.round(blue / 255 * 5);
+			},
+			enumerable: false,
+		},
+		hexToRgb: {
+			value(hex) {
+				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
+				if (!matches) {
+					return [0, 0, 0];
+				}
+
+				let [colorString] = matches;
+
+				if (colorString.length === 3) {
+					colorString = [...colorString].map(character => character + character).join('');
+				}
+
+				const integer = Number.parseInt(colorString, 16);
+
+				return [
+					/* eslint-disable no-bitwise */
+					(integer >> 16) & 0xFF,
+					(integer >> 8) & 0xFF,
+					integer & 0xFF,
+					/* eslint-enable no-bitwise */
+				];
+			},
+			enumerable: false,
+		},
+		hexToAnsi256: {
+			value: hex => styles$3.rgbToAnsi256(...styles$3.hexToRgb(hex)),
+			enumerable: false,
+		},
+		ansi256ToAnsi: {
+			value(code) {
+				if (code < 8) {
+					return 30 + code;
+				}
+
+				if (code < 16) {
+					return 90 + (code - 8);
+				}
+
+				let red;
+				let green;
+				let blue;
+
+				if (code >= 232) {
+					red = (((code - 232) * 10) + 8) / 255;
+					green = red;
+					blue = red;
+				} else {
+					code -= 16;
+
+					const remainder = code % 36;
+
+					red = Math.floor(code / 36) / 5;
+					green = Math.floor(remainder / 6) / 5;
+					blue = (remainder % 6) / 5;
+				}
+
+				const value = Math.max(red, green, blue) * 2;
+
+				if (value === 0) {
+					return 30;
+				}
+
+				// eslint-disable-next-line no-bitwise
+				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
+
+				if (value === 2) {
+					result += 60;
+				}
+
+				return result;
+			},
+			enumerable: false,
+		},
+		rgbToAnsi: {
+			value: (red, green, blue) => styles$3.ansi256ToAnsi(styles$3.rgbToAnsi256(red, green, blue)),
+			enumerable: false,
+		},
+		hexToAnsi: {
+			value: hex => styles$3.ansi256ToAnsi(styles$3.hexToAnsi256(hex)),
+			enumerable: false,
+		},
+	});
+
+	return styles$3;
+}
+
+const ansiStyles$6 = assembleStyles();
+
+// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
+function hasFlag$2(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$4.argv) {
+	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+	const position = argv.indexOf(prefix + flag);
+	const terminatorPosition = argv.indexOf('--');
+	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+}
+
+const {env: env$1} = process$4;
+
+let flagForceColor;
+if (
+	hasFlag$2('no-color')
+	|| hasFlag$2('no-colors')
+	|| hasFlag$2('color=false')
+	|| hasFlag$2('color=never')
+) {
+	flagForceColor = 0;
+} else if (
+	hasFlag$2('color')
+	|| hasFlag$2('colors')
+	|| hasFlag$2('color=true')
+	|| hasFlag$2('color=always')
+) {
+	flagForceColor = 1;
+}
+
+function envForceColor() {
+	if ('FORCE_COLOR' in env$1) {
+		if (env$1.FORCE_COLOR === 'true') {
+			return 1;
+		}
+
+		if (env$1.FORCE_COLOR === 'false') {
+			return 0;
+		}
+
+		return env$1.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env$1.FORCE_COLOR, 10), 3);
+	}
+}
+
+function translateLevel$1(level) {
+	if (level === 0) {
+		return false;
+	}
+
+	return {
+		level,
+		hasBasic: true,
+		has256: level >= 2,
+		has16m: level >= 3,
+	};
+}
+
+function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
+	const noFlagForceColor = envForceColor();
+	if (noFlagForceColor !== undefined) {
+		flagForceColor = noFlagForceColor;
+	}
+
+	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
+
+	if (forceColor === 0) {
+		return 0;
+	}
+
+	if (sniffFlags) {
+		if (hasFlag$2('color=16m')
+			|| hasFlag$2('color=full')
+			|| hasFlag$2('color=truecolor')) {
+			return 3;
+		}
+
+		if (hasFlag$2('color=256')) {
+			return 2;
+		}
+	}
+
+	// Check for Azure DevOps pipelines.
+	// Has to be above the `!streamIsTTY` check.
+	if ('TF_BUILD' in env$1 && 'AGENT_NAME' in env$1) {
+		return 1;
+	}
+
+	if (haveStream && !streamIsTTY && forceColor === undefined) {
+		return 0;
+	}
+
+	const min = forceColor || 0;
+
+	if (env$1.TERM === 'dumb') {
+		return min;
+	}
+
+	if (process$4.platform === 'win32') {
+		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+		const osRelease = os$1.release().split('.');
+		if (
+			Number(osRelease[0]) >= 10
+			&& Number(osRelease[2]) >= 10_586
+		) {
+			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
+		}
+
+		return 1;
+	}
+
+	if ('CI' in env$1) {
+		if ('GITHUB_ACTIONS' in env$1) {
+			return 3;
+		}
+
+		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env$1) || env$1.CI_NAME === 'codeship') {
+			return 1;
+		}
+
+		return min;
+	}
+
+	if ('TEAMCITY_VERSION' in env$1) {
+		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env$1.TEAMCITY_VERSION) ? 1 : 0;
+	}
+
+	if (env$1.COLORTERM === 'truecolor') {
+		return 3;
+	}
+
+	if (env$1.TERM === 'xterm-kitty') {
+		return 3;
+	}
+
+	if ('TERM_PROGRAM' in env$1) {
+		const version = Number.parseInt((env$1.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+		switch (env$1.TERM_PROGRAM) {
+			case 'iTerm.app': {
+				return version >= 3 ? 3 : 2;
+			}
+
+			case 'Apple_Terminal': {
+				return 2;
+			}
+			// No default
+		}
+	}
+
+	if (/-256(color)?$/i.test(env$1.TERM)) {
+		return 2;
+	}
+
+	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env$1.TERM)) {
+		return 1;
+	}
+
+	if ('COLORTERM' in env$1) {
+		return 1;
+	}
+
+	return min;
+}
+
+function createSupportsColor(stream, options = {}) {
+	const level = _supportsColor(stream, {
+		streamIsTTY: stream && stream.isTTY,
+		...options,
+	});
+
+	return translateLevel$1(level);
+}
+
+const supportsColor$1 = {
+	stdout: createSupportsColor({isTTY: tty$1.isatty(1)}),
+	stderr: createSupportsColor({isTTY: tty$1.isatty(2)}),
+};
+
+// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
+function stringReplaceAll$4(string, substring, replacer) {
+	let index = string.indexOf(substring);
+	if (index === -1) {
+		return string;
+	}
+
+	const substringLength = substring.length;
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		returnValue += string.slice(endIndex, index) + substring + replacer;
+		endIndex = index + substringLength;
+		index = string.indexOf(substring, endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+function stringEncaseCRLFWithFirstIndex$4(string, prefix, postfix, index) {
+	let endIndex = 0;
+	let returnValue = '';
+	do {
+		const gotCR = string[index - 1] === '\r';
+		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
+		endIndex = index + 1;
+		index = string.indexOf('\n', endIndex);
+	} while (index !== -1);
+
+	returnValue += string.slice(endIndex);
+	return returnValue;
+}
+
+const {stdout: stdoutColor$2, stderr: stderrColor$2} = supportsColor$1;
+
+const GENERATOR = Symbol('GENERATOR');
+const STYLER = Symbol('STYLER');
+const IS_EMPTY = Symbol('IS_EMPTY');
+
+// `supportsColor.level` → `ansiStyles.color[name]` mapping
+const levelMapping$2 = [
+	'ansi',
+	'ansi',
+	'ansi256',
+	'ansi16m',
+];
+
+const styles$2 = Object.create(null);
+
+const applyOptions$2 = (object, options = {}) => {
+	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
+		throw new Error('The `level` option should be an integer from 0 to 3');
+	}
+
+	// Detect level if not set manually
+	const colorLevel = stdoutColor$2 ? stdoutColor$2.level : 0;
+	object.level = options.level === undefined ? colorLevel : options.level;
+};
+
+const chalkFactory$2 = options => {
+	const chalk = (...strings) => strings.join(' ');
+	applyOptions$2(chalk, options);
+
+	Object.setPrototypeOf(chalk, createChalk.prototype);
+
+	return chalk;
+};
+
+function createChalk(options) {
+	return chalkFactory$2(options);
+}
+
+Object.setPrototypeOf(createChalk.prototype, Function.prototype);
+
+for (const [styleName, style] of Object.entries(ansiStyles$6)) {
+	styles$2[styleName] = {
+		get() {
+			const builder = createBuilder$2(this, createStyler$2(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
+			Object.defineProperty(this, styleName, {value: builder});
+			return builder;
+		},
+	};
+}
+
+styles$2.visible = {
+	get() {
+		const builder = createBuilder$2(this, this[STYLER], true);
+		Object.defineProperty(this, 'visible', {value: builder});
+		return builder;
+	},
+};
+
+const getModelAnsi = (model, level, type, ...arguments_) => {
+	if (model === 'rgb') {
+		if (level === 'ansi16m') {
+			return ansiStyles$6[type].ansi16m(...arguments_);
+		}
+
+		if (level === 'ansi256') {
+			return ansiStyles$6[type].ansi256(ansiStyles$6.rgbToAnsi256(...arguments_));
+		}
+
+		return ansiStyles$6[type].ansi(ansiStyles$6.rgbToAnsi(...arguments_));
+	}
+
+	if (model === 'hex') {
+		return getModelAnsi('rgb', level, type, ...ansiStyles$6.hexToRgb(...arguments_));
+	}
+
+	return ansiStyles$6[type][model](...arguments_);
+};
+
+const usedModels$2 = ['rgb', 'hex', 'ansi256'];
+
+for (const model of usedModels$2) {
+	styles$2[model] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'color', ...arguments_), ansiStyles$6.color.close, this[STYLER]);
+				return createBuilder$2(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+
+	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
+	styles$2[bgModel] = {
+		get() {
+			const {level} = this;
+			return function (...arguments_) {
+				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'bgColor', ...arguments_), ansiStyles$6.bgColor.close, this[STYLER]);
+				return createBuilder$2(this, styler, this[IS_EMPTY]);
+			};
+		},
+	};
+}
+
+const proto$2 = Object.defineProperties(() => {}, {
+	...styles$2,
+	level: {
+		enumerable: true,
+		get() {
+			return this[GENERATOR].level;
+		},
+		set(level) {
+			this[GENERATOR].level = level;
+		},
+	},
+});
+
+const createStyler$2 = (open, close, parent) => {
+	let openAll;
+	let closeAll;
+	if (parent === undefined) {
+		openAll = open;
+		closeAll = close;
+	} else {
+		openAll = parent.openAll + open;
+		closeAll = close + parent.closeAll;
+	}
+
+	return {
+		open,
+		close,
+		openAll,
+		closeAll,
+		parent,
+	};
+};
+
+const createBuilder$2 = (self, _styler, _isEmpty) => {
+	// Single argument is hot path, implicit coercion is faster than anything
+	// eslint-disable-next-line no-implicit-coercion
+	const builder = (...arguments_) => applyStyle$2(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
+
+	// We alter the prototype because we must return a function, but there is
+	// no way to create a function with a different prototype
+	Object.setPrototypeOf(builder, proto$2);
+
+	builder[GENERATOR] = self;
+	builder[STYLER] = _styler;
+	builder[IS_EMPTY] = _isEmpty;
+
+	return builder;
+};
+
+const applyStyle$2 = (self, string) => {
+	if (self.level <= 0 || !string) {
+		return self[IS_EMPTY] ? '' : string;
+	}
+
+	let styler = self[STYLER];
+
+	if (styler === undefined) {
+		return string;
+	}
+
+	const {openAll, closeAll} = styler;
+	if (string.includes('\u001B')) {
+		while (styler !== undefined) {
+			// Replace any instances already present with a re-opening code
+			// otherwise only the part of the string until said closing code
+			// will be colored, and the rest will simply be 'plain'.
+			string = stringReplaceAll$4(string, styler.close, styler.open);
+
+			styler = styler.parent;
+		}
+	}
+
+	// We can move both next actions out of loop, because remaining actions in loop won't have
+	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
+	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
+	const lfIndex = string.indexOf('\n');
+	if (lfIndex !== -1) {
+		string = stringEncaseCRLFWithFirstIndex$4(string, closeAll, openAll, lfIndex);
+	}
+
+	return openAll + string + closeAll;
+};
+
+Object.defineProperties(createChalk.prototype, styles$2);
+
+const chalk$4 = createChalk();
+createChalk({level: stderrColor$2 ? stderrColor$2.level : 0});
+
 const DEFAULT_BRANCH = "master";
+const DEFAULT_DONE_MESSAGE = `  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`;
 
 /**
  *
@@ -6562,630 +7187,6 @@ var FileProcessor = {
     writeProjectCodeWorkspace,
     writeProjectConfiguration,
 };
-
-const ANSI_BACKGROUND_OFFSET = 10;
-
-const wrapAnsi16 = (offset = 0) => code => `\u001B[${code + offset}m`;
-
-const wrapAnsi256 = (offset = 0) => code => `\u001B[${38 + offset};5;${code}m`;
-
-const wrapAnsi16m = (offset = 0) => (red, green, blue) => `\u001B[${38 + offset};2;${red};${green};${blue}m`;
-
-const styles$3 = {
-	modifier: {
-		reset: [0, 0],
-		// 21 isn't widely supported and 22 does the same thing
-		bold: [1, 22],
-		dim: [2, 22],
-		italic: [3, 23],
-		underline: [4, 24],
-		overline: [53, 55],
-		inverse: [7, 27],
-		hidden: [8, 28],
-		strikethrough: [9, 29],
-	},
-	color: {
-		black: [30, 39],
-		red: [31, 39],
-		green: [32, 39],
-		yellow: [33, 39],
-		blue: [34, 39],
-		magenta: [35, 39],
-		cyan: [36, 39],
-		white: [37, 39],
-
-		// Bright color
-		blackBright: [90, 39],
-		gray: [90, 39], // Alias of `blackBright`
-		grey: [90, 39], // Alias of `blackBright`
-		redBright: [91, 39],
-		greenBright: [92, 39],
-		yellowBright: [93, 39],
-		blueBright: [94, 39],
-		magentaBright: [95, 39],
-		cyanBright: [96, 39],
-		whiteBright: [97, 39],
-	},
-	bgColor: {
-		bgBlack: [40, 49],
-		bgRed: [41, 49],
-		bgGreen: [42, 49],
-		bgYellow: [43, 49],
-		bgBlue: [44, 49],
-		bgMagenta: [45, 49],
-		bgCyan: [46, 49],
-		bgWhite: [47, 49],
-
-		// Bright color
-		bgBlackBright: [100, 49],
-		bgGray: [100, 49], // Alias of `bgBlackBright`
-		bgGrey: [100, 49], // Alias of `bgBlackBright`
-		bgRedBright: [101, 49],
-		bgGreenBright: [102, 49],
-		bgYellowBright: [103, 49],
-		bgBlueBright: [104, 49],
-		bgMagentaBright: [105, 49],
-		bgCyanBright: [106, 49],
-		bgWhiteBright: [107, 49],
-	},
-};
-
-Object.keys(styles$3.modifier);
-const foregroundColorNames = Object.keys(styles$3.color);
-const backgroundColorNames = Object.keys(styles$3.bgColor);
-[...foregroundColorNames, ...backgroundColorNames];
-
-function assembleStyles() {
-	const codes = new Map();
-
-	for (const [groupName, group] of Object.entries(styles$3)) {
-		for (const [styleName, style] of Object.entries(group)) {
-			styles$3[styleName] = {
-				open: `\u001B[${style[0]}m`,
-				close: `\u001B[${style[1]}m`,
-			};
-
-			group[styleName] = styles$3[styleName];
-
-			codes.set(style[0], style[1]);
-		}
-
-		Object.defineProperty(styles$3, groupName, {
-			value: group,
-			enumerable: false,
-		});
-	}
-
-	Object.defineProperty(styles$3, 'codes', {
-		value: codes,
-		enumerable: false,
-	});
-
-	styles$3.color.close = '\u001B[39m';
-	styles$3.bgColor.close = '\u001B[49m';
-
-	styles$3.color.ansi = wrapAnsi16();
-	styles$3.color.ansi256 = wrapAnsi256();
-	styles$3.color.ansi16m = wrapAnsi16m();
-	styles$3.bgColor.ansi = wrapAnsi16(ANSI_BACKGROUND_OFFSET);
-	styles$3.bgColor.ansi256 = wrapAnsi256(ANSI_BACKGROUND_OFFSET);
-	styles$3.bgColor.ansi16m = wrapAnsi16m(ANSI_BACKGROUND_OFFSET);
-
-	// From https://github.com/Qix-/color-convert/blob/3f0e0d4e92e235796ccb17f6e85c72094a651f49/conversions.js
-	Object.defineProperties(styles$3, {
-		rgbToAnsi256: {
-			value(red, green, blue) {
-				// We use the extended greyscale palette here, with the exception of
-				// black and white. normal palette only has 4 greyscale shades.
-				if (red === green && green === blue) {
-					if (red < 8) {
-						return 16;
-					}
-
-					if (red > 248) {
-						return 231;
-					}
-
-					return Math.round(((red - 8) / 247) * 24) + 232;
-				}
-
-				return 16
-					+ (36 * Math.round(red / 255 * 5))
-					+ (6 * Math.round(green / 255 * 5))
-					+ Math.round(blue / 255 * 5);
-			},
-			enumerable: false,
-		},
-		hexToRgb: {
-			value(hex) {
-				const matches = /[a-f\d]{6}|[a-f\d]{3}/i.exec(hex.toString(16));
-				if (!matches) {
-					return [0, 0, 0];
-				}
-
-				let [colorString] = matches;
-
-				if (colorString.length === 3) {
-					colorString = [...colorString].map(character => character + character).join('');
-				}
-
-				const integer = Number.parseInt(colorString, 16);
-
-				return [
-					/* eslint-disable no-bitwise */
-					(integer >> 16) & 0xFF,
-					(integer >> 8) & 0xFF,
-					integer & 0xFF,
-					/* eslint-enable no-bitwise */
-				];
-			},
-			enumerable: false,
-		},
-		hexToAnsi256: {
-			value: hex => styles$3.rgbToAnsi256(...styles$3.hexToRgb(hex)),
-			enumerable: false,
-		},
-		ansi256ToAnsi: {
-			value(code) {
-				if (code < 8) {
-					return 30 + code;
-				}
-
-				if (code < 16) {
-					return 90 + (code - 8);
-				}
-
-				let red;
-				let green;
-				let blue;
-
-				if (code >= 232) {
-					red = (((code - 232) * 10) + 8) / 255;
-					green = red;
-					blue = red;
-				} else {
-					code -= 16;
-
-					const remainder = code % 36;
-
-					red = Math.floor(code / 36) / 5;
-					green = Math.floor(remainder / 6) / 5;
-					blue = (remainder % 6) / 5;
-				}
-
-				const value = Math.max(red, green, blue) * 2;
-
-				if (value === 0) {
-					return 30;
-				}
-
-				// eslint-disable-next-line no-bitwise
-				let result = 30 + ((Math.round(blue) << 2) | (Math.round(green) << 1) | Math.round(red));
-
-				if (value === 2) {
-					result += 60;
-				}
-
-				return result;
-			},
-			enumerable: false,
-		},
-		rgbToAnsi: {
-			value: (red, green, blue) => styles$3.ansi256ToAnsi(styles$3.rgbToAnsi256(red, green, blue)),
-			enumerable: false,
-		},
-		hexToAnsi: {
-			value: hex => styles$3.ansi256ToAnsi(styles$3.hexToAnsi256(hex)),
-			enumerable: false,
-		},
-	});
-
-	return styles$3;
-}
-
-const ansiStyles$6 = assembleStyles();
-
-// From: https://github.com/sindresorhus/has-flag/blob/main/index.js
-function hasFlag$2(flag, argv = globalThis.Deno ? globalThis.Deno.args : process$4.argv) {
-	const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-	const position = argv.indexOf(prefix + flag);
-	const terminatorPosition = argv.indexOf('--');
-	return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-}
-
-const {env: env$1} = process$4;
-
-let flagForceColor;
-if (
-	hasFlag$2('no-color')
-	|| hasFlag$2('no-colors')
-	|| hasFlag$2('color=false')
-	|| hasFlag$2('color=never')
-) {
-	flagForceColor = 0;
-} else if (
-	hasFlag$2('color')
-	|| hasFlag$2('colors')
-	|| hasFlag$2('color=true')
-	|| hasFlag$2('color=always')
-) {
-	flagForceColor = 1;
-}
-
-function envForceColor() {
-	if ('FORCE_COLOR' in env$1) {
-		if (env$1.FORCE_COLOR === 'true') {
-			return 1;
-		}
-
-		if (env$1.FORCE_COLOR === 'false') {
-			return 0;
-		}
-
-		return env$1.FORCE_COLOR.length === 0 ? 1 : Math.min(Number.parseInt(env$1.FORCE_COLOR, 10), 3);
-	}
-}
-
-function translateLevel$1(level) {
-	if (level === 0) {
-		return false;
-	}
-
-	return {
-		level,
-		hasBasic: true,
-		has256: level >= 2,
-		has16m: level >= 3,
-	};
-}
-
-function _supportsColor(haveStream, {streamIsTTY, sniffFlags = true} = {}) {
-	const noFlagForceColor = envForceColor();
-	if (noFlagForceColor !== undefined) {
-		flagForceColor = noFlagForceColor;
-	}
-
-	const forceColor = sniffFlags ? flagForceColor : noFlagForceColor;
-
-	if (forceColor === 0) {
-		return 0;
-	}
-
-	if (sniffFlags) {
-		if (hasFlag$2('color=16m')
-			|| hasFlag$2('color=full')
-			|| hasFlag$2('color=truecolor')) {
-			return 3;
-		}
-
-		if (hasFlag$2('color=256')) {
-			return 2;
-		}
-	}
-
-	// Check for Azure DevOps pipelines.
-	// Has to be above the `!streamIsTTY` check.
-	if ('TF_BUILD' in env$1 && 'AGENT_NAME' in env$1) {
-		return 1;
-	}
-
-	if (haveStream && !streamIsTTY && forceColor === undefined) {
-		return 0;
-	}
-
-	const min = forceColor || 0;
-
-	if (env$1.TERM === 'dumb') {
-		return min;
-	}
-
-	if (process$4.platform === 'win32') {
-		// Windows 10 build 10586 is the first Windows release that supports 256 colors.
-		// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
-		const osRelease = os$1.release().split('.');
-		if (
-			Number(osRelease[0]) >= 10
-			&& Number(osRelease[2]) >= 10_586
-		) {
-			return Number(osRelease[2]) >= 14_931 ? 3 : 2;
-		}
-
-		return 1;
-	}
-
-	if ('CI' in env$1) {
-		if ('GITHUB_ACTIONS' in env$1) {
-			return 3;
-		}
-
-		if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'BUILDKITE', 'DRONE'].some(sign => sign in env$1) || env$1.CI_NAME === 'codeship') {
-			return 1;
-		}
-
-		return min;
-	}
-
-	if ('TEAMCITY_VERSION' in env$1) {
-		return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env$1.TEAMCITY_VERSION) ? 1 : 0;
-	}
-
-	if (env$1.COLORTERM === 'truecolor') {
-		return 3;
-	}
-
-	if (env$1.TERM === 'xterm-kitty') {
-		return 3;
-	}
-
-	if ('TERM_PROGRAM' in env$1) {
-		const version = Number.parseInt((env$1.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-		switch (env$1.TERM_PROGRAM) {
-			case 'iTerm.app': {
-				return version >= 3 ? 3 : 2;
-			}
-
-			case 'Apple_Terminal': {
-				return 2;
-			}
-			// No default
-		}
-	}
-
-	if (/-256(color)?$/i.test(env$1.TERM)) {
-		return 2;
-	}
-
-	if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env$1.TERM)) {
-		return 1;
-	}
-
-	if ('COLORTERM' in env$1) {
-		return 1;
-	}
-
-	return min;
-}
-
-function createSupportsColor(stream, options = {}) {
-	const level = _supportsColor(stream, {
-		streamIsTTY: stream && stream.isTTY,
-		...options,
-	});
-
-	return translateLevel$1(level);
-}
-
-const supportsColor$1 = {
-	stdout: createSupportsColor({isTTY: tty$1.isatty(1)}),
-	stderr: createSupportsColor({isTTY: tty$1.isatty(2)}),
-};
-
-// TODO: When targeting Node.js 16, use `String.prototype.replaceAll`.
-function stringReplaceAll$4(string, substring, replacer) {
-	let index = string.indexOf(substring);
-	if (index === -1) {
-		return string;
-	}
-
-	const substringLength = substring.length;
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		returnValue += string.slice(endIndex, index) + substring + replacer;
-		endIndex = index + substringLength;
-		index = string.indexOf(substring, endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-function stringEncaseCRLFWithFirstIndex$4(string, prefix, postfix, index) {
-	let endIndex = 0;
-	let returnValue = '';
-	do {
-		const gotCR = string[index - 1] === '\r';
-		returnValue += string.slice(endIndex, (gotCR ? index - 1 : index)) + prefix + (gotCR ? '\r\n' : '\n') + postfix;
-		endIndex = index + 1;
-		index = string.indexOf('\n', endIndex);
-	} while (index !== -1);
-
-	returnValue += string.slice(endIndex);
-	return returnValue;
-}
-
-const {stdout: stdoutColor$2, stderr: stderrColor$2} = supportsColor$1;
-
-const GENERATOR = Symbol('GENERATOR');
-const STYLER = Symbol('STYLER');
-const IS_EMPTY = Symbol('IS_EMPTY');
-
-// `supportsColor.level` → `ansiStyles.color[name]` mapping
-const levelMapping$2 = [
-	'ansi',
-	'ansi',
-	'ansi256',
-	'ansi16m',
-];
-
-const styles$2 = Object.create(null);
-
-const applyOptions$2 = (object, options = {}) => {
-	if (options.level && !(Number.isInteger(options.level) && options.level >= 0 && options.level <= 3)) {
-		throw new Error('The `level` option should be an integer from 0 to 3');
-	}
-
-	// Detect level if not set manually
-	const colorLevel = stdoutColor$2 ? stdoutColor$2.level : 0;
-	object.level = options.level === undefined ? colorLevel : options.level;
-};
-
-const chalkFactory$2 = options => {
-	const chalk = (...strings) => strings.join(' ');
-	applyOptions$2(chalk, options);
-
-	Object.setPrototypeOf(chalk, createChalk.prototype);
-
-	return chalk;
-};
-
-function createChalk(options) {
-	return chalkFactory$2(options);
-}
-
-Object.setPrototypeOf(createChalk.prototype, Function.prototype);
-
-for (const [styleName, style] of Object.entries(ansiStyles$6)) {
-	styles$2[styleName] = {
-		get() {
-			const builder = createBuilder$2(this, createStyler$2(style.open, style.close, this[STYLER]), this[IS_EMPTY]);
-			Object.defineProperty(this, styleName, {value: builder});
-			return builder;
-		},
-	};
-}
-
-styles$2.visible = {
-	get() {
-		const builder = createBuilder$2(this, this[STYLER], true);
-		Object.defineProperty(this, 'visible', {value: builder});
-		return builder;
-	},
-};
-
-const getModelAnsi = (model, level, type, ...arguments_) => {
-	if (model === 'rgb') {
-		if (level === 'ansi16m') {
-			return ansiStyles$6[type].ansi16m(...arguments_);
-		}
-
-		if (level === 'ansi256') {
-			return ansiStyles$6[type].ansi256(ansiStyles$6.rgbToAnsi256(...arguments_));
-		}
-
-		return ansiStyles$6[type].ansi(ansiStyles$6.rgbToAnsi(...arguments_));
-	}
-
-	if (model === 'hex') {
-		return getModelAnsi('rgb', level, type, ...ansiStyles$6.hexToRgb(...arguments_));
-	}
-
-	return ansiStyles$6[type][model](...arguments_);
-};
-
-const usedModels$2 = ['rgb', 'hex', 'ansi256'];
-
-for (const model of usedModels$2) {
-	styles$2[model] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'color', ...arguments_), ansiStyles$6.color.close, this[STYLER]);
-				return createBuilder$2(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-
-	const bgModel = 'bg' + model[0].toUpperCase() + model.slice(1);
-	styles$2[bgModel] = {
-		get() {
-			const {level} = this;
-			return function (...arguments_) {
-				const styler = createStyler$2(getModelAnsi(model, levelMapping$2[level], 'bgColor', ...arguments_), ansiStyles$6.bgColor.close, this[STYLER]);
-				return createBuilder$2(this, styler, this[IS_EMPTY]);
-			};
-		},
-	};
-}
-
-const proto$2 = Object.defineProperties(() => {}, {
-	...styles$2,
-	level: {
-		enumerable: true,
-		get() {
-			return this[GENERATOR].level;
-		},
-		set(level) {
-			this[GENERATOR].level = level;
-		},
-	},
-});
-
-const createStyler$2 = (open, close, parent) => {
-	let openAll;
-	let closeAll;
-	if (parent === undefined) {
-		openAll = open;
-		closeAll = close;
-	} else {
-		openAll = parent.openAll + open;
-		closeAll = close + parent.closeAll;
-	}
-
-	return {
-		open,
-		close,
-		openAll,
-		closeAll,
-		parent,
-	};
-};
-
-const createBuilder$2 = (self, _styler, _isEmpty) => {
-	// Single argument is hot path, implicit coercion is faster than anything
-	// eslint-disable-next-line no-implicit-coercion
-	const builder = (...arguments_) => applyStyle$2(builder, (arguments_.length === 1) ? ('' + arguments_[0]) : arguments_.join(' '));
-
-	// We alter the prototype because we must return a function, but there is
-	// no way to create a function with a different prototype
-	Object.setPrototypeOf(builder, proto$2);
-
-	builder[GENERATOR] = self;
-	builder[STYLER] = _styler;
-	builder[IS_EMPTY] = _isEmpty;
-
-	return builder;
-};
-
-const applyStyle$2 = (self, string) => {
-	if (self.level <= 0 || !string) {
-		return self[IS_EMPTY] ? '' : string;
-	}
-
-	let styler = self[STYLER];
-
-	if (styler === undefined) {
-		return string;
-	}
-
-	const {openAll, closeAll} = styler;
-	if (string.includes('\u001B')) {
-		while (styler !== undefined) {
-			// Replace any instances already present with a re-opening code
-			// otherwise only the part of the string until said closing code
-			// will be colored, and the rest will simply be 'plain'.
-			string = stringReplaceAll$4(string, styler.close, styler.open);
-
-			styler = styler.parent;
-		}
-	}
-
-	// We can move both next actions out of loop, because remaining actions in loop won't have
-	// any/visible effect on parts we add here. Close the styling before a linebreak and reopen
-	// after next line to fix a bleed issue on macOS: https://github.com/chalk/chalk/pull/92
-	const lfIndex = string.indexOf('\n');
-	if (lfIndex !== -1) {
-		string = stringEncaseCRLFWithFirstIndex$4(string, closeAll, openAll, lfIndex);
-	}
-
-	return openAll + string + closeAll;
-};
-
-Object.defineProperties(createChalk.prototype, styles$2);
-
-const chalk$4 = createChalk();
-createChalk({level: stderrColor$2 ? stderrColor$2.level : 0});
 
 // import chalk from "chalk";
 function captureError$1(context, next) {
@@ -65537,6 +65538,9 @@ function inspectPotentialWorktrees(context, next) {
             if (idx !== -1) {
                 const branch = getCurrentBranch(_path);
                 const key = gitDirPath.substring(0, idx);
+                if (key.split("/").pop() === branch) {
+                    return;
+                }
                 if (multiRepoWorktrees.hasOwnProperty(key)) {
                     multiRepoWorktrees[key].push([_path, "", branch]);
                 }
@@ -65627,7 +65631,7 @@ function initCommand(action) {
         .description(`To create a worktree project that manages all git worktrees.  If the <directory> is not a git repository, it will create a new one via "git init".\n\n`)
         .option("--branch [branch-name]", "(optional) The specified name for the initial branch in the newly created git repository.\n\n")
         .helpOption("-h, --help", "Display help for command")
-        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n")
+        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n")
         .action(action);
 }
 
@@ -65730,6 +65734,8 @@ function updateAction(done) {
             CheckProcessor.checkUpdatePrerequisite,
             CheckProcessor.inspectPotentialWorktrees,
             FileProcessor.updateDirectory,
+            CheckProcessor.inspectPotentialWorktrees,
+            FileProcessor.updateDirectory,
             GitProcessor.repairWorktree,
             FileProcessor.writeProjectCodeWorkspace,
             FileProcessor.writeProjectConfiguration,
@@ -65783,7 +65789,7 @@ function cloneCommand(action) {
         .summary(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
         .description(`Create a "single-repo" worktree project and clone a git repository.  \n\n`)
         .argument("<repo-url>", "(required) The url of a git repository.\n\n")
-        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n")
+        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n")
         .action(action);
 }
 
@@ -65818,7 +65824,7 @@ function createCommand(action) {
         .alias("c")
         .summary("Create an empty worktree project.\n\n")
         .description("To create an empty worktree project that used for multiple git repositories.\n\n")
-        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n")
+        .argument("[directory]", "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n")
         .action(action);
 }
 
@@ -65920,7 +65926,7 @@ const ActionCreator = {
 };
 
 function done() {
-    process.stdout.write(`  ${chalk$4.greenBright.bold(`✔ DONE`)}\n`);
+    process.stdout.write(DEFAULT_DONE_MESSAGE);
 }
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
