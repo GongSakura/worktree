@@ -27,7 +27,7 @@ describe("update from signle-repo project", () => {
   );
   const mockRepoName = mockGitRepoPath
     .replace(/\.git$/, "")
-    .split("/")
+    .split(path.sep)
     .pop();
   const projectPath: string = mockGitRepoPath;
   const repoPath: string = path.resolve(projectPath, "mock");
@@ -97,7 +97,7 @@ describe("update from signle-repo project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        ...paths.map((e) => e[1].split("/").pop()),
+        ...paths.map((e) => e[1].split(path.sep).pop()),
       ])
     );
 
@@ -110,7 +110,7 @@ describe("update from signle-repo project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        ...paths.map((e) => e[0].split("/").pop()),
+        ...paths.map((e) => e[0].split(path.sep).pop()),
       ])
     );
   });
@@ -169,13 +169,13 @@ describe("update from multi-repos project", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split("/").pop()!;
+  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
 
   const remoteGitRepoPath: string =
     "https://github.com/GongSakura/worktree.git";
   const remoteRepoName = remoteGitRepoPath
     .replace(/\.git/, "")
-    .split("/")
+    .split(path.sep)
     .pop()!;
 
   const repoInfo: any[] = [
@@ -278,7 +278,7 @@ describe("update from multi-repos project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        ...paths.map((e) => e[1].split("/").pop()),
+        ...paths.map((e) => e[1].split(path.sep).pop()),
       ])
     );
 
@@ -291,7 +291,7 @@ describe("update from multi-repos project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        ...paths.map((e) => e[0].split("/").pop()),
+        ...paths.map((e) => e[0].split(path.sep).pop()),
       ])
     );
   });

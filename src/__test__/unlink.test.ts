@@ -28,14 +28,14 @@ describe("unlink", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split("/").pop()!;
+  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
   const mockRepoPath = path.resolve(projectPath, `${mockRepoName}#mock`);
 
   const remoteGitRepoPath: string =
     "https://github.com/GongSakura/worktree.git";
   const remoteRepoName = remoteGitRepoPath
     .replace(/\.git/, "")
-    .split("/")
+    .split(path.sep)
     .pop()!;
   const remoteRepoPath = path.resolve(projectPath, `${remoteRepoName}#master`);
   const repoDirname: string[] = [

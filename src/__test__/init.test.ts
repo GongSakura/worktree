@@ -49,7 +49,7 @@ describe("init", () => {
     const gitConfig = getGitConfiguration(repoPath);
     expect(gitConfig).toEqual({
       path: projectConfigPath,
-      reponame: projectPath.split("/").pop(),
+      reponame: projectPath.split(path.sep).pop(),
     });
 
     // ======= check project configuration =======
@@ -102,7 +102,7 @@ describe("init", () => {
     const gitConfig = getGitConfiguration(repoPath);
     expect(gitConfig).toEqual({
       path: projectConfigPath,
-      reponame: projectPath.split("/").pop(),
+      reponame: projectPath.split(path.sep).pop(),
     });
 
     // ======= check project configuration =======

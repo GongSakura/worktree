@@ -179,7 +179,7 @@ describe("add from multi-repos project", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split("/").pop()!;
+  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
   const projectPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );

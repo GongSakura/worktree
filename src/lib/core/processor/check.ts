@@ -413,7 +413,7 @@ function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
 function inspectPotentialWorktrees(context: IContext, next: CallableFunction) {
   const files = readdirSync(context.projectPath!);
 
-  // TODO: feature suppport multi-repo
+
   const multiRepoWorktrees: IMultiRepoWorktreePaths = {};
 
   files.forEach((file) => {
@@ -426,7 +426,7 @@ function inspectPotentialWorktrees(context: IContext, next: CallableFunction) {
       if (idx !== -1) {
         const branch = getCurrentBranch(_path);
         const key = gitDirPath.substring(0, idx);
-        if (key.split("/").pop() === branch) {
+        if (key.split(path.sep).pop() === branch) {
           return;
         }
         if (multiRepoWorktrees.hasOwnProperty(key)) {

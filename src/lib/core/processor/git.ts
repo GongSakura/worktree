@@ -20,7 +20,7 @@ function cloneRepository(context: IContext, next: CallableFunction) {
   const repoURL = context.command.arguments.repoURL;
   const repoPath = context.command.arguments.directory;
   const repoName = repoURL
-    .split("/")
+    .split(path.sep)
     .pop()
     .replace(/\.git$/, "");
 
@@ -40,7 +40,7 @@ function cloneRepository(context: IContext, next: CallableFunction) {
 
 function initRepository(context: IContext, next: CallableFunction) {
   const repoPath = context.command.arguments.directory;
-  const repoName = repoPath.split("/").pop();
+  const repoName = repoPath.split(path.sep).pop();
 
   execSync(
     "git init " +

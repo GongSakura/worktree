@@ -57,7 +57,7 @@ describe("clone", () => {
       const gitConfig = getGitConfiguration(repoPath);
       expect(gitConfig).toEqual({
         path: projectConfigPath,
-        reponame: mockGitRepoPath.split("/").pop(),
+        reponame: mockGitRepoPath.split(path.sep).pop(),
       });
 
       // ======= check project configuration =======
@@ -123,7 +123,7 @@ describe("clone", () => {
         path: projectConfigPath,
         reponame: remoteGitRepoPath
           .replace(/\.git$/, "")
-          .split("/")
+          .split(path.sep)
           .pop(),
       });
 

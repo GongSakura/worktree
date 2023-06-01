@@ -63,7 +63,7 @@ describe("link", () => {
     const mockGitRepoPath: string = normalizePath(
       path.resolve(testPath, randomUUID().split("-")[0])
     );
-    const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split("/").pop()!;
+    const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
 
     await mockGitRepository(mockGitRepoPath);
 
@@ -113,7 +113,7 @@ describe("link", () => {
 
     const remoteRepoName = remoteGitRepoPath
       .replace(/\.git/, "")
-      .split("/")
+      .split(path.sep)
       .pop()!;
 
     const repoPath = path.resolve(projectPath, `${remoteRepoName}#master`);
