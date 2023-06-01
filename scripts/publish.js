@@ -30,12 +30,17 @@ async function run() {
     JSON.stringify(config, null, 2)
   );
 
+  // copy README.md
+  await fs.copyFile(
+    path.resolve(rootDir, "README.md"),
+    path.resolve(buildDir, "README.md")
+  );
+
   // run test
   execSync("npm run test", {
     cwd: rootDir,
   });
 
-  
   //publish
   execSync("npm publish --access public --dry-run", {
     cwd: buildDir,
@@ -55,9 +60,13 @@ async function run() {
     ],
   });
   if (answer) {
-    execSync("npm publish --access public ", {
-      cwd: buildDir,
-    });
+    try {
+      execSync("npm publish --access public ", {
+        cwd: buildDir,
+      });
+    } catch (error) {
+      console.log(error.message);
+    }
   }
 }
 
