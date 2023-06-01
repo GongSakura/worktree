@@ -4,7 +4,11 @@
   "keywords": [
     "git",
     "worktree",
-    "workspace"
+    "workspace",
+    "cli",
+    "project",
+    "vscode",
+    "node"
   ],
   "homepage": "https://github.com/GongSakura/worktree",
   "license": "MIT",
