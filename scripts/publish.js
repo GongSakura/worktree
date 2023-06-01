@@ -34,6 +34,7 @@ async function run() {
   execSync("npm run test", {
     cwd: rootDir,
   });
+
   
   //publish
   execSync("npm publish --access public --dry-run", {

@@ -193,11 +193,12 @@ To remove a git repository from the current project.
 
 <br/>
 
-## Future
+## Future todo
+- More informative and elegant error processor
+- Description of "wt.config.json"
+- Extra features of "wt.config.json"
 
-- TODO: More informative and elegant error processor
-- TODO: Description for "wt.config.json"
-
+<br/>
 
 ## Welcome to contribute and raise issues
 https://github.com/GongSakura/worktree
