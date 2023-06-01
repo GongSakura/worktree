@@ -2,14 +2,13 @@ import { describe, expect, it } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { mockGitRepository, run } from "./utils";
+import { run } from "./utils";
 import {
   checkIsPathCaseSensitive,
   getProjectFile,
   normalizePath,
 } from "../lib/utils/file";
 import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
-import { getAllBranches, getGitConfiguration } from "../lib/utils/git";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 describe("init", () => {
@@ -31,7 +30,7 @@ describe("init", () => {
   });
 
   it("create an empty project", async () => {
-    try {
+
       const projectPath = normalizePath(
         path.resolve(testPath, randomUUID().split("-")[0])
       );
@@ -60,8 +59,6 @@ describe("init", () => {
       expect(new Set(files)).toEqual(
         new Set([EPROJECT_FILES.CODE_WORKSPACE, EPROJECT_FILES.CONFIGURATION])
       );
-    } catch (error) {
-      throw error;
-    }
+  
   });
 });

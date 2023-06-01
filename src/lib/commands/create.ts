@@ -45,7 +45,7 @@ export function createCommand(action: (...args: any[]) => void) {
     )
     .argument(
       "[directory]",
-      "(optional) Specify a directory that the command is run inside it. The default is current directory\n\n"
+      "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n"
     )
     .action(action);
 }

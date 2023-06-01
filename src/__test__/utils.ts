@@ -18,6 +18,29 @@ export async function execSyncSequences(
   }
 }
 
+/**
+ * Mock a git repository in <cwdPath> directory
+ *
+ * Info:
+ *  Branches:
+ *    ├─ mock
+ *    ├─ feature-1
+ *    ├─ feature-2
+ *
+ *  Files:
+ *    - mock
+ *        ├─ README.md
+ *
+ *    - feature-1
+ *        ├─ README.md
+ *        ├─ feature-1.md
+ *
+ *    - feature-2
+ *        ├─ README.md
+ *        ├─ feature-2.md
+ * @param cwdPath
+ * @returns
+ */
 export async function mockGitRepository(cwdPath: string) {
   return new Promise((resolve, reject) => {
     // initial branch name: "mock"

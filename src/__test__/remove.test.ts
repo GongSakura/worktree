@@ -3,13 +3,9 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { mockGitRepository, run } from "./utils";
-import {
-  checkIsPathCaseSensitive,
-  getProjectFile,
-  normalizePath,
-} from "../lib/utils/file";
-import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
-import { getAllBranches, getGitConfiguration } from "../lib/utils/git";
+import { checkIsPathCaseSensitive, normalizePath } from "../lib/utils/file";
+import { EPROJECT_FILES } from "../lib/utils/types";
+import { getAllBranches } from "../lib/utils/git";
 import { readdirSync } from "node:fs";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
@@ -64,53 +60,45 @@ describe("add", () => {
   });
 
   it("remove a worktree", async () => {
-    try {
-      await run(program, `remove feature-1`, {
-        cwd: projectPath,
-      });
+    await run(program, `remove feature-1`, {
+      cwd: projectPath,
+    });
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(new Set(branches)).toEqual(
-        new Set(["mock", "feature-1", "feature-2"])
-      );
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set(["mock", "feature-1", "feature-2"])
+    );
 
-      // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
-      expect(new Set(projectFiles)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          "feature-2",
-          "mock",
-        ])
-      );
-    } catch (error) {
-      throw error;
-    }
+    // ======= check project directory =======
+    const projectFiles = readdirSync(projectPath);
+    expect(new Set(projectFiles)).toEqual(
+      new Set([
+        EPROJECT_FILES.CODE_WORKSPACE,
+        EPROJECT_FILES.CONFIGURATION,
+        "feature-2",
+        "mock",
+      ])
+    );
   });
 
   it("remove a worktree and its branch", async () => {
-    try {
-      await run(program, `remove -f feature-2`, {
-        cwd: projectPath,
-      });
+    await run(program, `remove -f feature-2`, {
+      cwd: projectPath,
+    });
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(new Set(branches)).toEqual(new Set(["mock", "feature-1"]));
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(new Set(["mock", "feature-1"]));
 
-      // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
-      expect(new Set(projectFiles)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          "mock",
-        ])
-      );
-    } catch (error) {
-      throw error;
-    }
+    // ======= check project directory =======
+    const projectFiles = readdirSync(projectPath);
+    expect(new Set(projectFiles)).toEqual(
+      new Set([
+        EPROJECT_FILES.CODE_WORKSPACE,
+        EPROJECT_FILES.CONFIGURATION,
+        "mock",
+      ])
+    );
   });
 });

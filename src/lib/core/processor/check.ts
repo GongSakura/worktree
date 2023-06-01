@@ -434,6 +434,9 @@ function inspectPotentialWorktrees(context: IContext, next: CallableFunction) {
       if (idx !== -1) {
         const branch = getCurrentBranch(_path);
         const key = gitDirPath.substring(0, idx);
+        if (key.split("/").pop() === branch) {
+          return;
+        }
         if (multiRepoWorktrees.hasOwnProperty(key)) {
           multiRepoWorktrees[key].push([_path, "", branch]);
         } else {

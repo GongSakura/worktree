@@ -1,5 +1,5 @@
-import chalk from "chalk";
+import { DEFAULT_DONE_MESSAGE } from "./constants";
 
-export function done(){
-    process.stdout.write(`  ${chalk.greenBright.bold(`✔ DONE`)}\n`);
+export function done() {
+  process.stdout.write(DEFAULT_DONE_MESSAGE);
 }
