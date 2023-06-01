@@ -46,16 +46,16 @@ export function addCommand (action: (...args: any[]) => void){
     )
     .option(
       "--repo <repo-name>",
-      "When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n"
+      "(required) When create a linked worktree in a multi-repos worktree project, it should be specified.\n\n"
     )
     .option(
       "--base <commit-hash>",
-      ":: A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
+      "(required) A base for the linked worktree, <commit-hash> can be a branch name or a commit hash.\n\n"
     )
     .helpOption("-h, --help", "Display help for command")
     .argument(
       "[branch-name]",
-      ":: If the branch doesn't existed, then create a new branch based on HEAD."
+      "(optional) If the branch doesn't existed, then create a new branch based on HEAD."
     )
     .action(action);
 };

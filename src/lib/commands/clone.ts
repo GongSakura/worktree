@@ -20,10 +20,10 @@ export function cloneAction(done: CallableFunction) {
       command: {
         arguments: {
           repoURL: this.processedArgs[0],
-          directory: path.resolve(this.processedArgs[1] || process.cwd()),
+          directory: path.resolve(this.processedArgs[1]||""),
         },
       },
-      cwd: path.resolve(this.processedArgs[1] || process.cwd()),
+      cwd: process.cwd(),
     };
 
     const processes = [

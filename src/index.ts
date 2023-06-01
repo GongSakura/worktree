@@ -22,6 +22,4 @@ program
   .addCommand(CommandCreator.add(ActionCreator.add(done)))
   .addCommand(CommandCreator.update(ActionCreator.update(done)));
 
-
 program.parse(process.argv);
-

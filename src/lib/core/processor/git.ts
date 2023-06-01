@@ -7,11 +7,14 @@ import { execSync } from "node:child_process";
 import * as path from "node:path";
 import {
   getAllBranches,
+  getCurrentBranch,
   getGitDir,
   getWorktrees,
   initBranch,
 } from "../../utils/git";
 import { EPROJECT_TYPE, IContext, IRepo } from "../../utils/types";
+import { DEFAULT_BRANCH } from "../../utils/constants";
+import { renameSync } from "node:fs";
 
 function cloneRepository(context: IContext, next: CallableFunction) {
   const repoURL = context.command.arguments.repoURL;
@@ -71,10 +74,24 @@ function linkRepository(context: IContext, next: CallableFunction) {
   } else {
     const repoURL = context.command.arguments.repoURL;
     const repoName = context.command.arguments.repoName;
-    const repoPath = path.resolve(context.projectPath!, `${repoName}#master`);
+
+    let repoPath = path.resolve(
+      context.projectPath!,
+      `${repoName}#${DEFAULT_BRANCH}`
+    );
     execSync(`git clone ${repoURL} ${repoPath}`, {
       stdio: "inherit",
     });
+    const currentBranch = getCurrentBranch(repoPath);
+    if (currentBranch !== DEFAULT_BRANCH) {
+      const realRepoPath = path.resolve(
+        context.projectPath!,
+        `${repoName}#${currentBranch}`
+      );
+      renameSync(repoPath, realRepoPath);
+      repoPath = realRepoPath;
+    }
+
     const repo: IRepo = {
       name: repoName,
       path: repoPath,
@@ -96,7 +113,7 @@ function configWorktree(context: IContext, next: CallableFunction) {
       cwd: repo.path,
       stdio: "pipe",
     });
-    execSync("git config --local wt.config.repoName " + repo.name, {
+    execSync("git config --local wt.config.reponame " + repo.name, {
       cwd: repo.path,
       stdio: "pipe",
     });
