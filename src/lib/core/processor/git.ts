@@ -9,12 +9,14 @@ import {
   getAllBranches,
   getCurrentBranch,
   getGitDir,
+  getLocalBranches,
   getWorktrees,
   initBranch,
+  searchRepos,
 } from "../../utils/git";
 import { EPROJECT_TYPE, IContext, IRepo } from "../../utils/types";
 import { DEFAULT_BRANCH } from "../../utils/constants";
-import { renameSync } from "node:fs";
+import { moveSync } from "fs-extra";
 
 function cloneRepository(context: IContext, next: CallableFunction) {
   const repoURL = context.command.arguments.repoURL;
@@ -80,8 +82,11 @@ function linkRepository(context: IContext, next: CallableFunction) {
 
     let repoPath = path.resolve(
       context.projectPath!,
-      `${repoName}#${DEFAULT_BRANCH}`
+      context.projectType === EPROJECT_TYPE.MULTIPLE
+        ? `${repoName}${path.sep}${DEFAULT_BRANCH}`
+        : DEFAULT_BRANCH
     );
+
     execSync(`git clone ${repoURL} ${repoPath}`, {
       stdio: "inherit",
     });
@@ -89,9 +94,11 @@ function linkRepository(context: IContext, next: CallableFunction) {
     if (currentBranch !== DEFAULT_BRANCH) {
       const realRepoPath = path.resolve(
         context.projectPath!,
-        `${repoName}#${currentBranch}`
+        context.projectType === EPROJECT_TYPE.MULTIPLE
+          ? `${repoName}${path.sep}${currentBranch}`
+          : currentBranch
       );
-      renameSync(repoPath, realRepoPath);
+      moveSync(repoPath, realRepoPath);
       repoPath = realRepoPath;
     }
 
@@ -107,6 +114,13 @@ function linkRepository(context: IContext, next: CallableFunction) {
     }
     next();
   }
+}
+
+function inspectRepository(context: IContext, next: CallableFunction) {
+  const repos: any = {};
+  searchRepos(context.projectPath!, repos);
+  context.reposMap = repos;
+  next();
 }
 
 function configWorktree(context: IContext, next: CallableFunction) {
@@ -132,10 +146,10 @@ function addWorktree(context: IContext, next: CallableFunction) {
   const newWorktreePath = path.resolve(
     context.projectPath!,
     context.projectType === EPROJECT_TYPE.MULTIPLE
-      ? `${repo?.name}#${branchName}`
+      ? `${repo?.name}${path.sep}${branchName}`
       : branchName
   );
-  const allBranches = new Set(getAllBranches(mainWorktreePath));
+  const allBranches = new Set(getLocalBranches(mainWorktreePath));
   const command =
     "git worktree add " +
     (allBranches.has(branchName)
@@ -156,6 +170,7 @@ function addWorktree(context: IContext, next: CallableFunction) {
 
 function removeWorktree(context: IContext, next: CallableFunction) {
   const [removeWorktreePath, , branchName] = context.removeWorktrees![0];
+
   const mainWorktreePath = context.selectedRepo!.path!;
   if (removeWorktreePath) {
     execSync("git worktree remove -f " + removeWorktreePath, {
@@ -178,17 +193,15 @@ function removeWorktree(context: IContext, next: CallableFunction) {
 function repairWorktree(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
     const worktrees = [...repo.worktrees!];
-    const mainWorktreePath = worktrees.pop()![0];
     const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
       return `${prev} ${cur[0]}`;
     }, "");
 
     execSync("git worktree repair " + linkedWorktreePaths, {
-      cwd: mainWorktreePath,
+      cwd: repo.path,
       stdio: "pipe",
     });
-    repo.worktrees = getWorktrees(mainWorktreePath).reverse();
-    repo.path = mainWorktreePath;
+    repo.worktrees = getWorktrees(repo.path!).reverse();
   });
   next();
 }
@@ -200,4 +213,5 @@ export default {
   configWorktree,
   addWorktree,
   removeWorktree,
+  inspectRepository,
 };

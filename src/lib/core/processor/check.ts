@@ -26,6 +26,7 @@ import {
   selectWorktreeQuestion,
 } from "../../utils/prompts";
 import { ErrorProcessor } from "../index";
+import { ERROR_LINK_TO_SINGLE } from "../../utils/constants";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
   const repoPath = normalizePath(context.command.arguments.directory);
@@ -108,6 +109,7 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
           return select<string>(selectBranchQuestion(uncheckoutBranches));
         })
         .then((answer) => {
+          
           context.command.arguments.branchName = answer;
           next();
         })
@@ -221,6 +223,11 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
           context.removeWorktrees = [
             [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
           ];
+          if (context.removeWorktrees[0][0] == context.selectedRepo?.path) {
+            throw new Error(
+              `Cannot remove "${context.command.arguments.branchName}", because it's inside the main worktree.\nTo remove a main worktree, use "wt unlink".`
+            );
+          }
           next();
         })
         .catch((error) => {
@@ -238,22 +245,26 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
           `Cannot find the repository: "${context.command.options.repo}" in the project`
         );
       }
-
+      context.selectedRepo = repo;
       context.removeWorktrees = [
         [
           path.resolve(
             context.projectPath,
-            `${context.command.options.repo}#${context.command.arguments.branchName}`
+            `${context.command.options.repo}${path.sep}${context.command.arguments.branchName}`
           ),
           ,
           context.command.arguments.branchName,
         ],
       ];
+      if (context.removeWorktrees[0][0] == repo?.path) {
+        throw new Error(
+          `Cannot remove "${context.command.arguments.branchName}", because it's inside the main worktree.\nTo remove a main worktree, use "wt unlink".`
+        );
+      }
       next();
     }
   } else {
     context.selectedRepo = context.repos[0];
-
     if (!context.command.arguments.branchName) {
       const worktrees: string[][] = getWorktrees(
         context.selectedRepo.path!
@@ -273,6 +284,11 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
           context.removeWorktrees = [
             [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
           ];
+          if (removeWorktreePath == context.selectedRepo?.path) {
+            throw new Error(
+              `Cannot remove "${context.command.arguments.branchName}", because it's inside the main worktree.\nTo remove a main worktree, use "wt unlink".`
+            );
+          }
           next();
         })
         .catch((err) => {
@@ -291,6 +307,12 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
           context.command.arguments.branchName,
         ],
       ];
+
+      if (context.removeWorktrees[0][0] == context.selectedRepo?.path) {
+        throw new Error(
+          `Cannot remove "${context.command.arguments.branchName}", because it's inside the main worktree.\nTo remove a main worktree, use "wt unlink".`
+        );
+      }
       next();
     }
   }
@@ -314,7 +336,7 @@ function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
   );
 
   context.projectType = projectConfig.type;
-
+  context.repos = projectConfig.repos;
   next();
 }
 
@@ -340,8 +362,11 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
   } catch {
     mkdirSync(repoPath);
   }
+
   context.projectPath = normalizePath(repoPath);
-  context.projectType = EPROJECT_TYPE.MULTIPLE;
+  context.projectType = context.command.options?.single
+    ? EPROJECT_TYPE.SINGLE
+    : EPROJECT_TYPE.MULTIPLE;
   context.repos = [];
   next();
 }
@@ -349,9 +374,6 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
 function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
   const [projectConfig, gitConfig] = getConfigs(context.cwd);
   checkIsInsideProject([projectConfig, gitConfig]);
-  if (projectConfig?.type !== EPROJECT_TYPE.MULTIPLE) {
-    throw new Error('Cannot use "wt link" inside a "single-repo" project.');
-  }
 
   context.projectConfigPath = normalizePath(
     gitConfig?.path
@@ -364,6 +386,9 @@ function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
 
   context.projectType = projectConfig.type;
   context.repos = projectConfig.repos;
+  if (context.repos.length && context.projectType === EPROJECT_TYPE.SINGLE) {
+    throw new Error(ERROR_LINK_TO_SINGLE);
+  }
   context.repos.forEach((repo: IRepo) => {
     if (repo.name === context.command.arguments.repoName) {
       throw new Error(`The repo name: ${repo.name} is exited`);
@@ -378,9 +403,6 @@ function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
 function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
   const [projectConfig, gitConfig] = getConfigs(context.cwd);
   checkIsInsideProject([projectConfig, gitConfig]);
-  if (projectConfig?.type !== EPROJECT_TYPE.MULTIPLE) {
-    throw new Error('Cannot use "wt unlink" inside a "single-repo" project.');
-  }
   context.projectConfigPath = normalizePath(
     gitConfig?.path
       ? gitConfig.path
@@ -391,12 +413,13 @@ function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
   );
   context.projectType = projectConfig.type;
   context.repos = projectConfig.repos;
-  if (!context.repos.length) {
-    throw new Error("No linked repository");
-  }
+
   if (context.command.arguments.repoName) {
     next();
   } else {
+    if (!context.repos?.length) {
+      throw new Error("No linked repository");
+    }
     select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
       .then((answer) => {
         context.command.arguments.repoName = answer;
@@ -408,50 +431,6 @@ function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
         });
       });
   }
-}
-
-function inspectPotentialWorktrees(context: IContext, next: CallableFunction) {
-  const files = readdirSync(context.projectPath!);
-
-
-  const multiRepoWorktrees: IMultiRepoWorktreePaths = {};
-
-  files.forEach((file) => {
-    const _path = path.resolve(context.projectPath!, file);
-
-    if (checkIsWorktree(_path)) {
-      const gitDirPath = getGitDir(_path);
-      const mainWorktreePath = gitDirPath.replace(/\/.git.*/, "");
-      const idx = gitDirPath.lastIndexOf("/.git/worktrees");
-      if (idx !== -1) {
-        const branch = getCurrentBranch(_path);
-        const key = gitDirPath.substring(0, idx);
-        if (key.split(path.sep).pop() === branch) {
-          return;
-        }
-        if (multiRepoWorktrees.hasOwnProperty(key)) {
-          multiRepoWorktrees[key].push([_path, "", branch]);
-        } else {
-          multiRepoWorktrees[key] = [[_path, "", branch]];
-        }
-      } else if (!multiRepoWorktrees.hasOwnProperty(mainWorktreePath)) {
-        multiRepoWorktrees[mainWorktreePath] = [];
-      }
-    }
-  });
-
-  const repos: IRepo[] = [];
-  for (const [key, value] of Object.entries(multiRepoWorktrees)) {
-    const gitConfiguration = getGitConfiguration(key);
-    repos.push({
-      name: gitConfiguration.reponame || "",
-      path: normalizePath(key),
-      worktrees: [...value, [key, "", getCurrentBranch(key)]],
-    });
-  }
-
-  context.repos = repos;
-  next();
 }
 
 function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): void {
@@ -489,5 +468,4 @@ export default {
   checkAddPrerequisite,
   checkRemovePrerequisite,
   checkUpdatePrerequisite,
-  inspectPotentialWorktrees,
 };

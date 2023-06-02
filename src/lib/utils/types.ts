@@ -10,6 +10,7 @@ export interface IContext {
   cwd: string;
   repos?: IRepo[];
   selectedRepo?: IRepo;
+  reposMap?: Record<string, IRepo>;
   removeWorktrees?: string[][];
   unLinkRepo?: IRepo;
   projectPath?: string;

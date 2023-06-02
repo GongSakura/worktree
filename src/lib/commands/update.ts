@@ -29,9 +29,7 @@ export function updateAction(done: CallableFunction) {
     const processes = [
       ErrorProcessor.captureError,
       CheckProcessor.checkUpdatePrerequisite,
-      CheckProcessor.inspectPotentialWorktrees,
-      FileProcessor.updateDirectory,
-      CheckProcessor.inspectPotentialWorktrees,
+      GitProcessor.inspectRepository,
       FileProcessor.updateDirectory,
       GitProcessor.repairWorktree,
       FileProcessor.writeProjectCodeWorkspace,

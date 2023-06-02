@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -54,20 +54,21 @@ describe("link", () => {
 
     // ======= check files =======
     const files = readdirSync(projectPath);
-    expect(new Set(files)).toEqual(
-      new Set([EPROJECT_FILES.CODE_WORKSPACE, EPROJECT_FILES.CONFIGURATION])
-    );
+    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
   });
 
   it("link to a local repository", async () => {
     const mockGitRepoPath: string = normalizePath(
       path.resolve(testPath, randomUUID().split("-")[0])
     );
-    const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
+    const mockRepoName = mockGitRepoPath
+      .replace(/\.git/, "")
+      .split(path.sep)
+      .pop()!;
 
     await mockGitRepository(mockGitRepoPath);
 
-    const repoPath = path.resolve(projectPath, `${mockRepoName}#mock`);
+    const repoPath = path.resolve(projectPath, mockRepoName, "mock");
 
     await run(program, `link ${mockGitRepoPath} ${mockRepoName}`, {
       cwd: projectPath,
@@ -84,7 +85,8 @@ describe("link", () => {
       name: mockRepoName,
       path: repoPath,
     });
-    repoDirname.push(`${mockRepoName}#mock`);
+
+    repoDirname.push(mockRepoName);
 
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
@@ -105,6 +107,10 @@ describe("link", () => {
         ...repoDirname,
       ])
     );
+
+    // ======= check repodir directory =======
+    const dirFiles = readdirSync(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["mock"]));
   });
 
   it("link to a remote repository", async () => {
@@ -116,7 +122,7 @@ describe("link", () => {
       .split("/")
       .pop()!;
 
-    const repoPath = path.resolve(projectPath, `${remoteRepoName}#master`);
+    const repoPath = path.resolve(projectPath, remoteRepoName, "master");
 
     await run(program, `link ${remoteGitRepoPath} ${remoteRepoName}`, {
       cwd: projectPath,
@@ -132,18 +138,15 @@ describe("link", () => {
       name: remoteRepoName,
       path: repoPath,
     });
-    repoDirname.push(`${remoteRepoName}#master`);
+    repoDirname.push(remoteRepoName);
 
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
       EPROJECT_FILES.CONFIGURATION
     );
-
-    expect(projectConfig).toMatchObject({
-      repos,
-      type: EPROJECT_TYPE.MULTIPLE,
-    });
+    expect(projectConfig.type).toEqual(EPROJECT_TYPE.MULTIPLE);
+    expect(projectConfig.repos).toEqual(repos);
 
     // ======= check files =======
     const files = readdirSync(projectPath);
@@ -154,5 +157,9 @@ describe("link", () => {
         ...repoDirname,
       ])
     );
+
+    // ======= check repodir directory =======
+    const dirFiles = readdirSync(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["master"]));
   });
 });

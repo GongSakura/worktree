@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -80,7 +80,6 @@ describe("clone", () => {
       expect(new Set(branches)).toEqual(
         new Set([
           "mock",
-          "remotes/origin/HEAD -> origin/mock",
           "remotes/origin/mock",
           "remotes/origin/feature-1",
           "remotes/origin/feature-2",
@@ -147,7 +146,6 @@ describe("clone", () => {
       expect(new Set(branches)).toEqual(
         new Set([
           "master",
-          "remotes/origin/HEAD -> origin/master",
           "remotes/origin/master",
           "remotes/origin/dev",
         ])

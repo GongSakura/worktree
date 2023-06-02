@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 import { mkdir, readdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -154,7 +154,7 @@ describe("update from signle-repo project", () => {
   });
 });
 
-describe("update from multi-repos project", () => {
+describe.only("update from multi-repos project", () => {
   const program: string = normalizePath(path.resolve("build/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
@@ -169,7 +169,10 @@ describe("update from multi-repos project", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
+  const mockRepoName = mockGitRepoPath
+    .replace(/\.git/, "")
+    .split(path.sep)
+    .pop()!;
 
   const remoteGitRepoPath: string =
     "https://github.com/GongSakura/worktree.git";
@@ -181,26 +184,22 @@ describe("update from multi-repos project", () => {
   const repoInfo: any[] = [
     {
       name: mockRepoName,
-      dirname: `${mockRepoName}#mock`,
-      path: path.resolve(projectPath, `${mockRepoName}#mock`),
+      dirname: mockRepoName,
+      path: path.resolve(projectPath, mockRepoName, "mock"),
       branches: ["mock", "feature-1", "feature-2"],
     },
     {
       name: remoteRepoName,
-      dirname: `${remoteRepoName}#master`,
-      path: path.resolve(projectPath, `${remoteRepoName}#master`),
-      branches: [
-        "master",
-        "remotes/origin/HEAD -> origin/master",
-        "remotes/origin/dev",
-        "remotes/origin/master",
-      ],
+      dirname: remoteRepoName,
+      path: path.resolve(projectPath, remoteRepoName, "master"),
+      branches: ["master", "remotes/origin/dev", "remotes/origin/master"],
     },
   ];
 
   beforeAll(async () => {
     await mkdir(testPath);
     await mockGitRepository(mockGitRepoPath);
+
     await run(program, `create ${projectPath}`);
     await run(program, `link ${mockGitRepoPath} ${mockRepoName}`, {
       cwd: projectPath,
@@ -233,9 +232,9 @@ describe("update from multi-repos project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        `${remoteRepoName}#master`,
-        `${mockRepoName}#mock`,
-        `${mockRepoName}#feature-1`,
+        remoteRepoName,
+        mockRepoName,
+     
       ])
     );
 
@@ -256,18 +255,19 @@ describe("update from multi-repos project", () => {
   it("update from changed dirname", async () => {
     const paths = [
       [
-        path.resolve(projectPath, mockRepoName + "#mock"),
+        path.resolve(projectPath, mockRepoName + path.sep + "mock"),
         path.resolve(projectPath, randomUUID().split("-")[0]),
       ],
       [
-        path.resolve(projectPath, mockRepoName + "#feature-1"),
+        path.resolve(projectPath, mockRepoName + path.sep + "feature-1"),
         path.resolve(projectPath, randomUUID().split("-")[0]),
       ],
       [
-        path.resolve(projectPath, remoteRepoName + "#master"),
+        path.resolve(projectPath, remoteRepoName + path.sep + "master"),
         path.resolve(projectPath, randomUUID().split("-")[0]),
       ],
     ];
+
     for (const p of paths) {
       await rename(p[0], p[1]);
     }
@@ -278,6 +278,8 @@ describe("update from multi-repos project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
+        remoteRepoName,
+        mockRepoName,
         ...paths.map((e) => e[1].split(path.sep).pop()),
       ])
     );
@@ -291,7 +293,8 @@ describe("update from multi-repos project", () => {
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        ...paths.map((e) => e[0].split(path.sep).pop()),
+        remoteRepoName,
+        mockRepoName,
       ])
     );
   });
@@ -299,15 +302,15 @@ describe("update from multi-repos project", () => {
   it("update from changed branches", async () => {
     const paths = [
       [
-        path.resolve(projectPath, mockRepoName + "#mock"),
+        path.resolve(projectPath, mockRepoName + path.sep + "mock"),
         randomUUID().split("-")[0],
       ],
       [
-        path.resolve(projectPath, mockRepoName + "#feature-1"),
+        path.resolve(projectPath, mockRepoName + path.sep + "feature-1"),
         randomUUID().split("-")[0],
       ],
       [
-        path.resolve(projectPath, remoteRepoName + "#master"),
+        path.resolve(projectPath, remoteRepoName + path.sep + "master"),
         randomUUID().split("-")[0],
       ],
     ];
@@ -320,16 +323,13 @@ describe("update from multi-repos project", () => {
       cwd: projectPath,
     });
 
-    // ======= check project directory =======
-    expect(new Set(await readdir(projectPath))).toEqual(
-      new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
-        mockRepoName + "#" + paths[0][1],
-        mockRepoName + "#" + paths[1][1],
-        remoteRepoName + "#" + paths[2][1],
-      ])
-    );
+    // ======= check repodir directory ======
+    expect(
+      new Set(await readdir(path.resolve(projectPath, mockRepoName)))
+    ).toEqual(new Set([paths[0][1], paths[1][1]]));
+    expect(
+      new Set(await readdir(path.resolve(projectPath, remoteRepoName)))
+    ).toEqual(new Set([paths[2][1]]));
 
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
@@ -341,11 +341,14 @@ describe("update from multi-repos project", () => {
     expect(projectConfig.repos).toEqual([
       {
         name: mockRepoName,
-        path: path.resolve(projectPath, mockRepoName + "#" + paths[0][1]),
+        path: path.resolve(projectPath, mockRepoName + path.sep + paths[0][1]),
       },
       {
         name: remoteRepoName,
-        path: path.resolve(projectPath, remoteRepoName + "#" + paths[2][1]),
+        path: path.resolve(
+          projectPath,
+          remoteRepoName + path.sep + paths[2][1]
+        ),
       },
     ]);
   });

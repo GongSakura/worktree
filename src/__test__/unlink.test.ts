@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, afterAll, beforeAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -28,8 +28,11 @@ describe("unlink", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
-  const mockRepoPath = path.resolve(projectPath, `${mockRepoName}#mock`);
+  const mockRepoName = mockGitRepoPath
+    .replace(/\.git/, "")
+    .split(path.sep)
+    .pop()!;
+  const mockRepoPath = path.resolve(projectPath, mockRepoName, "mock");
 
   const remoteGitRepoPath: string =
     "https://github.com/GongSakura/worktree.git";
@@ -37,11 +40,8 @@ describe("unlink", () => {
     .replace(/\.git/, "")
     .split("/")
     .pop()!;
-  const remoteRepoPath = path.resolve(projectPath, `${remoteRepoName}#master`);
-  const repoDirname: string[] = [
-    `${remoteRepoName}#master`,
-    `${mockRepoName}#mock`,
-  ];
+  const remoteRepoPath = path.resolve(projectPath, remoteRepoName, "master");
+  const repoDirname: string[] = [remoteRepoName, mockRepoName];
 
   beforeAll(async () => {
     await mkdir(testPath);
@@ -123,6 +123,8 @@ describe("unlink", () => {
       ])
     );
   });
+
+  
   it("unlink a remote repository", async () => {
     await run(program, `unlink ${remoteRepoName}`, {
       cwd: projectPath,

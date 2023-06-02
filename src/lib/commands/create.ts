@@ -17,8 +17,9 @@ export function createAction(done: CallableFunction) {
   return function () {
     const context = {
       command: {
+        options: this.opts(),
         arguments: {
-          directory: path.resolve(this.processedArgs[0]||""),
+          directory: path.resolve(this.processedArgs[0] || ""),
         },
       },
       cwd: process.cwd(),
@@ -27,7 +28,6 @@ export function createAction(done: CallableFunction) {
     const processes = [
       ErrorProcessor.captureError,
       CheckProcessor.checkCreatePrerequisite,
-      FileProcessor.writeProjectCodeWorkspace,
       FileProcessor.writeProjectConfiguration,
     ];
     const executer = new Executer(processes);
@@ -41,8 +41,9 @@ export function createCommand(action: (...args: any[]) => void) {
     .alias("c")
     .summary("Create an empty worktree project.\n\n")
     .description(
-      "To create an empty worktree project that used for multiple git repositories.\n\n"
+      "To create an empty worktree project that used for signle or multiple git repositories.\n\n"
     )
+    .option("-s, --single", "create an empty project for single repository")
     .argument(
       "[directory]",
       "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n"

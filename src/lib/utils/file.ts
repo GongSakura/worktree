@@ -6,7 +6,7 @@ import { getGitConfiguration } from "./git";
 export function getProjectFile(cwdPath: string, name: EPROJECT_FILES) {
   try {
     return JSON.parse(readFileSync(path.resolve(cwdPath, name)).toString());
-  } catch (error) {
+  } catch {
     return {};
   }
 }
@@ -55,15 +55,20 @@ export function checkIsPathCaseSensitive() {
 
 /**
  * normalize path by checking if it's caseSensitive
- * // TODO: don't know if need to unify Windows and unix
  * @param rawPath
  * @returns
  */
 export function normalizePath(rawPath: string) {
   if ((global as any).isPathCaseSensitive) {
     return path.normalize(rawPath);
-  
   }
   return path.normalize(rawPath.toLowerCase());
+}
 
+export function checkIsDir(cwdPath: string) {
+  try {
+    return statSync(cwdPath).isDirectory();
+  } catch {
+    return false;
+  }
 }

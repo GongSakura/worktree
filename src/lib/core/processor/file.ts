@@ -7,10 +7,9 @@ import {
   linkSync,
   mkdirSync,
   readdirSync,
-  renameSync,
-  rmSync,
   statSync,
   writeFileSync,
+  rmSync,
 } from "node:fs";
 import * as path from "node:path";
 import {
@@ -28,9 +27,11 @@ import {
 import {
   checkIsWorktree,
   getCurrentBranch,
+  getGitDir,
   getWorktrees,
 } from "../../utils/git";
-import { copySync, ensureDirSync } from "fs-extra";
+import { copySync, ensureDirSync, moveSync } from "fs-extra";
+import { UNKNOWN_REPO } from "../../utils/constants";
 
 const IGNORE_FILES = new Set([".git", ".code-workpace"]);
 
@@ -71,7 +72,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
           `${
             context.projectType === EPROJECT_TYPE.SINGLE
               ? branch
-              : repo.name + "#" + branch
+              : repo.name + path.sep + branch
           }`
         )
       );
@@ -93,7 +94,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
           // FIXME: have not decided to use hardlink or directly move the linked worktrees
           // outside the current work directory
           newPath.startsWith(parentPath)
-            ? renameSync(oldPath, newPath)
+            ? moveSync(oldPath, newPath)
             : linkSync(oldPath, newPath);
         } catch (error) {
           break;
@@ -118,7 +119,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
           parentPath !== gitDirDirname && parentPath.startsWith(gitDirDirname);
 
         if (isGitDirSibling) {
-          renameSync(oldParentPath, newPath);
+          moveSync(oldParentPath, newPath);
         } else {
           mkdirSync(newPath);
         }
@@ -127,14 +128,14 @@ function initDirectory(context: IContext, next: CallableFunction) {
           const filePath = normalizePath(path.resolve(parentPath, file));
 
           if (!IGNORE_FILES.has(file) && !excludedPaths.has(filePath)) {
-            renameSync(
+            moveSync(
               path.resolve(parentPath, file),
               path.resolve(newPath, file)
             );
           }
         });
 
-        renameSync(gitDirPath, newPath + "/.git");
+        moveSync(gitDirPath, newPath + "/.git");
 
         // remove outside "/.git"
         if (isGitDirSibling || isGitDirOutside) {
@@ -153,47 +154,110 @@ function initDirectory(context: IContext, next: CallableFunction) {
 }
 
 function updateDirectory(context: IContext, next: CallableFunction) {
-  context.repos?.forEach((repo: IRepo) => {
+  
+
+  let unknownRepo: IRepo | undefined = undefined;
+  for (const [key, repo] of Object.entries(context.reposMap!)) {
+    if (repo.name === UNKNOWN_REPO) {
+      unknownRepo = repo;
+      delete context.reposMap![UNKNOWN_REPO];
+    } else {
+      const renameTodoMap = new Map();
+      const newWorktrees: string[][] = [];
+
+      repo.worktrees?.forEach((worktree) => {
+        const [oldPath, , branch] = worktree;
+        const newPath = path.resolve(
+          context.projectPath!,
+          `${
+            context.projectType === EPROJECT_TYPE.SINGLE
+              ? branch
+              : repo.name + path.sep + branch
+          }`
+        );
+       
+        if (repo.path === oldPath) {
+          repo.path = newPath;
+        } else {
+          newWorktrees.push([newPath, "", branch]);
+        }
+
+        if (!checkArePathsIdentical(oldPath, newPath)) {
+          renameTodoMap.set(oldPath, newPath);
+        }
+      });
+      console.info(`renameTodoMap:`,renameTodoMap)
+      while (renameTodoMap.size) {
+        for (const [oldPath, newPath] of renameTodoMap.entries()) {
+          if (renameTodoMap.has(newPath)) {
+            continue;
+          }
+          try {
+            moveSync(oldPath, newPath);
+            renameTodoMap.delete(oldPath);
+          } catch {}
+        }
+      }
+
+      repo.worktrees = newWorktrees;
+      delete context.reposMap![key];
+      context.reposMap![repo.path!] = repo;
+    }
+  }
+
+  if (unknownRepo) {
+    const worktrees = unknownRepo.worktrees;
     const renameTodoMap = new Map();
-    const newWorktrees: string[][] = [];
 
-    repo.worktrees?.forEach((worktree) => {
-      const [worktreePath, , worktreeBranch] = worktree;
-      const newWorktreePath = path.resolve(
-        context.projectPath!,
-        `${
-          context.projectType === EPROJECT_TYPE.SINGLE
-            ? worktreeBranch
-            : repo.name + "#" + worktreeBranch
-        }`
-      );
-
-      newWorktrees.push([newWorktreePath, "", worktreeBranch]);
-      if (!checkArePathsIdentical(worktreePath, newWorktreePath)) {
-        renameTodoMap.set(worktreePath, newWorktreePath);
+    worktrees?.forEach((e) => {
+      const oldPath = e[0];
+      if (checkIsWorktree(oldPath)) {
+        const gitDirPath = normalizePath(getGitDir(oldPath));
+        const repoPath = gitDirPath.replace(/\/.git.*/, "");
+        if (context?.reposMap?.hasOwnProperty(repoPath)) {
+          const branch = getCurrentBranch(oldPath);
+          if (oldPath.endsWith(path.normalize(branch))) {
+            return;
+          }
+         
+          const newPath = path.resolve(
+            context.projectPath!,
+            `${
+              context.projectType === EPROJECT_TYPE.SINGLE
+                ? branch
+                : (context.reposMap[repoPath].name! + path.sep + branch)
+            }`
+          );
+          console.info(`branch:`,branch)
+          console.info(`oldPath:`,oldPath)
+          console.info(`newPath:`,newPath)
+          context.reposMap[repoPath].worktrees?.push([newPath, "", branch]);
+          renameTodoMap.set(oldPath, newPath);
+        }
       }
     });
-
+    console.info(`renameTodoMap:`,renameTodoMap)
     while (renameTodoMap.size) {
       for (const [oldPath, newPath] of renameTodoMap.entries()) {
         if (renameTodoMap.has(newPath)) {
           continue;
         }
         try {
-          renameSync(oldPath, newPath);
+          moveSync(oldPath, newPath);
           renameTodoMap.delete(oldPath);
-        } catch (error) {}
+        } catch {}
       }
     }
-    repo.worktrees = newWorktrees;
-    repo.path = newWorktrees.slice(-1)[0][0];
-  });
+  }
 
+  context.repos = Object.values(context.reposMap || {});
   next();
 }
 function linkDirectory(context: IContext, next: CallableFunction) {
-  if (!path.isAbsolute(context.command.arguments.repoURL) &&
-  context.command.arguments.repoURL[0] !== ".") {
+  if (
+    !path.isAbsolute(context.command.arguments.repoURL) &&
+    context.command.arguments.repoURL[0] !== "."
+  ) {
     next();
   } else {
     let linkPath = path.resolve(context.command.arguments.repoURL);
@@ -211,7 +275,7 @@ function linkDirectory(context: IContext, next: CallableFunction) {
       name: context.command.arguments.repoName,
       path: path.resolve(
         context.projectPath!,
-        `${context.command.arguments.repoName}#${currentBranch}`
+        `${context.command.arguments.repoName}${path.sep}${currentBranch}`
       ),
     };
 
@@ -228,19 +292,34 @@ function linkDirectory(context: IContext, next: CallableFunction) {
   }
 }
 function unlinkDirectory(context: IContext, next: CallableFunction) {
-  const repos = context.repos?.filter(
-    (_repo: IRepo) => _repo.name !== context.command.arguments.repoName
-  );
   const unlinkRepo = context.repos?.find(
     (_repo: IRepo) => _repo.name === context.command.arguments.repoName
   );
   const worktrees = getWorktrees(unlinkRepo?.path!);
+  if (
+    !checkArePathsIdentical(
+      path.dirname(unlinkRepo?.path || ""),
+      context.projectPath!
+    )
+  ) {
+    rmSync(path.dirname(unlinkRepo?.path || ""), {
+      force: true,
+      recursive: true,
+    });
+  }
+
   worktrees.forEach((e) => {
     rmSync(e[0], {
       force: true,
       recursive: true,
     });
   });
+
+  // prepare to write configuration
+  const repos = context.repos?.filter(
+    (_repo: IRepo) => _repo.name !== context.command.arguments.repoName
+  );
+
   context.repos = repos;
   context.repos!.forEach((repo: IRepo) => {
     if (repo.path) {
@@ -264,7 +343,7 @@ function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
         name:
           context?.projectType === EPROJECT_TYPE.SINGLE
             ? e[2]
-            : `${repo.name}#${e[2]}`,
+            : `${repo.name}${path.sep}${e[2]}`,
         path: e[0],
       });
     });
@@ -284,6 +363,7 @@ function writeProjectConfiguration(context: IContext, next: CallableFunction) {
     context.projectPath!,
     EPROJECT_FILES.CONFIGURATION
   );
+
   const config = {
     repos: context.repos?.map((repo: IRepo) => {
       return { name: repo.name, path: repo.path };

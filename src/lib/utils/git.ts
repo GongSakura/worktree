@@ -1,6 +1,9 @@
 import { execSync } from "node:child_process";
-
-import { IGitConfig, EGIT_CONFIGURATION } from "./types";
+import { existsSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { IGitConfig, EGIT_CONFIGURATION, IRepo } from "./types";
+import { checkIsDir, normalizePath } from "./file";
+import { UNKNOWN_REPO } from "./constants";
 
 export function getWorktrees(cwdPath: string): string[][] {
   const worktrees: string[][] = [];
@@ -31,7 +34,7 @@ export function checkIsWorktree(cwdPath: string): boolean {
       stdio: "pipe",
     });
     return output.toString() ? true : false;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -149,6 +152,29 @@ export function getAllBranches(cwdPath: string): string[] {
       .split("\n")
       .forEach((e) => {
         const branch = e.trim().replace(/^\W*/, "");
+        // skip e.g. "remotes/origin/HEAD -> origin/master",
+        if (branch && !/.*->.*/.test(branch)) {
+          branches.push(branch);
+        }
+      });
+    return branches;
+  } catch (error) {
+    return [];
+  }
+}
+
+export function getLocalBranches(cwdPath: string): string[] {
+  try {
+    const branches: string[] = [];
+    execSync("git branch -l", {
+      cwd: cwdPath,
+      stdio: "pipe",
+    })
+      .toString()
+      .trim()
+      .split("\n")
+      .forEach((e) => {
+        const branch = e.trim().replace(/^\W*/, "");
         if (branch) {
           branches.push(branch);
         }
@@ -177,4 +203,64 @@ export function getUncheckoutBranches(cwdPath: string): string[] {
   } catch (error) {
     return [];
   }
+}
+
+/**
+ * "Depth First Search" all to potential
+ * @param cwdPath
+ * @param repoInfo
+ */
+export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
+  const files = readdirSync(cwdPath);
+  files.forEach((file) => {
+    const _path = normalizePath(path.resolve(cwdPath, file));
+    if (checkIsDir(_path)) {
+      if (checkIsWorktree(_path)) {
+        const gitDirPath = normalizePath(getGitDir(_path));
+        const idx = gitDirPath.lastIndexOf("/.git/worktrees");
+        const repoPath = gitDirPath.replace(/\/.git.*/, "");
+        if (idx !== -1) {
+          const branch = getCurrentBranch(_path);
+
+          // FIXME: a better way to check if current path has been changed or not
+          if (_path.endsWith(path.normalize(branch))) {
+            return;
+          }
+
+          if (repoInfo.hasOwnProperty(repoPath)) {
+            repoInfo[repoPath].worktrees!.push([_path, "", branch]);
+          } else {
+            const gitConfiguration = getGitConfiguration(repoPath);
+            repoInfo[repoPath] = {
+              name: gitConfiguration.reponame || "",
+              path: normalizePath(repoPath),
+              worktrees: [
+                [_path, "", branch],
+                [repoPath, "", getCurrentBranch(repoPath)],
+              ],
+            };
+          }
+        } else if (!repoInfo.hasOwnProperty(repoPath)) {
+          const gitConfiguration = getGitConfiguration(repoPath);
+          repoInfo[repoPath] = {
+            name: gitConfiguration.reponame || "",
+            path: normalizePath(repoPath),
+            worktrees: [[_path, "", getCurrentBranch(repoPath)]],
+          };
+        }
+      } else if (existsSync(path.resolve(_path, ".git"))) {
+        if (repoInfo.unknown) {
+          repoInfo.unknown.worktrees?.push([_path]);
+        } else {
+          repoInfo.unknown = {
+            name: UNKNOWN_REPO,
+            path: undefined,
+            worktrees: [[_path]],
+          };
+        }
+      } else {
+        searchRepos(_path, repoInfo);
+      }
+    }
+  });
 }

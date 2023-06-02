@@ -1,12 +1,11 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, rm, readdir } from "node:fs/promises";
 import path from "node:path";
 import { mockGitRepository, run } from "./utils";
 import { checkIsPathCaseSensitive, normalizePath } from "../lib/utils/file";
 import { EPROJECT_FILES } from "../lib/utils/types";
 import { getAllBranches } from "../lib/utils/git";
-import { readdirSync } from "node:fs";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
@@ -46,7 +45,7 @@ describe("add from single-repo project", () => {
     );
 
     // ======= check project directory =======
-    const projectFiles = readdirSync(projectPath);
+    const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
@@ -73,7 +72,7 @@ describe("add from single-repo project", () => {
       );
 
       // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
+      const projectFiles = await readdir(projectPath);
       expect(new Set(projectFiles)).toEqual(
         new Set([
           EPROJECT_FILES.CODE_WORKSPACE,
@@ -84,7 +83,7 @@ describe("add from single-repo project", () => {
       );
 
       // ======= check branch directory =======
-      const branchFiles = readdirSync(branchPath);
+      const branchFiles = await readdir(branchPath);
       expect(new Set(branchFiles)).toEqual(new Set(["README.md", ".git"]));
     } catch (error) {
       throw error;
@@ -110,7 +109,7 @@ describe("add from single-repo project", () => {
       );
 
       // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
+      const projectFiles = await readdir(projectPath);
       expect(new Set(projectFiles)).toEqual(
         new Set([
           EPROJECT_FILES.CODE_WORKSPACE,
@@ -121,7 +120,7 @@ describe("add from single-repo project", () => {
       );
 
       // ======= check branch directory =======
-      const branchFiles = readdirSync(branchPath);
+      const branchFiles = await readdir(branchPath);
       expect(new Set(branchFiles)).toEqual(
         new Set(["README.md", "feature-1.md", ".git"])
       );
@@ -147,7 +146,7 @@ describe("add from single-repo project", () => {
       );
 
       // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
+      const projectFiles = await readdir(projectPath);
       expect(new Set(projectFiles)).toEqual(
         new Set([
           EPROJECT_FILES.CODE_WORKSPACE,
@@ -158,7 +157,7 @@ describe("add from single-repo project", () => {
       );
 
       // ======= check branch directory =======
-      const branchFiles = readdirSync(branchPath);
+      const branchFiles = await readdir(branchPath);
       expect(new Set(branchFiles)).toEqual(
         new Set(["README.md", "feature-2.md", ".git"])
       );
@@ -179,11 +178,17 @@ describe("add from multi-repos project", () => {
   const mockGitRepoPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const mockRepoName = mockGitRepoPath.replace(/\.git/, "").split(path.sep).pop()!;
+  const mockRepoName = mockGitRepoPath
+    .replace(/\.git/, "")
+    .split(path.sep)
+    .pop()!;
   const projectPath: string = normalizePath(
     path.resolve(testPath, randomUUID().split("-")[0])
   );
-  const repoPath: string = path.resolve(projectPath, mockRepoName + "#mock");
+  const repoPath: string = path.resolve(
+    projectPath,
+    mockRepoName + path.sep + "mock"
+  );
   const worktrees: string[] = [];
 
   beforeAll(async () => {
@@ -209,132 +214,103 @@ describe("add from multi-repos project", () => {
     );
 
     // ======= check project directory =======
-    const projectFiles = readdirSync(projectPath);
+    const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
-        mockRepoName + "#mock",
+        mockRepoName,
       ])
     );
+
+    // ======= check repodir directory ======
+    const dirFiles = await readdir(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["mock"]));
   });
 
   it("add a worktree based on a new branch", async () => {
-    try {
-      const mockBranch = randomUUID().split("-")[0];
-      worktrees.push(mockBranch);
-      const branchPath = normalizePath(
-        path.resolve(projectPath, mockRepoName + "#" + mockBranch)
-      );
+    const mockBranch = randomUUID().split("-")[0];
+    worktrees.push(mockBranch);
+    const branchPath = normalizePath(
+      path.resolve(projectPath, mockRepoName + path.sep + mockBranch)
+    );
 
-      await run(program, `add --repo ${mockRepoName} ${mockBranch}`, {
-        cwd: projectPath,
-      });
+    await run(program, `add --repo ${mockRepoName} ${mockBranch}`, {
+      cwd: projectPath,
+    });
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(new Set(branches)).toEqual(
-        new Set([...worktrees, "mock", "feature-1", "feature-2"])
-      );
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set([...worktrees, "mock", "feature-1", "feature-2"])
+    );
 
-      // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
-      expect(new Set(projectFiles)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          ...worktrees.map((e) => mockRepoName + "#" + e),
-          mockRepoName + "#mock",
-        ])
-      );
+    // ======= check repodir directory =======
+    const dirFiles =  await readdir(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["mock", ...worktrees]));
 
-      // ======= check branch directory =======
-      const branchFiles = readdirSync(branchPath);
-      expect(new Set(branchFiles)).toEqual(new Set(["README.md", ".git"]));
-    } catch (error) {
-      throw error;
-    }
+    // ======= check branch directory =======
+    const branchFiles =  await readdir(branchPath);
+    expect(new Set(branchFiles)).toEqual(new Set(["README.md", ".git"]));
   });
 
   it("add a worktree based on an existed branch", async () => {
-    try {
-      const existedBranch = "feature-1";
-      worktrees.push(existedBranch);
-      const branchPath = normalizePath(
-        path.resolve(projectPath, mockRepoName + "#" + existedBranch)
-      );
+    const existedBranch = "feature-1";
+    worktrees.push(existedBranch);
+    const branchPath = normalizePath(
+      path.resolve(projectPath, mockRepoName + path.sep + existedBranch)
+    );
 
-      await run(program, `add --repo ${mockRepoName} ${existedBranch}`, {
-        cwd: projectPath,
-      });
+    await run(program, `add --repo ${mockRepoName} ${existedBranch}`, {
+      cwd: projectPath,
+    });
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(new Set(branches)).toEqual(
-        new Set([...worktrees, "mock", "feature-1", "feature-2"])
-      );
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set([...worktrees, "mock", "feature-1", "feature-2"])
+    );
 
-      // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
-      expect(new Set(projectFiles)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          ...worktrees.map((e) => mockRepoName + "#" + e),
-          mockRepoName + "#mock",
-        ])
-      );
+    // ======= check repodir directory =======
+    const dirFiles =  await readdir(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["mock", ...worktrees]));
 
-      // ======= check branch directory =======
-      const branchFiles = readdirSync(branchPath);
-      expect(new Set(branchFiles)).toEqual(
-        new Set(["README.md", "feature-1.md", ".git"])
-      );
-    } catch (error) {
-      throw error;
-    }
+    // ======= check branch directory =======
+    const branchFiles =  await readdir(branchPath);
+    expect(new Set(branchFiles)).toEqual(
+      new Set(["README.md", "feature-1.md", ".git"])
+    );
   });
 
   it("add a worktree based on a new branch which is from an existed branch", async () => {
-    try {
-      const mockBranch = randomUUID().split("-")[0];
-      worktrees.push(mockBranch);
+    const mockBranch = randomUUID().split("-")[0];
+    worktrees.push(mockBranch);
 
-      const branchPath = normalizePath(
-        path.resolve(projectPath, mockRepoName + "#" + mockBranch)
-      );
-      await run(
-        program,
-        `add --base feature-2 --repo ${mockRepoName} ${mockBranch}`,
-        {
-          cwd: projectPath,
-        }
-      );
+    const branchPath = normalizePath(
+      path.resolve(projectPath, mockRepoName + path.sep + mockBranch)
+    );
+    await run(
+      program,
+      `add --base feature-2 --repo ${mockRepoName} ${mockBranch}`,
+      {
+        cwd: projectPath,
+      }
+    );
 
-      // ======= check branches =======
-      const branches = getAllBranches(repoPath);
-      expect(new Set(branches)).toEqual(
-        new Set([...worktrees, "mock", "feature-1", "feature-2"])
-      );
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set([...worktrees, "mock", "feature-1", "feature-2"])
+    );
 
-      // ======= check project directory =======
-      const projectFiles = readdirSync(projectPath);
-      expect(new Set(projectFiles)).toEqual(
-        new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
-          ...worktrees.map((e) => mockRepoName + "#" + e),
-          mockRepoName + "#mock",
-        ])
-      );
+    // ======= check repodir directory =======
+    const dirFiles =  await readdir(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["mock", ...worktrees]));
 
-      // ======= check branch directory =======
-      const branchFiles = readdirSync(branchPath);
-      expect(new Set(branchFiles)).toEqual(
-        new Set(["README.md", "feature-2.md", ".git"])
-      );
-    } catch (error) {
-      throw error;
-    }
+    // ======= check branch directory =======
+    const branchFiles =  await readdir(branchPath);
+    expect(new Set(branchFiles)).toEqual(
+      new Set(["README.md", "feature-2.md", ".git"])
+    );
   });
 });

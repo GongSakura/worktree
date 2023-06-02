@@ -20,7 +20,7 @@ export function initAction(done: CallableFunction) {
       command: {
         options: this.opts(),
         arguments: {
-          directory: path.resolve(this.processedArgs[0]||""),
+          directory: path.resolve(this.processedArgs[0] || ""),
         },
       },
       cwd: process.cwd(),

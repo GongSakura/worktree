@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -11,7 +11,7 @@ import {
 import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
-describe("init", () => {
+describe("create", () => {
   const program: string = normalizePath(path.resolve("build/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
@@ -29,36 +29,53 @@ describe("init", () => {
     });
   });
 
-  it("create an empty project", async () => {
+  it("create an empty project for multi-repos", async () => {
+    const projectPath = normalizePath(
+      path.resolve(testPath, randomUUID().split("-")[0])
+    );
 
-      const projectPath = normalizePath(
-        path.resolve(testPath, randomUUID().split("-")[0])
-      );
+    await mkdir(projectPath);
+    await run(program, `create ${projectPath}`, {
+      cwd: process.cwd(),
+    });
 
-      const projectConfigPath = normalizePath(
-        path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
-      );
+    // ======= check project configuration =======
+    const projectConfig = getProjectFile(
+      projectPath,
+      EPROJECT_FILES.CONFIGURATION
+    );
+    expect(projectConfig).toEqual({
+      repos: [],
+      type: EPROJECT_TYPE.MULTIPLE,
+    });
 
-      await mkdir(projectPath);
-      await run(program, `create ${projectPath}`, {
-        cwd: process.cwd(),
-      });
+    // ======= check files =======
+    const files = readdirSync(projectPath);
+    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
+  });
 
-      // ======= check project configuration =======
-      const projectConfig = getProjectFile(
-        projectPath,
-        EPROJECT_FILES.CONFIGURATION
-      );
-      expect(projectConfig).toEqual({
-        repos: [],
-        type: EPROJECT_TYPE.MULTIPLE,
-      });
+  it("create an empty project for single-repo", async () => {
+    const projectPath = normalizePath(
+      path.resolve(testPath, randomUUID().split("-")[0])
+    );
 
-      // ======= check files =======
-      const files = readdirSync(projectPath);
-      expect(new Set(files)).toEqual(
-        new Set([EPROJECT_FILES.CODE_WORKSPACE, EPROJECT_FILES.CONFIGURATION])
-      );
-  
+    await mkdir(projectPath);
+    await run(program, `create -s ${projectPath}`, {
+      cwd: process.cwd(),
+    });
+
+    // ======= check project configuration =======
+    const projectConfig = getProjectFile(
+      projectPath,
+      EPROJECT_FILES.CONFIGURATION
+    );
+    expect(projectConfig).toEqual({
+      repos: [],
+      type: EPROJECT_TYPE.SINGLE,
+    });
+
+    // ======= check files =======
+    const files = readdirSync(projectPath);
+    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
   });
 });

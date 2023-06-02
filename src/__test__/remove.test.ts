@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -10,7 +10,7 @@ import { readdirSync } from "node:fs";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
-describe("add", () => {
+describe("remove from single-repo project", () => {
   const program: string = normalizePath(path.resolve("build/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
@@ -100,5 +100,106 @@ describe("add", () => {
         "mock",
       ])
     );
+  });
+});
+
+describe("remove from multi-repos project", () => {
+  const program: string = normalizePath(path.resolve("build/index.js"));
+  const testPath: string = normalizePath(
+    path.resolve(
+      path.dirname(process.cwd()),
+      ".test_" + randomUUID().split("-")[0]
+    )
+  );
+  const mockGitRepoPath: string = normalizePath(
+    path.resolve(testPath, randomUUID().split("-")[0])
+  );
+  const mockRepoName = mockGitRepoPath
+    .replace(/\.git/, "")
+    .split(path.sep)
+    .pop()!;
+
+  const projectPath: string = normalizePath(
+    path.resolve(testPath, randomUUID().split("-")[0])
+  );
+  const repoPath: string = path.resolve(
+    projectPath,
+    mockRepoName + path.sep + "mock"
+  );
+
+  beforeAll(async () => {
+    await mkdir(testPath);
+    await mockGitRepository(mockGitRepoPath);
+    await run(program, `create ${projectPath}`);
+    await run(program, `link ${mockGitRepoPath} ${mockRepoName}`, {
+      cwd: projectPath,
+    });
+    await run(program, `add --repo ${mockRepoName} feature-1`, {
+      cwd: projectPath,
+    });
+    await run(program, `add --repo ${mockRepoName} feature-2`, {
+      cwd: projectPath,
+    });
+  });
+
+  afterAll(async () => {
+    await rm(testPath, {
+      recursive: true,
+    });
+  });
+
+  it("setup", async () => {
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set(["mock", "feature-1", "feature-2"])
+    );
+
+    // ======= check project directory =======
+    const projectFiles = readdirSync(projectPath);
+    expect(new Set(projectFiles)).toEqual(
+      new Set([
+        EPROJECT_FILES.CODE_WORKSPACE,
+        EPROJECT_FILES.CONFIGURATION,
+        mockRepoName,
+      ])
+    );
+
+    // ======= check repodir directory =======
+    const dirFiles = readdirSync(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(
+      new Set(["feature-2", "feature-1", "mock"])
+    );
+  });
+
+  it("remove a worktree, except the branch", async () => {
+    await run(program, `remove --repo ${mockRepoName} feature-1`, {
+      cwd: projectPath,
+    });
+
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(
+      new Set(["mock", "feature-1", "feature-2"])
+    );
+
+    // ======= check repodir directory =======
+    
+    const dirFiles = readdirSync(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["feature-2", "mock"]));
+  });
+
+  it("remove a worktree and its branch", async () => {
+    await run(program, `remove -f --repo ${mockRepoName} feature-2`, {
+      cwd: projectPath,
+    });
+
+    // ======= check branches =======
+    const branches = getAllBranches(repoPath);
+    expect(new Set(branches)).toEqual(new Set(["mock", "feature-1"]));
+
+    // ======= check repodir directory =======
+    const dirFiles = readdirSync(path.dirname(repoPath));
+    expect(new Set(dirFiles)).toEqual(new Set(["mock"]));
   });
 });
