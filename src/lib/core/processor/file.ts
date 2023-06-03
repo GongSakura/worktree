@@ -94,7 +94,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
           // FIXME: have not decided to use hardlink or directly move the linked worktrees
           // outside the current work directory
           newPath.startsWith(parentPath)
-            ? moveSync(oldPath, newPath)
+            ? moveSync(oldPath, newPath,{overwrite:true})
             : linkSync(oldPath, newPath);
         } catch (error) {
           break;
@@ -130,7 +130,8 @@ function initDirectory(context: IContext, next: CallableFunction) {
           if (!IGNORE_FILES.has(file) && !excludedPaths.has(filePath)) {
             moveSync(
               path.resolve(parentPath, file),
-              path.resolve(newPath, file)
+              path.resolve(newPath, file),
+              {overwrite:true}
             );
           }
         });
@@ -155,13 +156,12 @@ function initDirectory(context: IContext, next: CallableFunction) {
 
 function updateDirectory(context: IContext, next: CallableFunction) {
   let unknownRepo: IRepo | undefined = undefined;
-  console.info(`context.reposMap:`,context.reposMap)
+  const renameTodoMap = new Map();
   for (const [key, repo] of Object.entries(context.reposMap!)) {
     if (repo.name === UNKNOWN_REPO) {
       unknownRepo = repo;
       delete context.reposMap![UNKNOWN_REPO];
     } else {
-      const renameTodoMap = new Map();
       const newWorktrees: string[][] = [];
 
       repo.worktrees?.forEach((worktree) => {
@@ -186,21 +186,21 @@ function updateDirectory(context: IContext, next: CallableFunction) {
         }
       });
 
-      while (renameTodoMap.size) {
-        for (const [oldPath, newPath] of renameTodoMap.entries()) {
-          if (renameTodoMap.has(newPath)) {
-            continue;
-          }
-          try {
-            moveSync(oldPath, newPath);
-            renameTodoMap.delete(oldPath);
-          } catch {}
-        }
-      }
-
       repo.worktrees = newWorktrees;
       delete context.reposMap![key];
       context.reposMap![repo.path!] = repo;
+    }
+  }
+ 
+  while (renameTodoMap.size) {
+    for (const [oldPath, newPath] of renameTodoMap.entries()) {
+      if (renameTodoMap.has(newPath)) {
+        continue;
+      }
+      try {
+        moveSync(oldPath, newPath, { overwrite: true });
+        renameTodoMap.delete(oldPath);
+      } catch {}
     }
   }
 
@@ -233,14 +233,14 @@ function updateDirectory(context: IContext, next: CallableFunction) {
         }
       }
     });
-
+    console.info(`unknown:`, renameTodoMap);
     while (renameTodoMap.size) {
       for (const [oldPath, newPath] of renameTodoMap.entries()) {
         if (renameTodoMap.has(newPath)) {
           continue;
         }
         try {
-          moveSync(oldPath, newPath);
+          moveSync(oldPath, newPath,   {overwrite:true});
           renameTodoMap.delete(oldPath);
         } catch {}
       }
@@ -258,7 +258,7 @@ function linkDirectory(context: IContext, next: CallableFunction) {
     next();
   } else {
     let linkPath = path.resolve(context.command.arguments.repoURL);
-  
+
     if (checkIsWorktree(linkPath)) {
       const worktree = getWorktrees(linkPath)[0];
 
