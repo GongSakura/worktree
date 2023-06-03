@@ -48,7 +48,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
     const gitDirDirname = normalizePath(path.dirname(repo.gitDir!));
     const oldParentPath = normalizePath(context.projectPath!);
     const parentPath = checkIsDirectChildPath(
-      gitDirPath.replace(/\/.git$/, ""),
+      path.resolve(gitDirPath.replace(/\.git$/, "")),
       oldParentPath
     )
       ? gitDirDirname
@@ -175,8 +175,6 @@ function updateDirectory(context: IContext, next: CallableFunction) {
               : repo.name + path.sep + branch
           }`
         );
-        console.info(`repo.path:`, repo.path);
-        console.info(`oldPath:`, oldPath);
         if (repo.path === oldPath) {
           repo.path = newPath;
         } else {
@@ -214,7 +212,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
       const oldPath = e[0];
       if (checkIsWorktree(oldPath)) {
         const gitDirPath = normalizePath(getGitDir(oldPath));
-        const repoPath = gitDirPath.replace(/\/.git.*/, "");
+        const repoPath = path.resolve(gitDirPath.replace(/\.git.*/, ""));
         if (context?.reposMap?.hasOwnProperty(repoPath)) {
           const branch = getCurrentBranch(oldPath);
           if (oldPath.endsWith(path.normalize(branch))) {
