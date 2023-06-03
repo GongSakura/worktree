@@ -212,6 +212,7 @@ To remove a git repository from the current directory.
 - Description of "wt.config.json"
 - Extra features of "wt.config.json"
 
+
 <br/>
 
 ## Welcome to contribute and raise issues
