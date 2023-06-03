@@ -98,7 +98,7 @@ function linkRepository(context: IContext, next: CallableFunction) {
           ? `${repoName}${path.sep}${currentBranch}`
           : currentBranch
       );
-      moveSync(repoPath, realRepoPath);
+      moveSync(repoPath, realRepoPath, { overwrite: true });
       repoPath = realRepoPath;
     }
 
