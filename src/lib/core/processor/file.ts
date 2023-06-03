@@ -155,6 +155,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
 
 function updateDirectory(context: IContext, next: CallableFunction) {
   let unknownRepo: IRepo | undefined = undefined;
+  console.info(`context.reposMap:`,context.reposMap)
   for (const [key, repo] of Object.entries(context.reposMap!)) {
     if (repo.name === UNKNOWN_REPO) {
       unknownRepo = repo;

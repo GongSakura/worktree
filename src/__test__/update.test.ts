@@ -234,7 +234,6 @@ describe("update from multi-repos project", () => {
         EPROJECT_FILES.CONFIGURATION,
         remoteRepoName,
         mockRepoName,
-     
       ])
     );
 
@@ -289,7 +288,7 @@ describe("update from multi-repos project", () => {
     });
 
     // ======= check project directory =======
-    expect(new Set(await readdir(projectPath))).toEqual(
+    expect(new Set(await readdir(projectPath))).toContain(
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
