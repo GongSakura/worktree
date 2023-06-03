@@ -157,6 +157,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
 function updateDirectory(context: IContext, next: CallableFunction) {
   let unknownRepo: IRepo | undefined = undefined;
   const renameTodoMap = new Map();
+
   for (const [key, repo] of Object.entries(context.reposMap!)) {
     if (repo.name === UNKNOWN_REPO) {
       unknownRepo = repo;
@@ -174,7 +175,8 @@ function updateDirectory(context: IContext, next: CallableFunction) {
               : repo.name + path.sep + branch
           }`
         );
-
+        console.info(`repo.path:`, repo.path);
+        console.info(`oldPath:`, oldPath);
         if (repo.path === oldPath) {
           repo.path = newPath;
         } else {
@@ -233,7 +235,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
         }
       }
     });
-    console.info(`unknown:`, renameTodoMap);
+
     while (renameTodoMap.size) {
       for (const [oldPath, newPath] of renameTodoMap.entries()) {
         if (renameTodoMap.has(newPath)) {
