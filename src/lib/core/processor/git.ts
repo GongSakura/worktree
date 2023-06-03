@@ -200,7 +200,7 @@ function repairWorktree(context: IContext, next: CallableFunction) {
     const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
       return `${prev} ${cur[0]}`;
     }, "");
-
+    console.info(`repo:`, repo);
     execSync("git worktree repair " + linkedWorktreePaths, {
       cwd: repo.path,
       stdio: "pipe",
