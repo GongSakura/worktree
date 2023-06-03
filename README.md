@@ -26,7 +26,9 @@ One window, all projects!
 <br/>
 
 ## Install
+
 node version >=14.18.0 (Due to the prefix "node:" in internal modules)
+
 ```sh
 npm i -g @kanamara/worktree
 ```
@@ -37,61 +39,72 @@ npm i -g @kanamara/worktree
 
 ### Scenario: **"Single repository, multiple branches"**
 
-- To create a project to manage multiple branches of a repository. There are two ways:
+**Step 1.** To create a directory to manage multiple branches of a repository. There are two ways:
 
-  ```bash
-  # To create the project from a local git repository.
-  # If the directory is not a git repository, it will execute "git init <directory>"
-  wt init <directory>
+```bash
+# The first way: to create a directory from a local git repository.
+wt init <directory>
 
-  # or:
+# e.g.
+# repository path: "/path/to/repo"
+wt init /path/to/repo
+```
 
-  # To create the project from a remote git repository.
-  wt clone <repository> <directory>
-  ```
+```bash
+# The second way: to create a directory from a remote git repository.
+wt clone <repository> <directory>
+
+# e.g.
+# repository url: "https://github.com/repo.git"
+# directory: "/path/to/project"
+wt clone https://github.com/repo.git /path/to/project
+```
 
 <br/>
 
-- To add a worktree
+**Step 2.** To add a worktree
 
-  ```bash
-  # To add a new worktree, and checkout the "dev" branch;
-  # If the branch "dev" doesn't exist, it will create a new one base on HEAD(current commit).
-  wt add dev
-
-  # or:
-
-  # Suppose it has some remote branches in the repository
-  git branch -a
-  remotes/origin/feature-1
-  remotes/origin/feature-2
-  remotes/origin/feature-3
-
-  # To add a worktree "my-dev" based on the "feature-2" branch
-  wt add --base remotes/origin/feature-2 my-dev
-  ```
+```bash
+# To add a new worktree, and checkout the "dev" branch;
+# If the branch "dev" doesn't exist, it will create a new one base on HEAD(current commit).
+wt add dev
+```
 
   <br/>
 
 ### Scenario: **"Multiple repositories, multiple branches"**
 
-- To create a project to manage multiple branches from multiple repositories.
+**Step 1.** To create a directory to manage multiple branches from multiple repositories.
 
-  ```bash
-  # Create an empty project to the path:"/path/to/my-project"
-  wt create /path/to/my-project
-
-  # Link a git repository from a local path:"/local-path/to/git-repository", and name after "my-frontend"
-  wt link /local-path/to/git-repository my-frontend
-  ```
+```bash
+# Create an empty directory in the path:"/path/to/project"
+wt create /path/to/project
+```
 
 <br/>
 
-- To add a worktree
-  ```bash
-  # add a worktree for the repo "my-frontend", and checkout the "dev" branch.
-  wt add --repo my-frontend dev
-  ```
+**Step 2.** Link a repository to the directory
+
+```bash
+# Link a local git repository from "/path/to/repo", and name the repository as "foo"
+wt link /path/to/repo foo
+
+# Then, you will see some changes in the "wt.config.json" file.
+# {
+#  repos:[{
+#       path:"/path/to/repo"
+#       name:"foo"
+#      }],
+#  type:"multiple"
+# }
+```
+
+**Step 3.** To add a worktree
+
+```bash
+# add a worktree for the repo "foo", and checkout the "dev" branch.
+wt add --repo foo dev
+```
 
 <br/>
 
@@ -99,7 +112,7 @@ npm i -g @kanamara/worktree
 
 ### 1. "wt init \<directory\>"
 
-To initialize a worktree project that manages all git worktrees. If the directory is not a git repository, it will create a new one via **"git init \<directory\>"**
+To initialize a directory from local repository, which manages all git worktrees. If the directory is not a git repository, it will help you to create a new one via **"git init \<directory\>"**
 
 - **Only for "single-repo" projects**
 
@@ -107,7 +120,7 @@ To initialize a worktree project that manages all git worktrees. If the director
 
 ### 2. "wt clone \<repo-url\> \<directory\>"
 
-To clone a git repository and initialize a worktree project.
+To clone a git repository to the directory and initialize it.
 
 - **Only for "single-repo" projects**
 
@@ -117,7 +130,7 @@ To clone a git repository and initialize a worktree project.
 
 To add a worktree based on \<branch-name\>.
 
-- If the \<branch-name\> is not specified, then it give you a **prompt**.
+- If the \<branch-name\> is not specified, then it gives you a **prompt**.
 - If the \<branch-name\> doesn't exist in git branches, it will create a new branch based on HEAD
 - If you want to create a worktree with a new branch based on a commit or branch, use **"wt add --base \<commit-hash\> \<branch-name\>"**
 
@@ -127,34 +140,31 @@ To add a worktree based on \<branch-name\>.
 
 To remove a worktree based on the \<branch-name\>.
 
-- If the \<branch-name\> is not specified, then it give you a **prompt**.
+- If the \<branch-name\> is not specified, then it gives you a **prompt**.
 - If you want to remove the branch at the same time, use **"wt rm -f \<branch-name\>"**.
 
 <br/>
 
 ### 5. "wt create \<directory\>"
 
-To create an **empty** worktree project for users to parallelly develop multiple branches in multiple repositories.
+To create an **empty** directory for users to parallelly develop multiple branches of multiple repositories.
 
-- To use **"wt link"** to add git repositories to the project.
-- **Only for "multi-repos" projects**
+- To use **"wt link"** to add repositories to the directory.
+- To use **--single** option to create one for single repository
 
 <br/>
 
 ### 6. "wt link \<repo-url\> \<repo-name\>"
 
-To add a git repository to the project. The \<repo-url\> can be a **directory path**, and the \<repo-name\> will be used as the name(id) of the repository.
-
-- **Only for "multi-repos" projects**
+To add a git repository to the directory. The \<repo-url\> can be a **directory path**, and the \<repo-name\> will be used as the name(id) of the repository.
 
 <br/>
 
 ### 7. "wt unlink \<repo-name\>"
 
-To remove a git repository from the current project.
+To remove a git repository from the current directory.
 
-- If the \<repo-name\> is not specified, then it give you a **prompt**.
-- **Only for "multi-repos" projects**
+- If the \<repo-name\> is not specified, then it gives you a **prompt**.
 
 <br/>
 
@@ -171,7 +181,7 @@ To remove a git repository from the current project.
 - For convenience, worktree directories inside a **single-repo** project are named after the \<branch-name\>
 
   ```text
-  project(single-repo)/
+  project/
   ├─ <branch-name>/
   ├─ <branch-name>/
   ├─ ...
@@ -180,13 +190,16 @@ To remove a git repository from the current project.
   ├─ wt.code-workspace
   ```
 
-- If worktree directories are inside a **multi-repos** project, then named after \<repo-name\>#\<branch-name\>
+- If worktree directories are inside a **multi-repos** project, then it will look like this:
   ```text
-  project(multi-repos)/
-  ├─ <repo-name>#<branch-name>/
-  ├─ <repo-name>#<branch-name>/
+  project/
+  ├─ <repo-name>/
+        ├─ <branch-name>/
+        ├─ <branch-name>/
   ├─ ...
-  ├─ <repo-name>#<branch-name>/
+  ├─ <repo-name>/
+        ├─ <branch-name>/
+        ├─ <branch-name>/
   ├─ wt.config.json
   ├─ wt.code-workspace
   ```
@@ -194,6 +207,7 @@ To remove a git repository from the current project.
 <br/>
 
 ## Future todo
+
 - More informative and elegant error processor
 - Description of "wt.config.json"
 - Extra features of "wt.config.json"
@@ -201,6 +215,7 @@ To remove a git repository from the current project.
 <br/>
 
 ## Welcome to contribute and raise issues
+
 https://github.com/GongSakura/worktree
 
 <br/>
