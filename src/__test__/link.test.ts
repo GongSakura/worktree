@@ -14,7 +14,7 @@ import { readdirSync } from "node:fs";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
-describe.only("link from a single-repo project", () => {
+describe("link from a single-repo project", () => {
   const program: string = normalizePath(path.resolve("build/index.js"));
   const testPath: string = normalizePath(
     path.resolve(

@@ -154,7 +154,7 @@ describe("update from signle-repo project", () => {
   });
 });
 
-describe.only("update from multi-repos project", () => {
+describe("update from multi-repos project", () => {
   const program: string = normalizePath(path.resolve("build/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
