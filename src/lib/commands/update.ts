@@ -31,9 +31,9 @@ export function updateAction(done: CallableFunction) {
       CheckProcessor.checkUpdatePrerequisite,
       GitProcessor.inspectRepository,
       FileProcessor.updateDirectory,
-      GitProcessor.repairWorktree,
-      FileProcessor.writeProjectCodeWorkspace,
-      FileProcessor.writeProjectConfiguration,
+      // GitProcessor.repairWorktree,
+      // FileProcessor.writeProjectCodeWorkspace,
+      // FileProcessor.writeProjectConfiguration,
     ];
     const executer = new Executer(processes);
     executer.run(context, done);

@@ -288,7 +288,7 @@ describe("update from multi-repos project", () => {
     });
 
     // ======= check project directory =======
-    expect(new Set(await readdir(projectPath))).toContain(
+    expect(new Set(await readdir(projectPath))).toEqual(
       new Set([
         EPROJECT_FILES.CODE_WORKSPACE,
         EPROJECT_FILES.CONFIGURATION,
