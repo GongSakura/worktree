@@ -26,7 +26,10 @@ import {
   selectWorktreeQuestion,
 } from "../../utils/prompts";
 import { ErrorProcessor } from "../index";
-import { ERROR_LINK_TO_SINGLE } from "../../utils/constants";
+import {
+  ERROR_LINK_DUPLICATE,
+  ERROR_LINK_TO_SINGLE,
+} from "../../utils/constants";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
   const repoPath = normalizePath(context.command.arguments.directory);
@@ -109,7 +112,6 @@ function checkAddPrerequisite(context: IContext, next: CallableFunction) {
           return select<string>(selectBranchQuestion(uncheckoutBranches));
         })
         .then((answer) => {
-          
           context.command.arguments.branchName = answer;
           next();
         })
@@ -386,12 +388,14 @@ function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
 
   context.projectType = projectConfig.type;
   context.repos = projectConfig.repos;
+
   if (context.repos.length && context.projectType === EPROJECT_TYPE.SINGLE) {
     throw new Error(ERROR_LINK_TO_SINGLE);
   }
+
   context.repos.forEach((repo: IRepo) => {
     if (repo.name === context.command.arguments.repoName) {
-      throw new Error(`The repo name: ${repo.name} is exited`);
+      throw new Error(ERROR_LINK_DUPLICATE(repo.name));
     }
     if (repo.path) {
       repo.worktrees = getWorktrees(repo.path).reverse();

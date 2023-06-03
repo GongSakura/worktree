@@ -126,6 +126,7 @@ function inspectRepository(context: IContext, next: CallableFunction) {
 function configWorktree(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
     const configPath = context.projectConfigPath;
+
     execSync("git config --local wt.config.path " + configPath, {
       cwd: repo.path,
       stdio: "pipe",
@@ -170,14 +171,16 @@ function addWorktree(context: IContext, next: CallableFunction) {
 
 function removeWorktree(context: IContext, next: CallableFunction) {
   const [removeWorktreePath, , branchName] = context.removeWorktrees![0];
-
   const mainWorktreePath = context.selectedRepo!.path!;
   if (removeWorktreePath) {
     execSync("git worktree remove -f " + removeWorktreePath, {
       cwd: context.selectedRepo!.path!,
       stdio: "pipe",
     });
-
+    execSync("git worktree prune ", {
+      cwd: context.selectedRepo!.path!,
+      stdio: "pipe",
+    });
     const isDeleteBranch = context.command.options?.force;
     if (isDeleteBranch) {
       execSync("git branch -D " + branchName, {
@@ -198,6 +201,10 @@ function repairWorktree(context: IContext, next: CallableFunction) {
     }, "");
 
     execSync("git worktree repair " + linkedWorktreePaths, {
+      cwd: repo.path,
+      stdio: "pipe",
+    });
+    execSync("git worktree prune ", {
       cwd: repo.path,
       stdio: "pipe",
     });

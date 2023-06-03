@@ -154,8 +154,6 @@ function initDirectory(context: IContext, next: CallableFunction) {
 }
 
 function updateDirectory(context: IContext, next: CallableFunction) {
-  
-
   let unknownRepo: IRepo | undefined = undefined;
   for (const [key, repo] of Object.entries(context.reposMap!)) {
     if (repo.name === UNKNOWN_REPO) {
@@ -175,7 +173,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
               : repo.name + path.sep + branch
           }`
         );
-       
+
         if (repo.path === oldPath) {
           repo.path = newPath;
         } else {
@@ -186,7 +184,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
           renameTodoMap.set(oldPath, newPath);
         }
       });
-      console.info(`renameTodoMap:`,renameTodoMap)
+
       while (renameTodoMap.size) {
         for (const [oldPath, newPath] of renameTodoMap.entries()) {
           if (renameTodoMap.has(newPath)) {
@@ -219,24 +217,22 @@ function updateDirectory(context: IContext, next: CallableFunction) {
           if (oldPath.endsWith(path.normalize(branch))) {
             return;
           }
-         
+
           const newPath = path.resolve(
             context.projectPath!,
             `${
               context.projectType === EPROJECT_TYPE.SINGLE
                 ? branch
-                : (context.reposMap[repoPath].name! + path.sep + branch)
+                : context.reposMap[repoPath].name! + path.sep + branch
             }`
           );
-          console.info(`branch:`,branch)
-          console.info(`oldPath:`,oldPath)
-          console.info(`newPath:`,newPath)
+
           context.reposMap[repoPath].worktrees?.push([newPath, "", branch]);
           renameTodoMap.set(oldPath, newPath);
         }
       }
     });
-    console.info(`renameTodoMap:`,renameTodoMap)
+
     while (renameTodoMap.size) {
       for (const [oldPath, newPath] of renameTodoMap.entries()) {
         if (renameTodoMap.has(newPath)) {
@@ -261,7 +257,7 @@ function linkDirectory(context: IContext, next: CallableFunction) {
     next();
   } else {
     let linkPath = path.resolve(context.command.arguments.repoURL);
-
+  
     if (checkIsWorktree(linkPath)) {
       const worktree = getWorktrees(linkPath)[0];
 
@@ -275,7 +271,9 @@ function linkDirectory(context: IContext, next: CallableFunction) {
       name: context.command.arguments.repoName,
       path: path.resolve(
         context.projectPath!,
-        `${context.command.arguments.repoName}${path.sep}${currentBranch}`
+        context.projectType === EPROJECT_TYPE.SINGLE
+          ? currentBranch
+          : `${context.command.arguments.repoName}${path.sep}${currentBranch}`
       ),
     };
 
