@@ -195,7 +195,7 @@ function removeWorktree(context: IContext, next: CallableFunction) {
 }
 function repairWorktree(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
-    console.info(`repo:`, repo);
+
     const worktrees = [...repo.worktrees!];
     const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
       return `${prev} ${cur[0]}`;
@@ -209,6 +209,7 @@ function repairWorktree(context: IContext, next: CallableFunction) {
       cwd: repo.path,
       stdio: "pipe",
     });
+    console.info(`repo:`, repo);
     repo.worktrees = getWorktrees(repo.path!).reverse();
   });
   next();
