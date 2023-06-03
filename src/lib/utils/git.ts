@@ -217,8 +217,10 @@ export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
     if (checkIsDir(_path)) {
       if (checkIsWorktree(_path)) {
         const gitDirPath = normalizePath(getGitDir(_path));
-        const idx = gitDirPath.lastIndexOf("/.git/worktrees");
-        const repoPath = gitDirPath.replace(/\/.git.*/, "");
+        const idx = gitDirPath.lastIndexOf(
+          `${path.sep}.git${path.sep}worktrees`
+        );
+        const repoPath = path.resolve(gitDirPath.replace(/\.git.*/, ""));
         if (idx !== -1) {
           const branch = getCurrentBranch(_path);
 
