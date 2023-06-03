@@ -194,8 +194,8 @@ function removeWorktree(context: IContext, next: CallableFunction) {
   next();
 }
 function repairWorktree(context: IContext, next: CallableFunction) {
-  console.info(`context.repos:`,context.repos)
   context.repos?.forEach((repo: IRepo) => {
+    console.info(`repo:`, repo);
     const worktrees = [...repo.worktrees!];
     const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
       return `${prev} ${cur[0]}`;
