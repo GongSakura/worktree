@@ -70,6 +70,7 @@ function initRepository(context: IContext, next: CallableFunction) {
 
   next();
 }
+
 function linkRepository(context: IContext, next: CallableFunction) {
   if (
     path.isAbsolute(context.command.arguments.repoURL) ||
@@ -193,9 +194,9 @@ function removeWorktree(context: IContext, next: CallableFunction) {
   context.selectedRepo!.worktrees = getWorktrees(mainWorktreePath).reverse();
   next();
 }
+
 function repairWorktree(context: IContext, next: CallableFunction) {
   context.repos?.forEach((repo: IRepo) => {
-
     const worktrees = [...repo.worktrees!];
     const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
       return `${prev} ${cur[0]}`;
@@ -214,6 +215,7 @@ function repairWorktree(context: IContext, next: CallableFunction) {
   });
   next();
 }
+
 export default {
   cloneRepository,
   initRepository,
