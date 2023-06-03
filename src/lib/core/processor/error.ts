@@ -10,7 +10,8 @@ function captureError(context: IContext, next: CallableFunction) {
     process.stderr.write(`
   ${chalk.redBright.bold("✘ ERROR:")}
 
-    ${chalk.bold("::")} ${error.message}\n\n`);
+    ${chalk.bold("::")} ${error.message}\n\n ${error.message};`);
+  
   }
 }
 

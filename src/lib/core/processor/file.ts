@@ -94,7 +94,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
           // FIXME: have not decided to use hardlink or directly move the linked worktrees
           // outside the current work directory
           newPath.startsWith(parentPath)
-            ? moveSync(oldPath, newPath,{overwrite:true})
+            ? moveSync(oldPath, newPath, { overwrite: true })
             : linkSync(oldPath, newPath);
         } catch (error) {
           break;
@@ -131,19 +131,19 @@ function initDirectory(context: IContext, next: CallableFunction) {
             moveSync(
               path.resolve(parentPath, file),
               path.resolve(newPath, file),
-              {overwrite:true}
+              { overwrite: true }
             );
           }
         });
 
-        moveSync(gitDirPath, newPath + "/.git");
+        moveSync(gitDirPath, path.resolve(newPath, ".git"));
 
         // remove outside "/.git"
         if (isGitDirSibling || isGitDirOutside) {
-          rmSync(parentPath + "/.git");
+          rmSync(path.resolve(parentPath, ".git"));
         }
 
-        repo.gitDir = newPath + "/.git";
+        repo.gitDir = path.resolve(newPath, ".git");
         repo.path = newPath;
       }
     }
@@ -191,7 +191,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
       context.reposMap![repo.path!] = repo;
     }
   }
- 
+
   while (renameTodoMap.size) {
     for (const [oldPath, newPath] of renameTodoMap.entries()) {
       if (renameTodoMap.has(newPath)) {
@@ -240,7 +240,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
           continue;
         }
         try {
-          moveSync(oldPath, newPath,   {overwrite:true});
+          moveSync(oldPath, newPath, { overwrite: true });
           renameTodoMap.delete(oldPath);
         } catch {}
       }
