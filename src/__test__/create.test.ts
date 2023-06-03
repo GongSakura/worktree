@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { run } from "./utils";
+import { mockGitRepository, run } from "./utils";
 import {
   checkIsPathCaseSensitive,
   getProjectFile,
@@ -11,6 +11,7 @@ import {
 import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
+
 describe("create", () => {
   const program: string = normalizePath(path.resolve("build/index.js"));
   const testPath: string = normalizePath(
@@ -23,6 +24,7 @@ describe("create", () => {
   beforeAll(async () => {
     await mkdir(testPath);
   });
+
   afterAll(async () => {
     await rm(testPath, {
       recursive: true,
@@ -35,6 +37,7 @@ describe("create", () => {
     );
 
     await mkdir(projectPath);
+
     await run(program, `create ${projectPath}`, {
       cwd: process.cwd(),
     });
