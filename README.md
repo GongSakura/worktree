@@ -37,7 +37,7 @@ npm i -g @kanamara/worktree
 
 ## Quick Start
 
-### Scenario: **"Single repository, multiple branches"**
+### Scenario: **"Manage multiple branches of a repository"**
 
 **Step 1.** To create a directory to manage multiple branches of a repository. There are two ways:
 
@@ -72,7 +72,7 @@ wt add dev
 
   <br/>
 
-### Scenario: **"Multiple repositories, multiple branches"**
+### Scenario: **"Manage multiple branches of multiple repositories"**
 
 **Step 1.** To create a directory to manage multiple branches from multiple repositories.
 
@@ -114,7 +114,7 @@ wt add --repo foo dev
 
 To initialize a directory from local repository, which manages all git worktrees. If the directory is not a git repository, it will help you to create a new one via **"git init \<directory\>"**
 
-- **Only for "single-repo" projects**
+- "wt init" is equivalent to "wt create --single && wt link" 
 
 <br/>
 
@@ -122,7 +122,8 @@ To initialize a directory from local repository, which manages all git worktrees
 
 To clone a git repository to the directory and initialize it.
 
-- **Only for "single-repo" projects**
+- "wt clone" is also equivalent to "wt create --single && wt link" 
+
 
 <br/>
 
@@ -178,7 +179,7 @@ To remove a git repository from the current directory.
 
 - This tool will generate some folders and configuration files to help you automatically manage your worktrees, please do not change the name of these files and folders. If you accidentally changed it, use "wt update" to repair it.
 
-- For convenience, worktree directories inside a **single-repo** project are named after the \<branch-name\>
+- For convenience, worktree directories inside a **single-repo** directory are named after the \<branch-name\>
 
   ```text
   project/
@@ -190,7 +191,7 @@ To remove a git repository from the current directory.
   ├─ wt.code-workspace
   ```
 
-- If worktree directories are inside a **multi-repos** project, then it will look like this:
+- If worktree directories are inside a **multi-repos** directory, then it will look like this:
   ```text
   project/
   ├─ <repo-name>/
