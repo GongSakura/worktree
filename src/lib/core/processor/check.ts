@@ -1,16 +1,11 @@
 import * as path from "node:path";
 import {
   checkIsGitDir,
-  checkIsWorktree,
-  getCurrentBranch,
-  getGitConfiguration,
-  getGitDir,
   getUncheckoutBranches,
   getWorktrees,
 } from "../../utils/git";
 import { getConfigs, getProjectFile, normalizePath } from "../../utils/file";
 import {
-  IMultiRepoWorktreePaths,
   EPROJECT_FILES,
   EPROJECT_TYPE,
   IProjectConfig,
@@ -18,7 +13,7 @@ import {
   IContext,
   IRepo,
 } from "../../utils/types";
-import { mkdirSync, readdirSync, statSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import select from "@inquirer/select";
 import {
   selectBranchQuestion,

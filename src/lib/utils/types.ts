@@ -20,6 +20,7 @@ export interface IContext {
   codeWorkspace?: ICodeWorkSpaceConfig;
   [k: string]: any;
 }
+
 export interface IWorkspace {
   path?: string;
   name?: string;
@@ -67,5 +68,4 @@ export enum EPROJECT_TYPE {
 export enum EGIT_CONFIGURATION {
   PATH = "wt.config.path",
   REPONAME = "wt.config.reponame",
-  ALIAS = "wt.config.alias",
 }

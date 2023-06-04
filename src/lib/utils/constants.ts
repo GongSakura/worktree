@@ -3,7 +3,7 @@ import chalk from "chalk";
 export const DEFAULT_BRANCH = "master";
 
 export const DEFAULT_DONE_MESSAGE = `  ${chalk.greenBright.bold(`✔ DONE`)}\n`;
-
+export const DEFAULT_ERROR_MESSAGE = `  ${chalk.redBright.bold("✘ ERROR:")}\n`;
 export const REPO_PLACEHOLDER = "<repo>";
 export const BRANCH_PLACEHOLDER = "<branch>";
 export const UNKNOWN_REPO = "unknown";
