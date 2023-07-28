@@ -7,7 +7,7 @@ import { createCommand, createAction } from "./create";
 import { linkCommand, linkAction } from "./link";
 import { unlinkAction, unlinkCommand } from "./unlink";
 
-export const CommandCreator = {
+export const CommandFactory = {
   add: addCommand,
   clone: cloneCommand,
   create: createCommand,
@@ -18,7 +18,7 @@ export const CommandCreator = {
   update: updateCommand,
 };
 
-export const ActionCreator = {
+export const ActionFactory = {
   add: addAction,
   clone: cloneAction,
   create: createAction,

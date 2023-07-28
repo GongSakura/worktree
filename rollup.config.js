@@ -19,6 +19,9 @@ module.exports = {
     }),
     typescript(),
     {
+      buildStart(option){
+        // console.info(`option:`,option)
+      },
       name: "shebang",
       generateBundle(_, bundle) {
         bundle["index.js"].code =

@@ -45,10 +45,10 @@ export function cloneCommand(action: (...args: any[]) => void) {
   return new Command()
     .command("clone")
     .summary(
-      `Create a "single-repo" worktree project and clone a git repository.  \n\n`
+      `Create a "single-repo" worktree project via cloning a git repository.  \n\n`
     )
     .description(
-      `Create a "single-repo" worktree project and clone a git repository.  \n\n`
+      `Create a "single-repo" worktree project via cloning a git repository.  \n\n`
     )
     .argument("<repo-url>", "(required) The url of a git repository.\n\n")
     .argument(

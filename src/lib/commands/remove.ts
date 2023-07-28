@@ -37,7 +37,6 @@ export function removeAction(done: CallableFunction) {
 export function removeCommand(action: (...args: any[]) => void) {
   return new Command()
     .command("remove")
-    .aliases(["rm"])
     .summary("Remove a linked worktree.\n\n")
     .description(`To remove a linked worktree from the worktree project.\n\n`)
     .option(

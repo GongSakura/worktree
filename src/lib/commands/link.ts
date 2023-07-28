@@ -43,10 +43,9 @@ export function linkAction(done: CallableFunction) {
 export function linkCommand (action: (...args: any[]) => void){
   return new Command()
     .name("link")
-    .alias("ln")
-    .summary("Link a Git repo into current project.\n\n")
+    .summary("Link a Git repository into current project.\n\n")
     .description(
-      "To link a Git repo into current project, <repo-url> can be a remote url or the local path.\n\n"
+      "To link a Git repository into current project, <repo-url> can be remote URLs or local paths.\n\n"
     )
     .argument(
       "<repo-url>",

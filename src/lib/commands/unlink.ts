@@ -39,7 +39,6 @@ export function unlinkAction(done: CallableFunction) {
 export function unlinkCommand(action: (...args: any[]) => void) {
   return new Command()
     .name("unlink")
-    .alias("ul")
     .summary("Remove a Git repository from current project.\n\n")
     .description("To remove a Git repository from current project.\n\n")
     .argument(

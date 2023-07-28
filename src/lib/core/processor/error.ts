@@ -1,5 +1,3 @@
-// import chalk from "chalk";
-import chalk from "chalk";
 import { IContext } from "../../utils/types";
 import { DEFAULT_ERROR_MESSAGE } from "../../utils/constants";
 

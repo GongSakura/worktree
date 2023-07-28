@@ -22,8 +22,14 @@ import {
 } from "../../utils/prompts";
 import { ErrorProcessor } from "../index";
 import {
+  ERROR_CONFIG_MISSING_TYPE,
+  ERROR_CREATE_IN_DIR,
+  ERROR_CREATE_IN_GITDIR,
+  ERROR_EMPTY_REPOS,
+  ERROR_EXECUTE_OUTSIDE,
   ERROR_LINK_DUPLICATE,
   ERROR_LINK_TO_SINGLE,
+  ERROR_MISSING_CONFIG,
 } from "../../utils/constants";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
@@ -340,7 +346,7 @@ function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
 function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
   const repoPath = context.command.arguments.directory;
   if (checkIsGitDir(repoPath)) {
-    throw new Error(`Cannot create inside the ".git" folder`);
+    throw new Error(ERROR_CREATE_IN_GITDIR);
   }
 
   const [projectConfig, gitConfig] = getConfigs(repoPath);
@@ -352,9 +358,7 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
   try {
     const stat = statSync(repoPath);
     if (stat.isFile()) {
-      throw new Error(
-        `Cannot create the project inside a file path: ${repoPath}`
-      );
+      throw ERROR_CREATE_IN_DIR(repoPath);
     }
   } catch {
     mkdirSync(repoPath);
@@ -417,7 +421,7 @@ function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
     next();
   } else {
     if (!context.repos?.length) {
-      throw new Error("No linked repository");
+      throw new Error(ERROR_EMPTY_REPOS);
     }
     select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
       .then((answer) => {
@@ -436,7 +440,7 @@ function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): void {
   let [projectConfig, gitConfig] = configs;
 
   if (!Object.keys(projectConfig).length && !gitConfig.path) {
-    throw new Error("Cannot execute commands outside a worktree project.");
+    throw new Error(ERROR_EXECUTE_OUTSIDE);
   }
 
   if (gitConfig.path) {
@@ -446,7 +450,7 @@ function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): void {
     );
 
     if (!Object.keys(tempProjectConfig).length) {
-      throw new Error(`"wt.config.json" is missing.`);
+      throw new Error(ERROR_MISSING_CONFIG);
     }
 
     projectConfig.repos = tempProjectConfig.repos;
@@ -454,7 +458,7 @@ function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): void {
   }
 
   if (projectConfig.type === undefined) {
-    throw new Error(`The property "type" in "wt.config.json" is missing.`);
+    throw new Error(ERROR_CONFIG_MISSING_TYPE);
   }
 }
 

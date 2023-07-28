@@ -38,10 +38,9 @@ export function createAction(done: CallableFunction) {
 export function createCommand(action: (...args: any[]) => void) {
   return new Command()
     .name("create")
-    .alias("c")
-    .summary("Create an empty worktree project.\n\n")
+    .summary(`Create a "single-repo" or "multi-repos" worktree project.\n\n`)
     .description(
-      "To create an empty worktree project that used for signle or multiple git repositories.\n\n"
+      `To create a "single-repo" or "multi-repos" worktree project.\n\n`
     )
     .option("-s, --single", "create an empty project for single repository")
     .argument(

@@ -43,7 +43,6 @@ export function updateAction(done: CallableFunction) {
 export function updateCommand(action: (...args: any[]) => void) {
   return new Command()
     .command("update")
-    .alias("ud")
     .summary("Update the project configuration.\n\n")
     .description(`Update the project configuration.\n\n`)
     .helpOption("-h, --help", "Display help for command.")

@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { CommandCreator, ActionCreator } from "./lib/commands";
+import { CommandFactory, ActionFactory } from "./lib/commands";
 import { checkIsPathCaseSensitive } from "./lib/utils/file";
 import { done } from "./lib/utils/action";
 
@@ -11,15 +11,15 @@ global.isPathCaseSensitive = checkIsPathCaseSensitive();
 const program = new Command();
 program
   .name(`wt`)
-  .version("0.1.0")
+  .version("0.1.7")
   .addHelpCommand("help [command]", "Show command details.\n\n")
-  .addCommand(CommandCreator.create(ActionCreator.create(done)))
-  .addCommand(CommandCreator.link(ActionCreator.link(done)))
-  .addCommand(CommandCreator.unlink(ActionCreator.unlink(done)))
-  .addCommand(CommandCreator.init(ActionCreator.init(done)))
-  .addCommand(CommandCreator.clone(ActionCreator.clone(done)))
-  .addCommand(CommandCreator.remove(ActionCreator.remove(done)))
-  .addCommand(CommandCreator.add(ActionCreator.add(done)))
-  .addCommand(CommandCreator.update(ActionCreator.update(done)));
+  .addCommand(CommandFactory.create(ActionFactory.create(done)))
+  .addCommand(CommandFactory.link(ActionFactory.link(done)))
+  .addCommand(CommandFactory.unlink(ActionFactory.unlink(done)))
+  .addCommand(CommandFactory.init(ActionFactory.init(done)))
+  .addCommand(CommandFactory.clone(ActionFactory.clone(done)))
+  .addCommand(CommandFactory.remove(ActionFactory.remove(done)))
+  .addCommand(CommandFactory.add(ActionFactory.add(done)))
+  .addCommand(CommandFactory.update(ActionFactory.update(done)));
 
 program.parse(process.argv);
