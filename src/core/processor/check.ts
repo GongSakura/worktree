@@ -67,7 +67,7 @@ function checkClonePrerequisite(context: IContext, next: CallableFunction) {
 
 async function checkAddPrerequisite(context: IContext, next: CallableFunction) {
   const projectConfig = getConfigs(context.cwd);
-
+  
   checkIsConfigVaild(projectConfig);
 
   context.projectConfig = projectConfig;

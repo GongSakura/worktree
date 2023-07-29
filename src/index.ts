@@ -1,7 +1,7 @@
 import { Command } from "commander";
-import { CommandFactory, ActionFactory } from "./lib/commands";
-import { checkIsPathCaseSensitive } from "./lib/utils/file";
-import { done } from "./lib/utils/action";
+import { CommandFactory, ActionFactory } from "./commands";
+import { checkIsPathCaseSensitive } from "./utils/file";
+import { done } from "./utils/action";
 
 declare global {
   var isPathCaseSensitive: boolean;

@@ -7,13 +7,13 @@ import {
   checkIsPathCaseSensitive,
   getProjectFile,
   normalizePath,
-} from "../lib/utils/file";
-import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
+} from "../src/utils/file";
+import { PROJECT_FILES, PROJECT_TYPE } from "../src/utils/types";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
 describe("unlink", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),

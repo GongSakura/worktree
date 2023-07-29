@@ -7,15 +7,15 @@ import {
   checkIsPathCaseSensitive,
   getProjectFile,
   normalizePath,
-} from "../lib/utils/file";
-import { PROJECT_FILES, PROJECT_TYPE, IRepo } from "../lib/utils/types";
-import { getGitConfiguration } from "../lib/utils/git";
+} from "../src/utils/file";
+import { PROJECT_FILES, PROJECT_TYPE, IRepo } from "../src/utils/types";
+import { getGitConfiguration } from "../src/utils/git";
 import { readdirSync } from "node:fs";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
 describe("link from a single-repo project", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),
@@ -155,7 +155,7 @@ describe("link from a single-repo project", () => {
 });
 
 describe("link from a multi-repos project", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),

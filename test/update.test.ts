@@ -7,15 +7,15 @@ import {
   checkIsPathCaseSensitive,
   getProjectFile,
   normalizePath,
-} from "../lib/utils/file";
+} from "../src/utils/file";
 import { mockGitRepository, run } from "./utils";
-import { getAllBranches } from "../lib/utils/git";
-import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
+import { getAllBranches } from "../src/utils/git";
+import { PROJECT_FILES, PROJECT_TYPE } from "../src/utils/types";
 import { exec } from "node:child_process";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
 describe("update from signle-repo project", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),
@@ -155,7 +155,7 @@ describe("update from signle-repo project", () => {
 });
 
 describe("update from multi-repos project", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),

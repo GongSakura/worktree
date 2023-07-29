@@ -3,15 +3,15 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { mockGitRepository, run } from "./utils";
-import { checkIsPathCaseSensitive, normalizePath } from "../lib/utils/file";
-import { PROJECT_FILES } from "../lib/utils/types";
-import { getAllBranches } from "../lib/utils/git";
+import { checkIsPathCaseSensitive, normalizePath } from "../src/utils/file";
+import { PROJECT_FILES } from "../src/utils/types";
+import { getAllBranches } from "../src/utils/git";
 import { readdirSync } from "node:fs";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
 describe("remove from single-repo project", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),
@@ -104,7 +104,7 @@ describe("remove from single-repo project", () => {
 });
 
 describe("remove from multi-repos project", () => {
-  const program: string = normalizePath(path.resolve("build/index.js"));
+  const program: string = normalizePath(path.resolve("dist/index.js"));
   const testPath: string = normalizePath(
     path.resolve(
       path.dirname(process.cwd()),

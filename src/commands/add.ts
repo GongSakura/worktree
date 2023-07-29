@@ -13,9 +13,8 @@ import {
   CheckProcessor,
 } from "../core";
 
-
 export function addAction(done: CallableFunction) {
-  return function (){
+  return function () {
     const context = {
       command: {
         options: this.opts(),
@@ -37,7 +36,7 @@ export function addAction(done: CallableFunction) {
   };
 }
 
-export function addCommand (action: (...args: any[]) => void){
+export function addCommand(action: (...args: any[]) => void) {
   return new Command()
     .command("add")
     .summary("Create a linked worktree.\n\n")
@@ -58,4 +57,4 @@ export function addCommand (action: (...args: any[]) => void){
       "(optional) If the branch doesn't existed, then create a new branch based on HEAD."
     )
     .action(action);
-};
+}

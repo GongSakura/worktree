@@ -7,8 +7,9 @@ const { chmodSync } = require("fs");
 module.exports = {
   input: "src/index.ts",
   output: {
-    dir: "build",
+    dir: "dist",
     format: "cjs",
+    sourcemap:true,
   },
   plugins: [
     json(),
@@ -19,16 +20,13 @@ module.exports = {
     }),
     typescript(),
     {
-      buildStart(option){
-        // console.info(`option:`,option)
-      },
       name: "shebang",
       generateBundle(_, bundle) {
         bundle["index.js"].code =
           "#!/usr/bin/env node\n" + bundle["index.js"].code;
       },
       writeBundle() {
-        chmodSync("./build/index.js", 0o777);
+        chmodSync("./dist/index.js", 0o777);
       },
     },
   ],

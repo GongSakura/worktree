@@ -40,7 +40,7 @@
     "fs-extra": "^11.1.1"
   },
   "bin": {
-    "wt": "./build/index.js"
+    "wt": "./dist/index.js"
   },
   "engines": {
     "node": ">=v14.18.0"
