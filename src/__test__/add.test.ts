@@ -4,7 +4,7 @@ import { mkdir, rm, readdir } from "node:fs/promises";
 import path from "node:path";
 import { mockGitRepository, run } from "./utils";
 import { checkIsPathCaseSensitive, normalizePath } from "../lib/utils/file";
-import { EPROJECT_FILES } from "../lib/utils/types";
+import { PROJECT_FILES } from "../lib/utils/types";
 import { getAllBranches } from "../lib/utils/git";
 
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
@@ -48,8 +48,8 @@ describe("add from single-repo project", () => {
     const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "mock",
       ])
     );
@@ -75,8 +75,8 @@ describe("add from single-repo project", () => {
       const projectFiles = await readdir(projectPath);
       expect(new Set(projectFiles)).toEqual(
         new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
+          PROJECT_FILES.CODE_WORKSPACE,
+          PROJECT_FILES.CONFIGURATION,
           ...worktrees,
           "mock",
         ])
@@ -112,8 +112,8 @@ describe("add from single-repo project", () => {
       const projectFiles = await readdir(projectPath);
       expect(new Set(projectFiles)).toEqual(
         new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
+          PROJECT_FILES.CODE_WORKSPACE,
+          PROJECT_FILES.CONFIGURATION,
           ...worktrees,
           "mock",
         ])
@@ -149,8 +149,8 @@ describe("add from single-repo project", () => {
       const projectFiles = await readdir(projectPath);
       expect(new Set(projectFiles)).toEqual(
         new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
+          PROJECT_FILES.CODE_WORKSPACE,
+          PROJECT_FILES.CONFIGURATION,
           ...worktrees,
           "mock",
         ])
@@ -217,8 +217,8 @@ describe("add from multi-repos project", () => {
     const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         mockRepoName,
       ])
     );

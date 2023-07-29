@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { IGitConfig, EGIT_CONFIGURATION, IRepo } from "./types";
+import { IGitConfig, GIT_CONFIG, IRepo } from "./types";
 import { checkIsDir, normalizePath } from "./file";
 import { UNKNOWN_REPO } from "./constants";
 
@@ -68,9 +68,9 @@ export function getGitConfiguration(cwdPath: string): IGitConfig {
         const [k, v] = e.split("=");
         if (!properties.has(k)) {
           properties.add(k);
-          if (k === EGIT_CONFIGURATION.PATH) {
+          if (k === GIT_CONFIG.PATH) {
             config.path = v;
-          } else if (k === EGIT_CONFIGURATION.REPONAME) {
+          } else if (k === GIT_CONFIG.REPONAME) {
             config.reponame = v;
           }
         }
@@ -99,6 +99,7 @@ export function setGitDir(cwdPath: string, gitDirPath: string) {
     });
   } catch {}
 }
+
 export function checkIsGitDir(cwdPath: string): boolean {
   try {
     const output = execSync("git rev-parse --is-inside-git-dir ", {

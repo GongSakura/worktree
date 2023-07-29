@@ -55,7 +55,7 @@ export function initCommand(action: (...args: any[]) => void) {
     .helpOption("-h, --help", "Display help for command")
     .argument(
       "[directory]",
-      "(optional) Specify a directory that the command is run inside it. The default is the current directory\n\n"
+      "(optional) Specify a directory where the command runs inside. The default is the current directory\n\n"
     )
     .action(action);
 }

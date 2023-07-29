@@ -8,7 +8,7 @@ import {
   getProjectFile,
   normalizePath,
 } from "../lib/utils/file";
-import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
+import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
 import { getAllBranches, getGitConfiguration } from "../lib/utils/git";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
@@ -37,7 +37,7 @@ describe("init", () => {
 
     const repoPath = path.resolve(projectPath, "master");
     const projectConfigPath = normalizePath(
-      path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+      path.resolve(projectPath, PROJECT_FILES.CONFIGURATION)
     );
 
     await mkdir(projectPath);
@@ -55,7 +55,7 @@ describe("init", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [
@@ -64,7 +64,7 @@ describe("init", () => {
           path: repoPath,
         },
       ],
-      type: EPROJECT_TYPE.SINGLE,
+      type: PROJECT_TYPE.SINGLE,
     });
 
     // ======= check branches =======
@@ -75,8 +75,8 @@ describe("init", () => {
     const files = readdirSync(projectPath);
     expect(new Set(files)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "master",
       ])
     );
@@ -91,7 +91,7 @@ describe("init", () => {
     const repoPath = path.resolve(projectPath, "mock");
 
     const projectConfigPath = normalizePath(
-      path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+      path.resolve(projectPath, PROJECT_FILES.CONFIGURATION)
     );
 
     await run(program, `init ${projectPath} `, {
@@ -108,7 +108,7 @@ describe("init", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [
@@ -117,7 +117,7 @@ describe("init", () => {
           path: repoPath,
         },
       ],
-      type: EPROJECT_TYPE.SINGLE,
+      type: PROJECT_TYPE.SINGLE,
     });
 
     // ======= check branches =======
@@ -130,8 +130,8 @@ describe("init", () => {
     const files = readdirSync(projectPath);
     expect(new Set(files)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "mock",
       ])
     );

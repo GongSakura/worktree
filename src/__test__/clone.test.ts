@@ -8,7 +8,7 @@ import {
   getProjectFile,
   normalizePath,
 } from "../lib/utils/file";
-import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
+import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
 import { getAllBranches, getGitConfiguration } from "../lib/utils/git";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
@@ -45,7 +45,7 @@ describe("clone", () => {
 
       const repoPath = path.resolve(projectPath, "mock");
       const projectConfigPath = normalizePath(
-        path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+        path.resolve(projectPath, PROJECT_FILES.CONFIGURATION)
       );
 
       await mkdir(projectPath);
@@ -63,7 +63,7 @@ describe("clone", () => {
       // ======= check project configuration =======
       const projectConfig = getProjectFile(
         projectPath,
-        EPROJECT_FILES.CONFIGURATION
+        PROJECT_FILES.CONFIGURATION
       );
       expect(projectConfig).toEqual({
         repos: [
@@ -72,7 +72,7 @@ describe("clone", () => {
             path: repoPath,
           },
         ],
-        type: EPROJECT_TYPE.SINGLE,
+        type: PROJECT_TYPE.SINGLE,
       });
 
       // ======= check branches =======
@@ -90,8 +90,8 @@ describe("clone", () => {
       const files = readdirSync(projectPath);
       expect(new Set(files)).toEqual(
         new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
+          PROJECT_FILES.CODE_WORKSPACE,
+          PROJECT_FILES.CONFIGURATION,
           "mock",
         ])
       );
@@ -106,7 +106,7 @@ describe("clone", () => {
         path.resolve(testPath, randomUUID().split("-")[0])
       );
       const projectConfigPath = normalizePath(
-        path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+        path.resolve(projectPath, PROJECT_FILES.CONFIGURATION)
       );
 
       // The main worktree path
@@ -129,7 +129,7 @@ describe("clone", () => {
       // ======= check project configuration =======
       const projectConfig = getProjectFile(
         projectPath,
-        EPROJECT_FILES.CONFIGURATION
+        PROJECT_FILES.CONFIGURATION
       );
       expect(projectConfig).toEqual({
         repos: [
@@ -138,7 +138,7 @@ describe("clone", () => {
             path: repoPath,
           },
         ],
-        type: EPROJECT_TYPE.SINGLE,
+        type: PROJECT_TYPE.SINGLE,
       });
 
       // ======= check branches =======
@@ -155,8 +155,8 @@ describe("clone", () => {
       const files = readdirSync(projectPath);
       expect(new Set(files)).toEqual(
         new Set([
-          EPROJECT_FILES.CODE_WORKSPACE,
-          EPROJECT_FILES.CONFIGURATION,
+          PROJECT_FILES.CODE_WORKSPACE,
+          PROJECT_FILES.CONFIGURATION,
           "master",
         ])
       );

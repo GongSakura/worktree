@@ -1,9 +1,9 @@
 import { IContext } from "../../utils/types";
 import { DEFAULT_ERROR_MESSAGE } from "../../utils/constants";
 
-function captureError(context: IContext, next: CallableFunction) {
+async function captureError(context: IContext, next: CallableFunction) {
   try {
-    next();
+    await next();
   } catch (error: any) {
     process.stderr.write(formatError(error.message));
   }

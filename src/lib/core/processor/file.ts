@@ -14,8 +14,8 @@ import {
 import * as path from "node:path";
 import {
   ICodeWorkSpaceConfig,
-  EPROJECT_FILES,
-  EPROJECT_TYPE,
+  PROJECT_FILES,
+  PROJECT_TYPE,
   IRepo,
   IContext,
 } from "../../utils/types";
@@ -70,7 +70,7 @@ function initDirectory(context: IContext, next: CallableFunction) {
         path.resolve(
           parentPath,
           `${
-            context.projectType === EPROJECT_TYPE.SINGLE
+            context.projectType === PROJECT_TYPE.SINGLE
               ? branch
               : repo.name + path.sep + branch
           }`
@@ -170,7 +170,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
         const newPath = path.resolve(
           context.projectPath!,
           `${
-            context.projectType === EPROJECT_TYPE.SINGLE
+            context.projectType === PROJECT_TYPE.SINGLE
               ? branch
               : repo.name + path.sep + branch
           }`
@@ -222,7 +222,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
           const newPath = path.resolve(
             context.projectPath!,
             `${
-              context.projectType === EPROJECT_TYPE.SINGLE
+              context.projectType === PROJECT_TYPE.SINGLE
                 ? branch
                 : context.reposMap[repoPath].name! + path.sep + branch
             }`
@@ -272,7 +272,7 @@ function linkDirectory(context: IContext, next: CallableFunction) {
       name: context.command.arguments.repoName,
       path: path.resolve(
         context.projectPath!,
-        context.projectType === EPROJECT_TYPE.SINGLE
+        context.projectType === PROJECT_TYPE.SINGLE
           ? currentBranch
           : `${context.command.arguments.repoName}${path.sep}${currentBranch}`
       ),
@@ -331,7 +331,7 @@ function unlinkDirectory(context: IContext, next: CallableFunction) {
 function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
   const codeWorkSpacePath = path.resolve(
     context.projectPath!,
-    EPROJECT_FILES.CODE_WORKSPACE
+    PROJECT_FILES.CODE_WORKSPACE
   );
 
   const codeWorkSpace = { folders: [] } as ICodeWorkSpaceConfig;
@@ -340,7 +340,7 @@ function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
     repo.worktrees?.forEach((e: string[]) => {
       codeWorkSpace.folders.push({
         name:
-          context?.projectType === EPROJECT_TYPE.SINGLE
+          context?.projectType === PROJECT_TYPE.SINGLE
             ? e[2]
             : `${repo.name}${path.sep}${e[2]}`,
         path: e[0],
@@ -360,14 +360,14 @@ function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
 function writeProjectConfiguration(context: IContext, next: CallableFunction) {
   const projectConfigPath = path.resolve(
     context.projectPath!,
-    EPROJECT_FILES.CONFIGURATION
+    PROJECT_FILES.CONFIGURATION
   );
 
   const config = {
     repos: context.repos?.map((repo: IRepo) => {
       return { name: repo.name, path: repo.path };
     }),
-    type: context.projectType || EPROJECT_TYPE.SINGLE,
+    type: context.projectType || PROJECT_TYPE.SINGLE,
   };
   writeFileSync(projectConfigPath, JSON.stringify(config, null, 2), {
     mode: 0o777,

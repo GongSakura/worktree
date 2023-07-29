@@ -8,7 +8,7 @@ import {
   getProjectFile,
   normalizePath,
 } from "../lib/utils/file";
-import { EPROJECT_FILES, EPROJECT_TYPE, IRepo } from "../lib/utils/types";
+import { PROJECT_FILES, PROJECT_TYPE, IRepo } from "../lib/utils/types";
 import { getGitConfiguration } from "../lib/utils/git";
 import { readdirSync } from "node:fs";
 
@@ -30,7 +30,7 @@ describe("link from a single-repo project", () => {
       path.resolve(testPath, randomUUID().split("-")[0])
     );
     projectConfigPath = normalizePath(
-      path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+      path.resolve(projectPath, PROJECT_FILES.CONFIGURATION)
     );
     await mkdir(testPath);
     await run(program, `create -s ${projectPath}`);
@@ -46,16 +46,16 @@ describe("link from a single-repo project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [],
-      type: EPROJECT_TYPE.SINGLE,
+      type: PROJECT_TYPE.SINGLE,
     });
 
     // ======= check files =======
     const files = readdirSync(projectPath);
-    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
+    expect(new Set(files)).toEqual(new Set([PROJECT_FILES.CONFIGURATION]));
   });
 
   it("link to a local repository", async () => {
@@ -85,10 +85,10 @@ describe("link from a single-repo project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
 
-    expect(projectConfig.type).toEqual(EPROJECT_TYPE.SINGLE);
+    expect(projectConfig.type).toEqual(PROJECT_TYPE.SINGLE);
     expect(projectConfig.repos).toEqual([
       {
         name: mockRepoName,
@@ -100,8 +100,8 @@ describe("link from a single-repo project", () => {
     const files = readdirSync(projectPath);
     expect(new Set(files)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "mock",
       ])
     );
@@ -132,9 +132,9 @@ describe("link from a single-repo project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
-    expect(projectConfig.type).toEqual(EPROJECT_TYPE.SINGLE);
+    expect(projectConfig.type).toEqual(PROJECT_TYPE.SINGLE);
     expect(projectConfig.repos).toEqual([
       {
         name: remoteRepoName,
@@ -146,8 +146,8 @@ describe("link from a single-repo project", () => {
     const files = readdirSync(projectPath);
     expect(new Set(files)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "master",
       ])
     );
@@ -167,7 +167,7 @@ describe("link from a multi-repos project", () => {
     path.resolve(testPath, randomUUID().split("-")[0])
   );
   const projectConfigPath = normalizePath(
-    path.resolve(projectPath, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(projectPath, PROJECT_FILES.CONFIGURATION)
   );
   const repos: IRepo[] = [];
   const repoDirname: string[] = [];
@@ -186,16 +186,16 @@ describe("link from a multi-repos project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [],
-      type: EPROJECT_TYPE.MULTIPLE,
+      type: PROJECT_TYPE.MULTIPLE,
     });
 
     // ======= check files =======
     const files = readdirSync(projectPath);
-    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
+    expect(new Set(files)).toEqual(new Set([PROJECT_FILES.CONFIGURATION]));
   });
 
   it("link to a local repository", async () => {
@@ -231,19 +231,19 @@ describe("link from a multi-repos project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toMatchObject({
       repos,
-      type: EPROJECT_TYPE.MULTIPLE,
+      type: PROJECT_TYPE.MULTIPLE,
     });
 
     // ======= check files =======
     const files = readdirSync(projectPath);
     expect(new Set(files)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         ...repoDirname,
       ])
     );
@@ -283,17 +283,17 @@ describe("link from a multi-repos project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
-    expect(projectConfig.type).toEqual(EPROJECT_TYPE.MULTIPLE);
+    expect(projectConfig.type).toEqual(PROJECT_TYPE.MULTIPLE);
     expect(projectConfig.repos).toEqual(repos);
 
     // ======= check files =======
     const files = readdirSync(projectPath);
     expect(new Set(files)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         ...repoDirname,
       ])
     );

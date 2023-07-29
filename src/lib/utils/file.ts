@@ -1,20 +1,33 @@
 import { mkdtempSync, readFileSync, rmdirSync, statSync } from "node:fs";
 import * as path from "node:path";
-import { EPROJECT_FILES, IProjectConfig, IGitConfig } from "./types";
-import { getGitConfiguration } from "./git";
+import { PROJECT_FILES, IProjectConfig } from "./types";
 
-export function getProjectFile(cwdPath: string, name: EPROJECT_FILES) {
+
+export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
   try {
     return JSON.parse(readFileSync(path.resolve(cwdPath, name)).toString());
   } catch {
     return {};
   }
 }
-export function getConfigs(cwdPath: string): [IProjectConfig, IGitConfig] {
-  return [
-    getProjectFile(cwdPath, EPROJECT_FILES.CONFIGURATION),
-    getGitConfiguration(cwdPath),
-  ];
+
+/**
+ * To return configuration, if the configuration is empty, then return undefined
+ */
+export function getConfigs(cwdPath: string): IProjectConfig|undefined {
+  let curPath = cwdPath;
+  let nextPath = path.dirname(cwdPath);
+
+  while (nextPath !== curPath) {
+    const config = getProjectFile(curPath, PROJECT_FILES.CONFIGURATION);
+    if (Object.keys(config).length === 0) {
+      curPath = nextPath;
+      nextPath = path.dirname(curPath);
+    } else {
+      config.projectPath = curPath
+      return config;
+    }
+  }
 }
 
 export function checkIsDirectChildPath(

@@ -4,7 +4,7 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { mockGitRepository, run } from "./utils";
 import { checkIsPathCaseSensitive, normalizePath } from "../lib/utils/file";
-import { EPROJECT_FILES } from "../lib/utils/types";
+import { PROJECT_FILES } from "../lib/utils/types";
 import { getAllBranches } from "../lib/utils/git";
 import { readdirSync } from "node:fs";
 
@@ -50,8 +50,8 @@ describe("remove from single-repo project", () => {
     const projectFiles = readdirSync(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "feature-2",
         "feature-1",
         "mock",
@@ -74,8 +74,8 @@ describe("remove from single-repo project", () => {
     const projectFiles = readdirSync(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "feature-2",
         "mock",
       ])
@@ -95,8 +95,8 @@ describe("remove from single-repo project", () => {
     const projectFiles = readdirSync(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "mock",
       ])
     );
@@ -159,8 +159,8 @@ describe("remove from multi-repos project", () => {
     const projectFiles = readdirSync(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         mockRepoName,
       ])
     );

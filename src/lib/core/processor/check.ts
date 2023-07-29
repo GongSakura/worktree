@@ -6,8 +6,8 @@ import {
 } from "../../utils/git";
 import { getConfigs, getProjectFile, normalizePath } from "../../utils/file";
 import {
-  EPROJECT_FILES,
-  EPROJECT_TYPE,
+  PROJECT_FILES,
+  PROJECT_TYPE as PROJECT_TYPE,
   IProjectConfig,
   IGitConfig,
   IContext,
@@ -22,34 +22,41 @@ import {
 } from "../../utils/prompts";
 import { ErrorProcessor } from "../index";
 import {
-  ERROR_CONFIG_MISSING_TYPE,
+  ERROR_MISSING_CONFIG_TYPE,
   ERROR_CREATE_IN_DIR,
   ERROR_CREATE_IN_GITDIR,
   ERROR_EMPTY_REPOS,
+  ERROR_EXECUTE_IN_GITDIR,
   ERROR_EXECUTE_OUTSIDE,
   ERROR_LINK_DUPLICATE,
   ERROR_LINK_TO_SINGLE,
   ERROR_MISSING_CONFIG,
+  ERROR_MISSING_OPTION_REPO,
+  ERROR_MISSING_ARGS_BRANCH_NAME,
+  ERROR_REPO_NOT_EXSITED,
+  ERROR_NO_AVAILABLE_BRANCH,
+  ERROR_REMOVE_WORKTREE,
+  ERROR_REMOVE_MAIN_WORKTREE,
+  ERROR_INIT_EXISTED,
 } from "../../utils/constants";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
   const repoPath = normalizePath(context.command.arguments.directory);
   if (checkIsGitDir(repoPath)) {
-    throw new Error(`Cannot execute commands inside a ".git" folder`);
+    throw new Error(ERROR_EXECUTE_IN_GITDIR);
   }
 
-  const [projectConfig, worktreeConfig] = getConfigs(repoPath);
-
-  if (Object.keys(worktreeConfig).length || Object.keys(projectConfig).length) {
-    throw new Error(
-      `The directory: "${repoPath}" has already been initialized`
-    );
+  const projectConfig = getConfigs(repoPath);
+  if (projectConfig) {
+    throw new Error(ERROR_INIT_EXISTED(repoPath));
   }
+
   context.projectConfigPath = normalizePath(
-    path.resolve(repoPath, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(repoPath, PROJECT_FILES.CONFIGURATION)
   );
+
   context.projectPath = repoPath;
-  context.projectType = EPROJECT_TYPE.SINGLE;
+  context.projectType = PROJECT_TYPE.SINGLE;
 
   next();
 }
@@ -58,131 +65,169 @@ function checkClonePrerequisite(context: IContext, next: CallableFunction) {
   checkInitPrerequisite(context, next);
 }
 
-function checkAddPrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, gitConfig] = getConfigs(context.cwd);
+async function checkAddPrerequisite(context: IContext, next: CallableFunction) {
+  const projectConfig = getConfigs(context.cwd);
 
-  checkIsInsideProject([projectConfig, gitConfig]);
-  if (!projectConfig.repos?.length) {
-    throw new Error("The project hasn't linked to any repository.");
-  }
+  checkIsConfigVaild(projectConfig);
+
   context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
-    gitConfig?.path
-      ? gitConfig.path
-      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
   );
-  context.projectPath = normalizePath(
-    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
-  );
-  context.repos = projectConfig.repos;
-  context.projectType = projectConfig.type;
+  context.projectPath = normalizePath(projectConfig!.projectPath);
+  context.repos = projectConfig!.repos;
+  context.projectType = projectConfig!.type;
 
-  if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
-    if (!context.repos.length) {
-      throw new Error("No linked repository");
-    }
-    if (!context.command.options.repo && context.command.arguments.branchName) {
-      throw new Error(`The option "--repo" is missing.`);
-    }
-    if (context.command.options.repo && !context.command.arguments.branchName) {
-      throw new Error(`The argument "branch-name" is missing.`);
-    }
-    if (
-      !context.command.options.repo &&
-      !context.command.arguments.branchName
-    ) {
-      select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
-        .then((answer) => {
-          const repo = context.repos?.find((repo) => repo.name === answer);
-
-          if (!repo || !repo.path) {
-            throw new Error(
-              `Cannot find the repository "${answer}" in the project`
-            );
-          }
-
-          context.selectedRepo = repo;
-          const uncheckoutBranches = getUncheckoutBranches(
-            context.selectedRepo.path!
-          );
-          if (!uncheckoutBranches.length) {
-            throw new Error(
-              `No available branches can be checkout.\n       You should use "wt add --repo [repo-name] [branch-name]" to add a linked worktree. `
-            );
-          }
-          return select<string>(selectBranchQuestion(uncheckoutBranches));
-        })
-        .then((answer) => {
-          context.command.arguments.branchName = answer;
-          next();
-        })
-        .catch((error) => {
-          ErrorProcessor.captureError(context, () => {
-            throw error;
-          });
-        });
+  if (!context.command.arguments.branchName) {
+    if (context.projectType === PROJECT_TYPE.MULTIPLE) {
+      const answer = await select<string>(
+        selectRepoQuestion(context.repos.map((repo) => repo.name))
+      );
+      const repo = context.repos?.find((repo) => repo.name === answer);
+      if (!repo || !repo.path) {
+        throw new Error(ERROR_REPO_NOT_EXSITED(answer));
+      }
+      context.selectedRepo = repo;
     } else {
+      context.selectedRepo = context.repos[0];
+    }
+
+    // check if has any available branch
+    const uncheckoutBranches = getUncheckoutBranches(
+      context.selectedRepo.path!
+    );
+
+    if (!uncheckoutBranches.length) {
+      throw new Error(ERROR_NO_AVAILABLE_BRANCH(context.selectedRepo.name));
+    }
+
+    const answer = await select<string>(
+      selectBranchQuestion(uncheckoutBranches)
+    );
+    context.command.arguments.branchName = answer;
+  } else {
+    if (context.projectType === PROJECT_TYPE.MULTIPLE) {
+      if (!context.command.options.repo) {
+        throw new Error(ERROR_MISSING_OPTION_REPO);
+      }
+
       const repo = context.repos?.find(
         (repo) => repo.name === context.command.options.repo
       );
 
       if (!repo || !repo.path) {
-        throw new Error(
-          `Cannot find the "${context.command.options.repo}" repository in the project`
-        );
+        throw new Error(ERROR_REPO_NOT_EXSITED(context.command.options.repo));
       }
-
       context.selectedRepo = repo;
-      next();
-    }
-  } else {
-    context.selectedRepo = context.repos[0];
-    if (!context.command.arguments.branchName) {
-      const uncheckoutBranches = getUncheckoutBranches(
-        context.selectedRepo.path!
-      );
-
-      if (!uncheckoutBranches.length) {
-        throw new Error('The arugument "branch-name" is missing');
-      }
-
-      select<string>(selectBranchQuestion(uncheckoutBranches))
-        .then((answer) => {
-          context.command.arguments.branchName = answer;
-          next();
-        })
-        .catch((err) => {
-          ErrorProcessor.captureError(context, () => {
-            throw err;
-          });
-        });
     } else {
-      next();
+      context.selectedRepo = context.repos[0];
     }
   }
+
+  next();
 }
 
-function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, gitConfig] = getConfigs(context.cwd);
-  checkIsInsideProject([projectConfig, gitConfig]);
-  if (!projectConfig.repos?.length) {
-    throw new Error("The project hasn't linked to any repository.");
-  }
+async function checkRemovePrerequisite(
+  context: IContext,
+  next: CallableFunction
+) {
+  const projectConfig = getConfigs(context.cwd);
+  checkIsConfigVaild(projectConfig);
 
   context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
-    gitConfig?.path
-      ? gitConfig.path
-      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
   );
+  context.projectPath = normalizePath(projectConfig!.projectPath);
+  context.repos = projectConfig!.repos;
+  context.projectType = projectConfig!.type;
 
-  context.projectPath = normalizePath(
-    gitConfig?.path ? path.dirname(gitConfig!.path) : context.cwd
-  );
-  context.repos = projectConfig.repos;
-  context.projectType = projectConfig.type;
+  if (!context.command.arguments.branchName) {
+    if (context.projectType === PROJECT_TYPE.MULTIPLE) {
+      const answer = await select<string>(
+        selectRepoQuestion(context.repos.map((repo) => repo.name))
+      );
+      const repo = context.repos?.find((repo) => repo.name === answer);
+      if (!repo || !repo.path) {
+        throw new Error(ERROR_REPO_NOT_EXSITED(answer));
+      }
+      context.selectedRepo = repo;
+    } else {
+      context.selectedRepo = context.repos[0];
+    }
 
-  if (context.projectType === EPROJECT_TYPE.MULTIPLE) {
+    const worktrees: string[][] = getWorktrees(
+      context.selectedRepo.path!
+    ).reverse();
+
+    // skip the main worktree
+    worktrees.pop();
+    if (!worktrees.length) {
+      throw new Error(ERROR_REMOVE_WORKTREE);
+    }
+
+    const answer = await select<string>(
+      selectWorktreeQuestion(worktrees.map((e) => `${e[0]} [${e[2]}]`))
+    );
+
+    const [removeWorktreePath, branchName] = answer.split(" ");
+    context.removeWorktrees = [
+      [removeWorktreePath, "", branchName.replace(/\[(.*?)\]/g, "$1")],
+    ];
+    if (removeWorktreePath == context.selectedRepo?.path) {
+      throw new Error(
+        ERROR_REMOVE_MAIN_WORKTREE(context.command.arguments.branchName)
+      );
+    }
+  } else {
+    if (context.projectType === PROJECT_TYPE.MULTIPLE) {
+      if (!context.command.options.repo) {
+        throw new Error(ERROR_MISSING_OPTION_REPO);
+      }
+
+      const repo = context.repos?.find(
+        (repo) => repo.name === context.command.options.repo
+      );
+
+      if (!repo || !repo.path) {
+        throw new Error(ERROR_REPO_NOT_EXSITED(context.command.options.repo));
+      }
+      context.selectedRepo = repo;
+      context.removeWorktrees = [
+        [
+          path.resolve(
+            context.projectPath,
+            `${context.command.options.repo}${path.sep}${context.command.arguments.branchName}`
+          ),
+          ,
+          context.command.arguments.branchName,
+        ],
+      ];
+    } else {
+      context.selectedRepo = context.repos[0];
+      context.removeWorktrees = [
+        [
+          path.resolve(
+            context.projectPath,
+            context.command.arguments.branchName
+          ),
+          ,
+          context.command.arguments.branchName,
+        ],
+      ];
+    }
+
+    if (context.removeWorktrees[0][0] == context.selectedRepo?.path) {
+      throw new Error(
+        ERROR_REMOVE_MAIN_WORKTREE(context.command.arguments.branchName)
+      );
+    }
+  }
+  next();
+
+  //TODO:
+
+  if (context.projectType === PROJECT_TYPE.MULTIPLE) {
     if (!context.repos.length) {
       throw new Error("No linked repository");
     }
@@ -322,24 +367,17 @@ function checkRemovePrerequisite(context: IContext, next: CallableFunction) {
 }
 
 function checkUpdatePrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, gitConfig] = getConfigs(context.cwd);
+  const projectConfig = getConfigs(context.cwd);
+  checkIsConfigVaild(projectConfig);
 
-  checkIsInsideProject([projectConfig, gitConfig]);
-  if (!projectConfig.repos?.length) {
-    throw new Error("The project hasn't linked to any repository.");
-  }
-
+  context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
-    gitConfig?.path
-      ? gitConfig.path
-      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
   );
-  context.projectPath = normalizePath(
-    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
-  );
+  context.projectPath = normalizePath(projectConfig!.projectPath);
+  context.repos = projectConfig!.repos;
+  context.projectType = projectConfig!.type;
 
-  context.projectType = projectConfig.type;
-  context.repos = projectConfig.repos;
   next();
 }
 
@@ -349,16 +387,15 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
     throw new Error(ERROR_CREATE_IN_GITDIR);
   }
 
-  const [projectConfig, gitConfig] = getConfigs(repoPath);
-  if (Object.keys(gitConfig).length || Object.keys(projectConfig).length) {
-    throw new Error(
-      `The directory: "${repoPath}" has already been initialized`
-    );
+  const projectConfig = getConfigs(repoPath);
+  if (projectConfig) {
+    throw new Error(ERROR_INIT_EXISTED(repoPath));
   }
+
   try {
     const stat = statSync(repoPath);
     if (stat.isFile()) {
-      throw ERROR_CREATE_IN_DIR(repoPath);
+      throw new Error(ERROR_CREATE_IN_DIR(repoPath));
     }
   } catch {
     mkdirSync(repoPath);
@@ -366,29 +403,24 @@ function checkCreatePrerequisite(context: IContext, next: CallableFunction) {
 
   context.projectPath = normalizePath(repoPath);
   context.projectType = context.command.options?.single
-    ? EPROJECT_TYPE.SINGLE
-    : EPROJECT_TYPE.MULTIPLE;
+    ? PROJECT_TYPE.SINGLE
+    : PROJECT_TYPE.MULTIPLE;
   context.repos = [];
   next();
 }
 
 function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, gitConfig] = getConfigs(context.cwd);
-  checkIsInsideProject([projectConfig, gitConfig]);
-
+  const projectConfig = getConfigs(context.cwd);
+  checkIsConfigVaild(projectConfig);
+  context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
-    gitConfig?.path
-      ? gitConfig.path
-      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
   );
-  context.projectPath = normalizePath(
-    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
-  );
+  context.projectPath = normalizePath(projectConfig!.projectPath);
+  context.repos = projectConfig!.repos;
+  context.projectType = projectConfig!.type;
 
-  context.projectType = projectConfig.type;
-  context.repos = projectConfig.repos;
-
-  if (context.repos.length && context.projectType === EPROJECT_TYPE.SINGLE) {
+  if (context.projectType === PROJECT_TYPE.SINGLE) {
     throw new Error(ERROR_LINK_TO_SINGLE);
   }
 
@@ -403,62 +435,49 @@ function checkLinkPrerequisite(context: IContext, next: CallableFunction) {
   next();
 }
 
-function checkUnlinkPrerequisite(context: IContext, next: CallableFunction) {
-  const [projectConfig, gitConfig] = getConfigs(context.cwd);
-  checkIsInsideProject([projectConfig, gitConfig]);
+async function checkUnlinkPrerequisite(
+  context: IContext,
+  next: CallableFunction
+) {
+  const projectConfig = getConfigs(context.cwd);
+  checkIsConfigVaild(projectConfig);
+  context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
-    gitConfig?.path
-      ? gitConfig.path
-      : path.resolve(context.cwd, EPROJECT_FILES.CONFIGURATION)
+    path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
   );
-  context.projectPath = normalizePath(
-    gitConfig?.path ? path.dirname(gitConfig.path) : context.cwd
-  );
-  context.projectType = projectConfig.type;
-  context.repos = projectConfig.repos;
+  context.projectPath = normalizePath(projectConfig!.projectPath);
+  context.repos = projectConfig!.repos;
+  context.projectType = projectConfig!.type;
 
-  if (context.command.arguments.repoName) {
-    next();
-  } else {
+  if (!context.command.arguments.repoName) {
     if (!context.repos?.length) {
       throw new Error(ERROR_EMPTY_REPOS);
     }
-    select<string>(selectRepoQuestion(context.repos.map((repo) => repo.name)))
-      .then((answer) => {
-        context.command.arguments.repoName = answer;
-        next();
-      })
-      .catch((error) => {
-        ErrorProcessor.captureError(context, () => {
-          throw error;
-        });
-      });
+
+    const answer = await select<string>(
+      selectRepoQuestion(context.repos.map((repo) => repo.name))
+    );
+    context.command.arguments.repoName = answer;
   }
+
+  next();
 }
 
-function checkIsInsideProject(configs: [IProjectConfig, IGitConfig]): void {
-  let [projectConfig, gitConfig] = configs;
-
-  if (!Object.keys(projectConfig).length && !gitConfig.path) {
+/**
+ * To verify if user execute commands within a worktree project
+ * 1. check if wt.config.json is not empty
+ * 2. check if
+ * @param configs wt.config.json & git config --list
+ */
+function checkIsConfigVaild(configs?: IProjectConfig) {
+  if (!configs) {
     throw new Error(ERROR_EXECUTE_OUTSIDE);
   }
-
-  if (gitConfig.path) {
-    const tempProjectConfig = getProjectFile(
-      path.dirname(gitConfig.path),
-      EPROJECT_FILES.CONFIGURATION
-    );
-
-    if (!Object.keys(tempProjectConfig).length) {
-      throw new Error(ERROR_MISSING_CONFIG);
-    }
-
-    projectConfig.repos = tempProjectConfig.repos;
-    projectConfig.type = tempProjectConfig.type;
+  if (configs.type === undefined) {
+    throw new Error(ERROR_MISSING_CONFIG_TYPE);
   }
-
-  if (projectConfig.type === undefined) {
-    throw new Error(ERROR_CONFIG_MISSING_TYPE);
+  if (!configs.repos?.length && configs.type === PROJECT_TYPE.SINGLE) {
+    throw new Error(ERROR_EMPTY_REPOS);
   }
 }
 

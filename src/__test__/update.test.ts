@@ -10,7 +10,7 @@ import {
 } from "../lib/utils/file";
 import { mockGitRepository, run } from "./utils";
 import { getAllBranches } from "../lib/utils/git";
-import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
+import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
 import { exec } from "node:child_process";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
@@ -63,8 +63,8 @@ describe("update from signle-repo project", () => {
     const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         "feature-1",
         "feature-2",
         "mock",
@@ -95,8 +95,8 @@ describe("update from signle-repo project", () => {
     const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         ...paths.map((e) => e[1].split(path.sep).pop()),
       ])
     );
@@ -108,8 +108,8 @@ describe("update from signle-repo project", () => {
     // ======= check project directory =======
     expect(new Set(await readdir(projectPath))).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         ...paths.map((e) => e[0].split(path.sep).pop()),
       ])
     );
@@ -133,8 +133,8 @@ describe("update from signle-repo project", () => {
     // ======= check project directory =======
     expect(new Set(await readdir(projectPath))).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         ...paths.map((e) => e[1]),
       ])
     );
@@ -142,9 +142,9 @@ describe("update from signle-repo project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
-    expect(projectConfig.type).toBe(EPROJECT_TYPE.SINGLE);
+    expect(projectConfig.type).toBe(PROJECT_TYPE.SINGLE);
     expect(projectConfig.repos).toEqual([
       {
         name: mockRepoName,
@@ -230,8 +230,8 @@ describe("update from multi-repos project", () => {
     const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         remoteRepoName,
         mockRepoName,
       ])
@@ -240,10 +240,10 @@ describe("update from multi-repos project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
 
-    expect(projectConfig.type).toBe(EPROJECT_TYPE.MULTIPLE);
+    expect(projectConfig.type).toBe(PROJECT_TYPE.MULTIPLE);
     expect(projectConfig.repos).toEqual(
       repoInfo.map((repo) => {
         return { name: repo.name, path: repo.path };
@@ -275,8 +275,8 @@ describe("update from multi-repos project", () => {
     const projectFiles = await readdir(projectPath);
     expect(new Set(projectFiles)).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         remoteRepoName,
         mockRepoName,
         ...paths.map((e) => e[1].split(path.sep).pop()),
@@ -290,8 +290,8 @@ describe("update from multi-repos project", () => {
     // ======= check project directory =======
     expect(new Set(await readdir(projectPath))).toEqual(
       new Set([
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
         remoteRepoName,
         mockRepoName,
       ])
@@ -333,10 +333,10 @@ describe("update from multi-repos project", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
 
-    expect(projectConfig.type).toBe(EPROJECT_TYPE.MULTIPLE);
+    expect(projectConfig.type).toBe(PROJECT_TYPE.MULTIPLE);
     expect(projectConfig.repos).toEqual([
       {
         name: mockRepoName,

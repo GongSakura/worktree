@@ -8,7 +8,7 @@ import {
   getProjectFile,
   normalizePath,
 } from "../lib/utils/file";
-import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
+import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
@@ -65,7 +65,7 @@ describe("unlink", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [
@@ -78,7 +78,7 @@ describe("unlink", () => {
           path: remoteRepoPath,
         },
       ],
-      type: EPROJECT_TYPE.MULTIPLE,
+      type: PROJECT_TYPE.MULTIPLE,
     });
 
     // ======= check files =======
@@ -86,8 +86,8 @@ describe("unlink", () => {
     expect(new Set(files)).toEqual(
       new Set([
         ...repoDirname,
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
       ])
     );
   });
@@ -101,7 +101,7 @@ describe("unlink", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [
@@ -110,7 +110,7 @@ describe("unlink", () => {
           path: remoteRepoPath,
         },
       ],
-      type: EPROJECT_TYPE.MULTIPLE,
+      type: PROJECT_TYPE.MULTIPLE,
     });
 
     // ======= check files =======
@@ -118,8 +118,8 @@ describe("unlink", () => {
     expect(new Set(files)).toEqual(
       new Set([
         ...repoDirname,
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
       ])
     );
   });
@@ -134,11 +134,11 @@ describe("unlink", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [],
-      type: EPROJECT_TYPE.MULTIPLE,
+      type: PROJECT_TYPE.MULTIPLE,
     });
 
     // ======= check files =======
@@ -146,8 +146,8 @@ describe("unlink", () => {
     expect(new Set(files)).toEqual(
       new Set([
         ...repoDirname,
-        EPROJECT_FILES.CODE_WORKSPACE,
-        EPROJECT_FILES.CONFIGURATION,
+        PROJECT_FILES.CODE_WORKSPACE,
+        PROJECT_FILES.CONFIGURATION,
       ])
     );
   });

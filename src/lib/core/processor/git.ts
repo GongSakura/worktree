@@ -14,7 +14,7 @@ import {
   initBranch,
   searchRepos,
 } from "../../utils/git";
-import { EPROJECT_TYPE, IContext, IRepo } from "../../utils/types";
+import { PROJECT_TYPE, IContext, IRepo } from "../../utils/types";
 import { DEFAULT_BRANCH } from "../../utils/constants";
 import { moveSync } from "fs-extra";
 
@@ -83,7 +83,7 @@ function linkRepository(context: IContext, next: CallableFunction) {
 
     let repoPath = path.resolve(
       context.projectPath!,
-      context.projectType === EPROJECT_TYPE.MULTIPLE
+      context.projectType === PROJECT_TYPE.MULTIPLE
         ? `${repoName}${path.sep}${DEFAULT_BRANCH}`
         : DEFAULT_BRANCH
     );
@@ -95,7 +95,7 @@ function linkRepository(context: IContext, next: CallableFunction) {
     if (currentBranch !== DEFAULT_BRANCH) {
       const realRepoPath = path.resolve(
         context.projectPath!,
-        context.projectType === EPROJECT_TYPE.MULTIPLE
+        context.projectType === PROJECT_TYPE.MULTIPLE
           ? `${repoName}${path.sep}${currentBranch}`
           : currentBranch
       );
@@ -147,7 +147,7 @@ function addWorktree(context: IContext, next: CallableFunction) {
   const mainWorktreePath = repo?.path!;
   const newWorktreePath = path.resolve(
     context.projectPath!,
-    context.projectType === EPROJECT_TYPE.MULTIPLE
+    context.projectType === PROJECT_TYPE.MULTIPLE
       ? `${repo?.name}${path.sep}${branchName}`
       : branchName
   );

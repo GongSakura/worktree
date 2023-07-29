@@ -1,3 +1,6 @@
+/**
+ * middleware
+ */
 export interface IProcessor {
   (context: any, next: CallableFunction): void;
 }
@@ -16,7 +19,7 @@ export interface IContext {
   projectPath?: string;
   projectConfig?: IProjectConfig;
   projectConfigPath?: string;
-  projectType?: EPROJECT_TYPE;
+  projectType?: PROJECT_TYPE;
   codeWorkspace?: ICodeWorkSpaceConfig;
   [k: string]: any;
 }
@@ -30,6 +33,9 @@ export interface ICodeWorkSpaceConfig {
   folders: IWorkspace[];
 }
 
+/**
+ * path: the value of wt.config.path in git config
+ */
 export interface IGitConfig {
   path?: string;
   reponame?: string;
@@ -45,27 +51,31 @@ export interface IRepo {
   gitDir?: string;
 }
 
+/**
+ * every time we read project configuration, have to add the path
+ */
 export interface IProjectConfig {
   repos: IRepo[];
-  type: EPROJECT_TYPE;
+  type: PROJECT_TYPE;
+  projectPath: string;
 }
 
 export interface IMultiRepoWorktreePaths {
   [key: string]: string[][];
 }
 
-export enum EPROJECT_FILES {
+export enum PROJECT_FILES {
   CODE_WORKSPACE = "wt.code-workspace",
   CONFIGURATION = "wt.config.json",
   NULL = "",
 }
 
-export enum EPROJECT_TYPE {
+export enum PROJECT_TYPE {
   SINGLE = "single",
   MULTIPLE = "multiple",
 }
 
-export enum EGIT_CONFIGURATION {
+export enum GIT_CONFIG {
   PATH = "wt.config.path",
   REPONAME = "wt.config.reponame",
 }

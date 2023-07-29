@@ -8,7 +8,7 @@ import {
   getProjectFile,
   normalizePath,
 } from "../lib/utils/file";
-import { EPROJECT_FILES, EPROJECT_TYPE } from "../lib/utils/types";
+import { PROJECT_FILES, PROJECT_TYPE } from "../lib/utils/types";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 
@@ -45,16 +45,16 @@ describe("create", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [],
-      type: EPROJECT_TYPE.MULTIPLE,
+      type: PROJECT_TYPE.MULTIPLE,
     });
 
     // ======= check files =======
     const files = readdirSync(projectPath);
-    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
+    expect(new Set(files)).toEqual(new Set([PROJECT_FILES.CONFIGURATION]));
   });
 
   it("create an empty project for single-repo", async () => {
@@ -70,15 +70,15 @@ describe("create", () => {
     // ======= check project configuration =======
     const projectConfig = getProjectFile(
       projectPath,
-      EPROJECT_FILES.CONFIGURATION
+      PROJECT_FILES.CONFIGURATION
     );
     expect(projectConfig).toEqual({
       repos: [],
-      type: EPROJECT_TYPE.SINGLE,
+      type: PROJECT_TYPE.SINGLE,
     });
 
     // ======= check files =======
     const files = readdirSync(projectPath);
-    expect(new Set(files)).toEqual(new Set([EPROJECT_FILES.CONFIGURATION]));
+    expect(new Set(files)).toEqual(new Set([PROJECT_FILES.CONFIGURATION]));
   });
 });
