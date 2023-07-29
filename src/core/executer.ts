@@ -1,4 +1,4 @@
-import type { IContext, IProcessor } from "../utils/types";
+import type { IContext, IProcessor } from "../types";
 
 /**
  * middleware executor

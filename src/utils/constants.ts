@@ -48,3 +48,5 @@ export const ERROR_INIT_EXISTED = (repo: string) => {
 export const ERROR_INIT_INSIDE = (projectPath: string) => {
   return `Cannot init inside a worktree project: ${projectPath}`;
 };
+
+export const ERROR_OPEN_CODEWORKSPACE = `Cannot find a vaild code-workspace file`

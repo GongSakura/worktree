@@ -5,6 +5,8 @@ import {
   getWorktrees,
 } from "../../utils/git";
 import {
+  getCodeWorksapce,
+  getFile,
   getProjectConfig,
   getProjectFile,
   normalizePath,
@@ -13,10 +15,9 @@ import {
   PROJECT_FILES,
   PROJECT_TYPE as PROJECT_TYPE,
   IProjectConfig,
-  IGitConfig,
   IContext,
   IRepo,
-} from "../../utils/types";
+} from "../../types";
 import { mkdirSync, statSync } from "node:fs";
 import select from "@inquirer/select";
 import {
@@ -43,6 +44,7 @@ import {
   ERROR_REMOVE_MAIN_WORKTREE,
   ERROR_INIT_EXISTED,
   ERROR_INIT_INSIDE,
+  ERROR_OPEN_CODEWORKSPACE,
 } from "../../utils/constants";
 
 function checkInitPrerequisite(context: IContext, next: CallableFunction) {
@@ -78,7 +80,7 @@ async function checkAddPrerequisite(context: IContext, next: CallableFunction) {
   const projectConfig = getProjectConfig(context.cwd);
 
   checkIsConfigVaild(projectConfig);
-  
+
   context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
     path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
@@ -86,12 +88,11 @@ async function checkAddPrerequisite(context: IContext, next: CallableFunction) {
   context.projectPath = normalizePath(projectConfig!.projectPath);
   context.repos = projectConfig!.repos;
   context.projectType = projectConfig!.type;
-  
-  if (!context.command.arguments.branchName) {
-    if(context.command.options.base){
-      throw new Error(ERROR_MISSING_ARGS_BRANCH_NAME)
-    }
 
+  if (!context.command.arguments.branchName) {
+    if (context.command.options.base) {
+      throw new Error(ERROR_MISSING_ARGS_BRANCH_NAME);
+    }
 
     if (context.projectType === PROJECT_TYPE.MULTIPLE) {
       const answer = await select<string>(
@@ -337,6 +338,21 @@ async function checkUnlinkPrerequisite(
   next();
 }
 
+function checkOpenPrerequisite(context: IContext, next: CallableFunction) {
+  let codeWorkspaceConfig: any;
+  if (!context.command.arguments.codeWorkspacePath) {
+    codeWorkspaceConfig = getCodeWorksapce(context.cwd);
+  } else {
+    codeWorkspaceConfig = getFile(context.command.arguments.codeWorkspacePat);
+  }
+
+  if (!Object.keys(codeWorkspaceConfig).length) {
+    throw new Error(ERROR_OPEN_CODEWORKSPACE);
+  }
+  context.codeWorkspaceConfig = codeWorkspaceConfig;
+  next();
+}
+
 /**
  * To verify if user execute commands within a worktree project
  * 1. check if wt.config.json is not empty
@@ -364,4 +380,5 @@ export default {
   checkAddPrerequisite,
   checkRemovePrerequisite,
   checkUpdatePrerequisite,
+  checkOpenPrerequisite,
 };

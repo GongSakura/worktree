@@ -1,11 +1,15 @@
 import { mkdtempSync, readFileSync, rmdirSync, statSync } from "node:fs";
 import * as path from "node:path";
-import { PROJECT_FILES, IProjectConfig } from "./types";
-
+import { execSync } from "node:child_process";
+import { PROJECT_FILES, IProjectConfig, ICodeWorkSpaceConfig } from "../types";
 
 export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
+  getFile(path.resolve(cwdPath, name));
+}
+
+export function getFile(cwdPath: string) {
   try {
-    return JSON.parse(readFileSync(path.resolve(cwdPath, name)).toString());
+    return JSON.parse(readFileSync(cwdPath).toString());
   } catch {
     return {};
   }
@@ -14,7 +18,7 @@ export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
 /**
  * To return configuration, if the configuration is empty, then return undefined
  */
-export function getProjectConfig(cwdPath: string): IProjectConfig|undefined {
+export function getProjectConfig(cwdPath: string): IProjectConfig | undefined {
   let curPath = cwdPath;
   let nextPath = path.dirname(cwdPath);
 
@@ -24,7 +28,27 @@ export function getProjectConfig(cwdPath: string): IProjectConfig|undefined {
       curPath = nextPath;
       nextPath = path.dirname(curPath);
     } else {
-      config.projectPath = curPath
+      config.projectPath = curPath;
+      return config;
+    }
+  }
+}
+
+export function getCodeWorksapce(
+  cwdPath: string
+): ICodeWorkSpaceConfig | undefined {
+  let curPath = cwdPath;
+  let nextPath = path.dirname(cwdPath);
+  while (nextPath !== curPath) {
+    const config = getProjectFile(curPath, PROJECT_FILES.CODE_WORKSPACE);
+    if (Object.keys(config).length === 0) {
+      curPath = nextPath;
+      nextPath = path.dirname(curPath);
+    } else {
+      config.codeWorkspacePath = path.resolve(
+        curPath,
+        PROJECT_FILES.CODE_WORKSPACE
+      );
       return config;
     }
   }
@@ -84,4 +108,21 @@ export function checkIsDir(cwdPath: string) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if all paths can become a circle
+ */
+
+export function isPathCircled(paths: Map<string, string>): boolean {
+  const size = paths.size;
+  let count = 0;
+
+  for (const p of paths.values()) {
+    if (paths.has(p)) {
+      count++;
+    }
+  }
+
+  return size === count;
 }

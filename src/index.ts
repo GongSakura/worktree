@@ -20,6 +20,7 @@ program
   .addCommand(CommandFactory.clone(ActionFactory.clone(done)))
   .addCommand(CommandFactory.remove(ActionFactory.remove(done)))
   .addCommand(CommandFactory.add(ActionFactory.add(done)))
-  .addCommand(CommandFactory.update(ActionFactory.update(done)));
+  .addCommand(CommandFactory.update(ActionFactory.update(done)))
+  .addCommand(CommandFactory.open(ActionFactory.open(done)));
 
 program.parse(process.argv);

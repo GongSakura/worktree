@@ -14,7 +14,7 @@ import {
   initBranch,
   searchRepoChanges,
 } from "../../utils/git";
-import { PROJECT_TYPE, IContext, IRepo } from "../../utils/types";
+import { PROJECT_TYPE, IContext, IRepo } from "../../types";
 import { DEFAULT_BRANCH } from "../../utils/constants";
 import { moveSync } from "fs-extra";
 
@@ -201,7 +201,7 @@ function repairWorktree(context: IContext, next: CallableFunction) {
     const linkedWorktreePaths = worktrees.reduce((prev, cur) => {
       return `${prev} ${cur[0]}`;
     }, "");
-   
+
     execSync("git worktree repair " + linkedWorktreePaths, {
       cwd: repo.path,
       stdio: "pipe",
@@ -210,7 +210,7 @@ function repairWorktree(context: IContext, next: CallableFunction) {
       cwd: repo.path,
       stdio: "pipe",
     });
-  
+
     repo.worktrees = getWorktrees(repo.path!).reverse();
   });
   next();

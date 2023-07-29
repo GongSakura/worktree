@@ -1,4 +1,4 @@
-import { IContext } from "../../utils/types";
+import { IContext } from "../../types";
 import { DEFAULT_ERROR_MESSAGE } from "../../utils/constants";
 
 async function captureError(context: IContext, next: CallableFunction) {

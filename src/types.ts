@@ -20,7 +20,7 @@ export interface IContext {
   projectConfig?: IProjectConfig;
   projectConfigPath?: string;
   projectType?: PROJECT_TYPE;
-  codeWorkspace?: ICodeWorkSpaceConfig;
+  codeWorkspaceConfig?: ICodeWorkSpaceConfig;
   [k: string]: any;
 }
 
@@ -31,6 +31,7 @@ export interface IWorkspace {
 
 export interface ICodeWorkSpaceConfig {
   folders: IWorkspace[];
+  codeWorkspacePath:string;
 }
 
 /**

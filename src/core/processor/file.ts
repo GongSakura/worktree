@@ -18,10 +18,11 @@ import {
   PROJECT_TYPE,
   IRepo,
   IContext,
-} from "../../utils/types";
+} from "../../types";
 import {
   checkArePathsIdentical,
   checkIsDirectChildPath,
+  isPathCircled,
   normalizePath,
 } from "../../utils/file";
 import {
@@ -32,6 +33,8 @@ import {
 } from "../../utils/git";
 import { copySync, ensureDirSync, moveSync } from "fs-extra";
 import { UNKNOWN_REPO } from "../../utils/constants";
+import { randomUUID } from "node:crypto";
+import { execSync } from "node:child_process";
 
 const IGNORE_FILES = new Set([".git", ".code-workpace"]);
 
@@ -157,7 +160,6 @@ function initDirectory(context: IContext, next: CallableFunction) {
 function updateDirectory(context: IContext, next: CallableFunction) {
   let unknownRepo: IRepo | undefined = undefined;
   const renameTodoMap = new Map();
-
   for (const [key, repo] of Object.entries(context.reposMap!)) {
     if (repo.name === UNKNOWN_REPO) {
       unknownRepo = repo;
@@ -177,15 +179,11 @@ function updateDirectory(context: IContext, next: CallableFunction) {
               : repo.name + path.sep + branch
           }`
         );
-        console.info(` repo.path:`, repo.path);
-        console.info(` old path:`, oldPath);
-        console.info(` new path:`, newPath);
 
+        // check if main worktree
         if (repo.path === oldPath) {
-          // process main worktree
           repo.path = newPath;
         } else {
-          // process sub worktrees
           newWorktrees.push([newPath, "", branch]);
         }
 
@@ -202,15 +200,52 @@ function updateDirectory(context: IContext, next: CallableFunction) {
     }
   }
 
-  while (renameTodoMap.size) {
-    for (const [oldPath, newPath] of renameTodoMap.entries()) {
-      if (renameTodoMap.has(newPath)) {
-        continue;
+  /**
+   * If new paths in renameTodoMap are existed in unknownRepo.worktrees,
+   * directly renaming will overwrite the paths in unknownRepo.worktrees.
+   *
+   * Therefore, we need a to rename the paths in unknownRepo.worktrees at first.
+   */
+  if (unknownRepo) {
+    for (const newPath of renameTodoMap.values()) {
+      const worktree = unknownRepo?.worktrees!.find((e) => e[0] === newPath);
+      if (worktree) {
+        const tempNewPath = path.resolve(
+          path.dirname(newPath),
+          randomUUID().split("-")[0]
+        );
+        moveSync(worktree[0], tempNewPath, { overwrite: true });
+        worktree[0] = tempNewPath;
       }
-      try {
-        moveSync(oldPath, newPath, { overwrite: true });
-        renameTodoMap.delete(oldPath);
-      } catch {}
+    }
+  }
+  
+  {
+    let renameTodo;
+    if (isPathCircled(renameTodoMap)) {
+      for (const [oldPath, newPath] of renameTodoMap.entries()) {
+        renameTodo = [oldPath, newPath];
+        renameTodoMap.set(
+          oldPath,
+          path.resolve(path.dirname(newPath), randomUUID().split("-")[0])
+        );
+        break;
+      }
+    }
+    while (renameTodoMap.size) {
+      for (const [oldPath, newPath] of renameTodoMap.entries()) {
+        if (renameTodoMap.has(newPath)) {
+          continue;
+        }
+        try {
+          moveSync(oldPath, newPath, { overwrite: true });
+          renameTodoMap.delete(oldPath);
+        } catch {}
+      }
+    }
+    if (renameTodo) {
+      const [oldPath, newPath] = renameTodo;
+      moveSync(oldPath, newPath, { overwrite: true });
     }
   }
 
@@ -247,6 +282,17 @@ function updateDirectory(context: IContext, next: CallableFunction) {
       }
     });
 
+    let renameTodo;
+    if (isPathCircled(renameTodoMap)) {
+      for (const [oldPath, newPath] of renameTodoMap.entries()) {
+        renameTodo = [oldPath, newPath];
+        renameTodoMap.set(
+          oldPath,
+          path.resolve(path.dirname(newPath), randomUUID().split("-")[0])
+        );
+        break;
+      }
+    }
     while (renameTodoMap.size) {
       for (const [oldPath, newPath] of renameTodoMap.entries()) {
         if (renameTodoMap.has(newPath)) {
@@ -257,6 +303,10 @@ function updateDirectory(context: IContext, next: CallableFunction) {
           renameTodoMap.delete(oldPath);
         } catch {}
       }
+    }
+    if (renameTodo) {
+      const [oldPath, newPath] = renameTodo;
+      moveSync(oldPath, newPath, { overwrite: true });
     }
   }
 
@@ -367,7 +417,7 @@ function writeProjectCodeWorkspace(context: IContext, next: CallableFunction) {
     encoding: "utf-8",
     flag: "w",
   });
-  context.codeWorkspace = codeWorkSpace;
+  context.codeWorkspaceConfig = codeWorkSpace;
   next();
 }
 
@@ -395,6 +445,11 @@ function writeProjectConfiguration(context: IContext, next: CallableFunction) {
   next();
 }
 
+
+function openCodeWorkspace(context:IContext,next:CallableFunction){
+  execSync(`code ${context.codeWorkspaceConfig?.codeWorkspacePath}`)
+  next()
+}
 export default {
   initDirectory,
   updateDirectory,
@@ -402,4 +457,5 @@ export default {
   unlinkDirectory,
   writeProjectCodeWorkspace,
   writeProjectConfiguration,
+  openCodeWorkspace
 };

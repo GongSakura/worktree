@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { IGitConfig, GIT_CONFIG, IRepo } from "./types";
+import { IGitConfig, GIT_CONFIG, IRepo } from "../types";
 import { checkIsDir, normalizePath } from "./file";
 import { UNKNOWN_REPO } from "./constants";
 

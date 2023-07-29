@@ -6,6 +6,7 @@ import { cloneCommand, cloneAction } from "./clone";
 import { createCommand, createAction } from "./create";
 import { linkCommand, linkAction } from "./link";
 import { unlinkAction, unlinkCommand } from "./unlink";
+import { openAction, openCommand } from "./open";
 
 export const CommandFactory = {
   add: addCommand,
@@ -16,6 +17,7 @@ export const CommandFactory = {
   unlink: unlinkCommand,
   remove: removeCommand,
   update: updateCommand,
+  open: openCommand,
 };
 
 export const ActionFactory = {
@@ -27,4 +29,5 @@ export const ActionFactory = {
   unlink: unlinkAction,
   remove: removeAction,
   update: updateAction,
+  open: openAction,
 };
