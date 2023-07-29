@@ -14,7 +14,7 @@ export function getProjectFile(cwdPath: string, name: PROJECT_FILES) {
 /**
  * To return configuration, if the configuration is empty, then return undefined
  */
-export function getConfigs(cwdPath: string): IProjectConfig|undefined {
+export function getProjectConfig(cwdPath: string): IProjectConfig|undefined {
   let curPath = cwdPath;
   let nextPath = path.dirname(cwdPath);
 

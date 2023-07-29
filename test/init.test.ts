@@ -1,4 +1,4 @@
-import { describe, expect, it,beforeAll,afterAll } from "@jest/globals";
+import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -9,7 +9,7 @@ import {
   normalizePath,
 } from "../src/utils/file";
 import { PROJECT_FILES, PROJECT_TYPE } from "../src/utils/types";
-import { getAllBranches, getGitConfiguration } from "../src/utils/git";
+import { getAllBranches, getGitConfig } from "../src/utils/git";
 import { readdirSync } from "node:fs";
 global.isPathCaseSensitive = checkIsPathCaseSensitive();
 describe("init", () => {
@@ -46,7 +46,7 @@ describe("init", () => {
     });
 
     // ======= check git configuration =======
-    const gitConfig = getGitConfiguration(repoPath);
+    const gitConfig = getGitConfig(repoPath);
     expect(gitConfig).toEqual({
       path: projectConfigPath,
       reponame: projectPath.split(path.sep).pop(),
@@ -99,7 +99,7 @@ describe("init", () => {
     });
 
     // ======= check git configuration =======
-    const gitConfig = getGitConfiguration(repoPath);
+    const gitConfig = getGitConfig(repoPath);
     expect(gitConfig).toEqual({
       path: projectConfigPath,
       reponame: projectPath.split(path.sep).pop(),

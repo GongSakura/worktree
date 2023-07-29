@@ -52,7 +52,7 @@ export function checkIsMainWorktree(cwdPath: string): boolean {
   }
 }
 
-export function getGitConfiguration(cwdPath: string): IGitConfig {
+export function getGitConfig(cwdPath: string): IGitConfig {
   const config: IGitConfig = {};
   const properties = new Set();
   try {
@@ -187,7 +187,8 @@ export function getLocalBranches(cwdPath: string): string[] {
 }
 export function getUncheckoutBranches(cwdPath: string): string[] {
   try {
-    const branches: string[] = [];
+    const allBranches: Set<string> = new Set();
+    const checkoutBranches: Set<string> = new Set();
     execSync("git branch -a", {
       cwd: cwdPath,
       stdio: "pipe",
@@ -196,10 +197,21 @@ export function getUncheckoutBranches(cwdPath: string): string[] {
       .trim()
       .split("\n")
       .forEach((e) => {
-        if (!/^[*+]/.test(e.trim()) && !/.*->.*/.test(e.trim())) {
-          branches.push(e.trim().replace(/^\W*/, ""));
+        if (!/.*->.*/.test(e.trim())) {
+          allBranches.add(e.trim().replace(/^\W*/, ""));
+          if (/^[*+]/.test(e.trim())) {
+            checkoutBranches.add(e.trim().replace(/^\W*/, ""));
+          }
         }
       });
+
+    const branches: string[] = [];
+    allBranches.forEach((e) => {
+      if (!checkoutBranches.has(e)) {
+        branches.push(e);
+      }
+    });
+
     return branches;
   } catch (error) {
     return [];
@@ -233,7 +245,7 @@ export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
           if (repoInfo.hasOwnProperty(repoPath)) {
             repoInfo[repoPath].worktrees!.push([_path, "", branch]);
           } else {
-            const gitConfiguration = getGitConfiguration(repoPath);
+            const gitConfiguration = getGitConfig(repoPath);
             repoInfo[repoPath] = {
               name: gitConfiguration.reponame || "",
               path: normalizePath(repoPath),
@@ -244,7 +256,7 @@ export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
             };
           }
         } else if (!repoInfo.hasOwnProperty(repoPath)) {
-          const gitConfiguration = getGitConfiguration(repoPath);
+          const gitConfiguration = getGitConfig(repoPath);
           repoInfo[repoPath] = {
             name: gitConfiguration.reponame || "",
             path: normalizePath(repoPath),

@@ -38,10 +38,13 @@ export const ERROR_LINK_DUPLICATE = (repo: string) => {
 export const ERROR_LINK_TO_SINGLE = `Current project has already linked to a repository.
   If you want to link multiple repositories, change the property "type" as "multiple" in "wt.config.json."`;
 
-export const ERROR_CREATE_IN_GITDIR = `Cannot create inside the ".git" folder`;
+export const ERROR_CREATE_IN_GITDIR = `Cannot create inside a ".git" folder`;
 export const ERROR_CREATE_IN_DIR = (name: string) => {
   return `Cannot create the project inside a file path: ${name}`;
 };
 export const ERROR_INIT_EXISTED = (repo: string) => {
-  return `The directory: "${repo}" has already been initialize}`;
+  return `The directory: "${repo}" has already been initialize`;
+};
+export const ERROR_INIT_INSIDE = (projectPath: string) => {
+  return `Cannot init inside a worktree project: ${projectPath}`;
 };
