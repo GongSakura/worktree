@@ -12,7 +12,7 @@ import {
   getLocalBranches,
   getWorktrees,
   initBranch,
-  searchRepos,
+  searchRepoChanges,
 } from "../../utils/git";
 import { PROJECT_TYPE, IContext, IRepo } from "../../utils/types";
 import { DEFAULT_BRANCH } from "../../utils/constants";
@@ -119,7 +119,7 @@ function linkRepository(context: IContext, next: CallableFunction) {
 
 function inspectRepository(context: IContext, next: CallableFunction) {
   const repos: any = {};
-  searchRepos(context.projectPath!, repos);
+  searchRepoChanges(context.projectPath!, repos);
   context.reposMap = repos;
   next();
 }

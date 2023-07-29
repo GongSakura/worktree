@@ -219,26 +219,35 @@ export function getUncheckoutBranches(cwdPath: string): string[] {
 }
 
 /**
- * "Depth First Search" all to potential
- * @param cwdPath
- * @param repoInfo
+ * "Depth First Search" to all repos that have changed
+ *  It ignores the worktrees that have not changed
  */
-export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
+export function searchRepoChanges(
+  cwdPath: string,
+  repoInfo: { [k: string]: IRepo }
+) {
   const files = readdirSync(cwdPath);
   files.forEach((file) => {
     const _path = normalizePath(path.resolve(cwdPath, file));
+
+    // ignore files
     if (checkIsDir(_path)) {
       if (checkIsWorktree(_path)) {
         const gitDirPath = normalizePath(getGitDir(_path));
         const idx = gitDirPath.lastIndexOf(
           `${path.sep}.git${path.sep}worktrees`
         );
+
+        // main worktree path
         const repoPath = path.resolve(gitDirPath.replace(/\.git.*/, ""));
+
         if (idx !== -1) {
+          // If in sub worktrees
           const branch = getCurrentBranch(_path);
 
-          // FIXME: a better way to check if current path has been changed or not
+          // FIXME: a better way to check if current path has been changed or nots
           if (_path.endsWith(path.normalize(branch))) {
+            // to ignore unchanged
             return;
           }
 
@@ -256,6 +265,8 @@ export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
             };
           }
         } else if (!repoInfo.hasOwnProperty(repoPath)) {
+          // If in main worktrees
+
           const gitConfiguration = getGitConfig(repoPath);
           repoInfo[repoPath] = {
             name: gitConfiguration.reponame || "",
@@ -264,17 +275,28 @@ export function searchRepos(cwdPath: string, repoInfo: { [k: string]: IRepo }) {
           };
         }
       } else if (existsSync(path.resolve(_path, ".git"))) {
+        /*
+         * If current directory has a file called ".git", it means it's a worktree.
+         * Due to the value "gitdir" in "".git" is not matched to the main worktree path,
+         * we cannot ensure which repo it belongs to. Therefore, mark it as unknown temporarily.
+         */
+
         if (repoInfo.unknown) {
           repoInfo.unknown.worktrees?.push([_path]);
         } else {
           repoInfo.unknown = {
             name: UNKNOWN_REPO,
             path: undefined,
-            worktrees: [[_path]],
+
+            // worktree: [path, commit-hash, branch-name]
+            worktrees: [[_path, "", ""]],
           };
         }
       } else {
-        searchRepos(_path, repoInfo);
+        /**
+         * Continue to search its descendants
+         */
+        searchRepoChanges(_path, repoInfo);
       }
     }
   });

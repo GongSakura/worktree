@@ -78,7 +78,7 @@ async function checkAddPrerequisite(context: IContext, next: CallableFunction) {
   const projectConfig = getProjectConfig(context.cwd);
 
   checkIsConfigVaild(projectConfig);
-
+  
   context.projectConfig = projectConfig;
   context.projectConfigPath = normalizePath(
     path.resolve(projectConfig!.projectPath, PROJECT_FILES.CONFIGURATION)
@@ -86,8 +86,13 @@ async function checkAddPrerequisite(context: IContext, next: CallableFunction) {
   context.projectPath = normalizePath(projectConfig!.projectPath);
   context.repos = projectConfig!.repos;
   context.projectType = projectConfig!.type;
-
+  
   if (!context.command.arguments.branchName) {
+    if(context.command.options.base){
+      throw new Error(ERROR_MISSING_ARGS_BRANCH_NAME)
+    }
+
+
     if (context.projectType === PROJECT_TYPE.MULTIPLE) {
       const answer = await select<string>(
         selectRepoQuestion(context.repos.map((repo) => repo.name))

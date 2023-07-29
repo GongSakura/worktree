@@ -15,7 +15,7 @@ export const ERROR_EMPTY_REPOS = "Hasn't linked to any repository";
 export const ERROR_MISSING_CONFIG = `"wt.config.json" is missing.`;
 export const ERROR_MISSING_CONFIG_TYPE = `The property "type" in "wt.config.json" is missing.`;
 export const ERROR_MISSING_OPTION_REPO = `The option "--repo" is missing.`;
-export const ERROR_MISSING_ARGS_BRANCH_NAME = `The argument "branch-name" is missing.`;
+export const ERROR_MISSING_ARGS_BRANCH_NAME = `The argument [branch-name] is missing.`;
 
 export const ERROR_EXECUTE_OUTSIDE =
   "Cannot execute commands outside a worktree project.";

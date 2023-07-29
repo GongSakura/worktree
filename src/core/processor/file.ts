@@ -161,6 +161,8 @@ function updateDirectory(context: IContext, next: CallableFunction) {
   for (const [key, repo] of Object.entries(context.reposMap!)) {
     if (repo.name === UNKNOWN_REPO) {
       unknownRepo = repo;
+
+      // Remove first, and process it later
       delete context.reposMap![UNKNOWN_REPO];
     } else {
       const newWorktrees: string[][] = [];
@@ -175,9 +177,15 @@ function updateDirectory(context: IContext, next: CallableFunction) {
               : repo.name + path.sep + branch
           }`
         );
+        console.info(` repo.path:`, repo.path);
+        console.info(` old path:`, oldPath);
+        console.info(` new path:`, newPath);
+
         if (repo.path === oldPath) {
+          // process main worktree
           repo.path = newPath;
         } else {
+          // process sub worktrees
           newWorktrees.push([newPath, "", branch]);
         }
 
@@ -187,6 +195,8 @@ function updateDirectory(context: IContext, next: CallableFunction) {
       });
 
       repo.worktrees = newWorktrees;
+
+      // key is the old path, we need to delete it
       delete context.reposMap![key];
       context.reposMap![repo.path!] = repo;
     }
@@ -210,6 +220,9 @@ function updateDirectory(context: IContext, next: CallableFunction) {
 
     worktrees?.forEach((e) => {
       const oldPath = e[0];
+
+      // As we have already restored the changes on main worktree,
+      // now we can know, which repo the worktree belongs to
       if (checkIsWorktree(oldPath)) {
         const gitDirPath = normalizePath(getGitDir(oldPath));
         const repoPath = path.resolve(gitDirPath.replace(/\.git.*/, ""));
@@ -250,6 +263,7 @@ function updateDirectory(context: IContext, next: CallableFunction) {
   context.repos = Object.values(context.reposMap || {});
   next();
 }
+
 function linkDirectory(context: IContext, next: CallableFunction) {
   if (
     !path.isAbsolute(context.command.arguments.repoURL) &&
